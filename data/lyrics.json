@@ -1,0 +1,154 @@
+{
+  "sets": [
+    {
+      "id": 1,
+      "name": "Welcome",
+      "songs": [
+        {
+          "id": 1,
+          "title": "Amazing Grace",
+          "artist": "John Newton",
+          "parts": [
+            {
+              "id": "v1",
+              "label": "Verse 1",
+              "slides": [
+                "Amazing grace, how sweet the sound\nThat saved a wretch like me",
+                "I once was lost, but now I'm found\nWas blind, but now I see"
+              ]
+            },
+            {
+              "id": "v2",
+              "label": "Verse 2",
+              "slides": [
+                "'Twas grace that taught my heart to fear\nAnd grace my fears relieved",
+                "How precious did that grace appear\nThe hour I first believed"
+              ]
+            },
+            {
+              "id": "v3",
+              "label": "Verse 3",
+              "slides": [
+                "Through many dangers, toils, and snares\nI have already come",
+                "'Tis grace has brought me safe thus far\nAnd grace will lead me home"
+              ]
+            },
+            {
+              "id": "ch",
+              "label": "Chorus",
+              "slides": [
+                "My chains are gone, I've been set free\nMy God, my Savior has ransomed me",
+                "And like a flood His mercy reigns\nUnending love, amazing grace"
+              ]
+            }
+          ],
+          "variations": [
+            {
+              "id": 1,
+              "name": "Full",
+              "arrangement": ["v1", "v2", "ch", "v3", "ch"]
+            },
+            {
+              "id": 2,
+              "name": "Short",
+              "arrangement": ["v1", "ch", "v3", "ch"]
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "How Great Thou Art",
+          "artist": "Carl Boberg",
+          "parts": [
+            {
+              "id": "v1",
+              "label": "Verse 1",
+              "slides": [
+                "O Lord my God, when I in awesome wonder\nConsider all the worlds Thy hands have made",
+                "I see the stars, I hear the rolling thunder\nThy power throughout the universe displayed"
+              ]
+            },
+            {
+              "id": "v2",
+              "label": "Verse 2",
+              "slides": [
+                "When through the woods and forest glades I wander\nAnd hear the birds sing sweetly in the trees",
+                "When I look down from lofty mountain grandeur\nAnd see the brook and feel the gentle breeze"
+              ]
+            },
+            {
+              "id": "ch",
+              "label": "Chorus",
+              "slides": [
+                "Then sings my soul, my Savior God, to Thee:\nHow great Thou art, how great Thou art!",
+                "Then sings my soul, my Savior God, to Thee:\nHow great Thou art, how great Thou art!"
+              ]
+            }
+          ],
+          "variations": [
+            {
+              "id": 1,
+              "name": "Default",
+              "arrangement": ["v1", "ch", "v2", "ch"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Worship",
+      "songs": [
+        {
+          "id": 3,
+          "title": "Holy, Holy, Holy",
+          "artist": "Reginald Heber",
+          "parts": [
+            {
+              "id": "v1",
+              "label": "Verse 1",
+              "slides": [
+                "Holy, holy, holy! Lord God Almighty!\nEarly in the morning our song shall rise to Thee",
+                "Holy, holy, holy, merciful and mighty\nGod in three persons, blessed Trinity"
+              ]
+            },
+            {
+              "id": "v2",
+              "label": "Verse 2",
+              "slides": [
+                "Holy, holy, holy! All the saints adore Thee\nCasting down their golden crowns around the glassy sea",
+                "Cherubim and seraphim falling down before Thee\nWhich wert and art and evermore shalt be"
+              ]
+            },
+            {
+              "id": "v3",
+              "label": "Verse 3",
+              "slides": [
+                "Holy, holy, holy! Though the darkness hide Thee\nThough the eye of sinful man Thy glory may not see",
+                "Only Thou art holy; there is none beside Thee\nPerfect in pow'r, in love, and purity"
+              ]
+            }
+          ],
+          "variations": [
+            {
+              "id": 1,
+              "name": "Full",
+              "arrangement": ["v1", "v2", "v3"]
+            },
+            {
+              "id": 2,
+              "name": "Short",
+              "arrangement": ["v1", "v3"]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defaultBackgroundVideo": "/public/videos/background.mp4",
+  "theme": {
+    "primaryColor": "#1a1a2e",
+    "accentColor": "#0f3460",
+    "textColor": "#ffffff"
+  }
+}

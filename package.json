@@ -1,0 +1,24 @@
+{
+  "name": "magi-project",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run server",
+    "build": "vite build",
+    "preview": "vite preview",
+    "server": "node server.mjs"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.2.1",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "@types/express": "^4.17.21",
+    "terser": "^5.44.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.8"
+  }
+}
