@@ -184,4 +184,4 @@ export interface LowerThirdsSettings {
   animationDuration: number
 }
 
-export type ScreenType = 'control-panel' | 'main-projection' | 'confidence-monitor' | 'lower-thirds'
+export type ScreenType = 'control-panel' | 'main-projection' | 'confidence-monitor' | 'lower-thirds' | 'mobile'

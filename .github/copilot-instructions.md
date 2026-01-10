@@ -42,6 +42,17 @@ All screens sync in real-time via Socket.io.
 - **Main Projection**: `http://localhost:3000/main`
 - **Confidence Monitor**: `http://localhost:3000/confidence`
 - **Lower Thirds**: `http://localhost:3000/thirds`
+- **Mobile (People)**: `http://localhost:3000/mobile`
+
+## Mobile Screen
+
+The mobile screen is a congregation-facing teleprompter view:
+- Same teleprompter style as confidence monitor
+- Shows song arrangement bar above for quick navigation
+- Users can scroll freely; a "Sync" button appears to realign with live lyrics
+- Can jump through scheduled songs (even ones not yet live)
+- Font size is stored locally in localStorage
+- Other settings are borrowed from Confidence Monitor settings
 
 ## Lower Thirds Screen
 

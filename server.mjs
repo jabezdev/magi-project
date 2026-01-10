@@ -60,6 +60,7 @@ httpServer.listen(PORT, '0.0.0.0', () => {
 ║  • Main Projection:    http://localhost:${PORT}/main        ║
 ║  • Confidence Monitor: http://localhost:${PORT}/confidence  ║
 ║  • Lower Thirds:       http://localhost:${PORT}/thirds      ║
+║  • Mobile (People):    http://localhost:${PORT}/mobile      ║
 ╚══════════════════════════════════════════════════════════╝
   `)
 })

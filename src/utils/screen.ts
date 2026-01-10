@@ -19,6 +19,9 @@ export function getScreenType(): ScreenType {
   if (path === '/thirds') {
     return 'lower-thirds'
   }
+  if (path === '/mobile') {
+    return 'mobile'
+  }
   
   return 'control-panel'
 }
@@ -28,7 +31,7 @@ export function getScreenType(): ScreenType {
  */
 export function isProjectionScreen(): boolean {
   const screen = getScreenType()
-  return screen === 'main-projection' || screen === 'confidence-monitor'
+  return screen === 'main-projection' || screen === 'confidence-monitor' || screen === 'mobile'
 }
 
 /**

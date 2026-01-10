@@ -12,6 +12,7 @@ import { getScreenType } from './utils/screen'
 import { renderControlPanel } from './screens/ControlPanel'
 import { renderProjectionScreen } from './screens/ProjectionScreen'
 import { renderLowerThirdsScreen } from './screens/LowerThirds'
+import { renderMobileScreen } from './screens/MobileScreen'
 import type { ScreenType } from './types'
 
 // Store the current screen type
@@ -51,6 +52,9 @@ function performRender(): void {
     case 'main-projection':
     case 'confidence-monitor':
       renderProjectionScreen(currentScreen)
+      break
+    case 'mobile':
+      renderMobileScreen()
       break
     case 'lower-thirds':
       renderLowerThirdsScreen()
