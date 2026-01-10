@@ -1,96 +1,122 @@
 /**
  * API Service Layer
- * 
- * This module provides an abstraction for fetching lyrics and assets.
- * Currently uses mock data / local API, but can be easily swapped
- * to use an external API service in the future.
- * 
- * To switch to a real API:
- * 1. Update the API_BASE_URL environment variable
- * 2. Modify fetch calls to include authentication if needed
  */
 
-import type { LyricsData, Song } from '../types'
+import type { Song, Schedule, SongSummary } from '../types'
 
-// Configuration - can be overridden with environment variables
+// Configuration
 const API_CONFIG = {
-  // When USE_MOCK_DATA is true, we use the local API
-  // In the future, this can be switched to false to use external API
-  USE_MOCK_DATA: true,
-  
-  // Base URL for the external API (for future use)
-  EXTERNAL_API_URL: import.meta.env.VITE_API_URL || 'http://localhost:4000/api',
-  
-  // Local API endpoint (current implementation)
+  USE_MOCK_DATA: false, // Force false now
   LOCAL_API_URL: '/api'
 }
 
-/**
- * Get the base URL for API calls
- */
 function getApiBaseUrl(): string {
-  return API_CONFIG.USE_MOCK_DATA 
-    ? API_CONFIG.LOCAL_API_URL 
-    : API_CONFIG.EXTERNAL_API_URL
+  return API_CONFIG.LOCAL_API_URL
 }
 
 /**
- * Fetch lyrics data from the API
+ * Fetch all songs (metadata only or simplified)
  */
-export async function fetchLyrics(): Promise<LyricsData> {
-  const baseUrl = getApiBaseUrl()
-  
+export async function fetchSongs(): Promise<SongSummary[]> {
   try {
-    const response = await fetch(`${baseUrl}/lyrics`)
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch lyrics: ${response.status} ${response.statusText}`)
-    }
-    
-    const data = await response.json()
-    return data as LyricsData
+    const response = await fetch(`${getApiBaseUrl()}/songs`)
+    if (!response.ok) throw new Error('Failed to fetch songs')
+    return await response.json()
   } catch (error) {
-    console.error('API Error - fetchLyrics:', error)
-    // Return mock data as fallback
-    return getMockLyricsData()
+    console.error('API Error - fetchSongs:', error)
+    return []
   }
 }
 
 /**
  * Fetch a specific song by ID
  */
-export async function fetchSongById(songId: number): Promise<Song | null> {
-  const lyricsData = await fetchLyrics()
-  
-  for (const set of lyricsData.sets) {
-    const song = set.songs.find(s => s.id === songId)
-    if (song) return song
+export async function fetchSongById(id: number): Promise<Song | null> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/songs/${id}`)
+    if (!response.ok) throw new Error('Failed to fetch song')
+    return await response.json()
+  } catch (error) {
+    console.error('API Error - fetchSongById:', error)
+    return null
   }
-  
-  return null
+}
+
+/**
+ * Save or Update a song
+ */
+export async function saveSong(song: Song): Promise<{ success: boolean; id: number }> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/songs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(song)
+    })
+    if (!response.ok) throw new Error('Failed to save song')
+    return await response.json()
+  } catch (error) {
+    console.error('API Error - saveSong:', error)
+    throw error
+  }
+}
+
+/**
+ * Delete a song
+ */
+export async function deleteSong(id: number): Promise<void> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/songs/${id}`, {
+      method: 'DELETE'
+    })
+    if (!response.ok) throw new Error('Failed to delete song')
+  } catch (error) {
+    console.error('API Error - deleteSong:', error)
+    throw error
+  }
+}
+
+/**
+ * Fetch current schedule
+ */
+export async function fetchSchedule(): Promise<Schedule> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/schedule`)
+    if (!response.ok) throw new Error('Failed to fetch schedule')
+    return await response.json()
+  } catch (error) {
+    console.error('API Error - fetchSchedule:', error)
+    return { date: new Date().toISOString(), items: [] }
+  }
+}
+
+/**
+ * Save schedule
+ */
+export async function saveSchedule(schedule: Schedule): Promise<void> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/schedule`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(schedule)
+    })
+    if (!response.ok) throw new Error('Failed to save schedule')
+  } catch (error) {
+    console.error('API Error - saveSchedule:', error)
+    throw error
+  }
 }
 
 /**
  * Fetch available video assets
- * Fetches from the videos API to get all videos in the public/videos folder
  */
 export async function fetchVideoAssets(): Promise<{ name: string; path: string; thumbnail?: string }[]> {
-  const baseUrl = getApiBaseUrl()
-  
   try {
-    const response = await fetch(`${baseUrl}/videos`)
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch videos: ${response.status}`)
-    }
-    
+    const response = await fetch(`${getApiBaseUrl()}/videos`)
+    if (!response.ok) throw new Error('Failed to fetch videos')
     return await response.json()
   } catch (error) {
     console.error('API Error - fetchVideoAssets:', error)
-    // Return fallback
-    return [
-      { name: 'background.mp4', path: '/public/videos/background.mp4' }
-    ]
+    return [{ name: 'background.mp4', path: '/public/videos/background.mp4' }]
   }
 }
 
@@ -98,15 +124,9 @@ export async function fetchVideoAssets(): Promise<{ name: string; path: string; 
  * Get app configuration
  */
 export async function fetchConfig(): Promise<{ appTitle: string; screens: string[] }> {
-  const baseUrl = getApiBaseUrl()
-  
   try {
-    const response = await fetch(`${baseUrl}/config`)
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch config: ${response.status}`)
-    }
-    
+    const response = await fetch(`${getApiBaseUrl()}/config`)
+    if (!response.ok) throw new Error('Failed to fetch config')
     return await response.json()
   } catch (error) {
     console.error('API Error - fetchConfig:', error)
@@ -117,78 +137,8 @@ export async function fetchConfig(): Promise<{ appTitle: string; screens: string
   }
 }
 
-/**
- * Mock lyrics data for fallback/testing
- * This ensures the app works even if the API is unavailable
- */
-function getMockLyricsData(): LyricsData {
-  return {
-    sets: [
-      {
-        id: 1,
-        title: 'Welcome',
-        songs: [
-          {
-            id: 1,
-            title: 'Amazing Grace',
-            artist: 'John Newton',
-            lyrics: [
-              {
-                verse: 1,
-                text: 'Amazing grace, how sweet the sound\nThat saved a wretch like me\nI once was lost, but now I\'m found\nWas blind, but now I see'
-              },
-              {
-                verse: 2,
-                text: '\'Twas grace that taught my heart to fear\nAnd grace my fears relieved\nHow precious did that grace appear\nThe hour I first believed'
-              },
-              {
-                verse: 3,
-                text: 'Through many dangers, toils, and snares\nI have already come\n\'Tis grace has brought me safe thus far\nAnd grace will lead me home'
-              }
-            ]
-          },
-          {
-            id: 2,
-            title: 'How Great Thou Art',
-            artist: 'Carl Boberg',
-            lyrics: [
-              {
-                verse: 1,
-                text: 'O Lord my God, when I in awesome wonder\nConsider all the worlds Thy hands have made\nI see the stars, I hear the rolling thunder\nThy power throughout the universe displayed'
-              },
-              {
-                verse: 2,
-                text: 'When through the woods and forest glades I wander\nAnd hear the birds sing sweetly in the trees\nWhen I look down from lofty mountain grandeur\nAnd see the brook and feel the gentle breeze'
-              }
-            ]
-          }
-        ]
-      },
-      {
-        id: 2,
-        title: 'Worship',
-        songs: [
-          {
-            id: 3,
-            title: 'Holy, Holy, Holy',
-            artist: 'Reginald Heber',
-            lyrics: [
-              {
-                verse: 1,
-                text: 'Holy, holy, holy! Lord God Almighty!\nEarly in the morning our song shall rise to Thee\nHoly, holy, holy, merciful and mighty\nGod in three persons, blessed Trinity'
-              }
-            ]
-          }
-        ]
-      }
-    ],
-    defaultBackgroundVideo: '/public/videos/background.mp4',
-    theme: {
-      primaryColor: '#1a1a2e',
-      accentColor: '#0f3460',
-      textColor: '#ffffff'
-    }
-  }
+/* DEPRECATED - Compatibility Shims if needed */
+export async function fetchLyrics(): Promise<any> {
+  console.warn('fetchLyrics is deprecated')
+  return { sets: [] }
 }
-
-export { API_CONFIG }

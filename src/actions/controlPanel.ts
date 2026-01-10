@@ -6,7 +6,7 @@
  */
 
 import type { Song, SlidePosition, DisplayMode } from '../types'
-import { state, updateState, findSongById } from '../state'
+import { state, updateState } from '../state'
 import { socketService } from '../services/socket'
 import { getNextPosition, getPrevPosition } from '../utils/slides'
 
@@ -14,9 +14,9 @@ import { getNextPosition, getPrevPosition } from '../utils/slides'
  * Select a song for preview
  * Requires full re-render since song content changes
  */
-export function selectSongForPreview(song: Song): void {
+export function selectSongForPreview(song: Song, variationIndex = 0): void {
   state.previewSong = song
-  state.previewVariation = 0
+  state.previewVariation = variationIndex
   state.previewPosition = { partIndex: 0, slideIndex: 0 }
   updateState({})
 }
@@ -46,19 +46,19 @@ export function selectPreviewVariation(index: number): void {
  */
 export function goLive(): void {
   if (!state.previewSong) return
-  
+
   state.liveSong = state.previewSong
   state.liveVariation = state.previewVariation
   state.livePosition = { ...state.previewPosition }
   state.displayMode = 'lyrics'
-  
+
   socketService.updateSlide({
     song: state.liveSong,
     variation: state.liveVariation,
     position: state.livePosition
   })
   socketService.updateDisplayMode('lyrics')
-  
+
   updateState({})
 }
 
@@ -68,14 +68,14 @@ export function goLive(): void {
  */
 export function goLiveWithPosition(position: SlidePosition): void {
   if (!state.liveSong) return
-  
+
   state.livePosition = position
   socketService.updateSlide({
     song: state.liveSong,
     variation: state.liveVariation,
     position: state.livePosition
   })
-  
+
   updateState({ livePosition: position }, true) // Skip full re-render
 }
 
@@ -140,4 +140,4 @@ export function prevPreviewSlide(): void {
 }
 
 // Re-export findSongById for convenience
-export { findSongById }
+// export { findSongById } 

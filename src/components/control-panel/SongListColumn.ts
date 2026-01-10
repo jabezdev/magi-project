@@ -1,38 +1,22 @@
-import { state } from '../../state'
-import { ICONS } from '../../constants/icons'
-import type { SongSet } from '../../types'
-import { renderBackgroundsSection, initBackgroundsListeners, updateVideoSelection } from './BackgroundsSection'
-import { findSongById, selectSongForPreview } from '../../actions/controlPanel'
+import { renderScheduleList, initScheduleListListeners } from './ScheduleList'
+import { renderLibraryList, initLibraryListListeners } from './LibraryList'
+import { renderBackgroundsSection, initBackgroundsListeners } from './BackgroundsSection'
+import { renderStatusIndicator, initStatusIndicatorListener } from './StatusIndicator'
 import { openSettings } from '../settings'
 import { renderControlPanel } from '../../screens/ControlPanel'
+import { ICONS } from '../../constants/icons'
 
-export function renderSongListColumn(sets: SongSet[]): string {
-    return `
+export function renderSongListColumn(): string {
+  // We no longer rely on 'sets', we render Schedule + Library
+  return `
     <div class="cp-column cp-songs">
-      <div class="cp-column-header">
-        <span class="header-icon">${ICONS.music}</span>
-        <span>Songs</span>
-      </div>
       <div class="cp-column-body">
-        <div class="song-sets">
-          ${sets.map((set: SongSet) => `
-            <div class="song-set">
-              <div class="set-header">${set.name || set.title}</div>
-              <div class="set-songs">
-                ${set.songs.map(song => `
-                  <button class="song-item ${state.previewSong?.id === song.id ? 'selected' : ''} ${state.liveSong?.id === song.id ? 'live' : ''}" data-song-id="${song.id}">
-                    <span class="song-title">${song.title}</span>
-                    ${song.artist ? `<span class="song-artist">${song.artist}</span>` : ''}
-                  </button>
-                `).join('')}
-              </div>
-            </div>
-          `).join('')}
-        </div>
-        
+        ${renderScheduleList()}
+        ${renderLibraryList()}
         ${renderBackgroundsSection()}
       </div>
-      <div class="cp-column-footer">
+      <div class="cp-column-footer" style="justify-content: space-between; align-items: center;">
+        ${renderStatusIndicator()}
         <button class="icon-btn settings-footer-btn" id="settings-btn" title="Settings">${ICONS.settings}</button>
       </div>
     </div>
@@ -40,22 +24,13 @@ export function renderSongListColumn(sets: SongSet[]): string {
 }
 
 export function initSongListListeners(): void {
-    // Settings button
-    document.getElementById('settings-btn')?.addEventListener('click', () => {
-        openSettings(() => renderControlPanel())
-    })
+  initScheduleListListeners()
+  initLibraryListListeners()
+  initBackgroundsListeners()
+  initStatusIndicatorListener()
 
-    // Song selection
-    document.querySelectorAll('.song-item').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const songId = parseInt(btn.getAttribute('data-song-id') || '0')
-            const song = findSongById(songId)
-            if (song) selectSongForPreview(song)
-        })
-    })
-
-    // Init backgrounds listeners
-    initBackgroundsListeners()
+  // Settings button
+  document.getElementById('settings-btn')?.addEventListener('click', () => {
+    openSettings(() => renderControlPanel())
+  })
 }
-
-export { updateVideoSelection }

@@ -6,7 +6,7 @@
  */
 
 import './style.css'
-import { fetchLyrics, fetchVideoAssets } from './services/api'
+import { fetchSongs, fetchSchedule, fetchVideoAssets } from './services/api'
 import { state, updateState, setUpdateScreenCallback } from './state'
 import { getScreenType } from './utils/screen'
 import { renderControlPanel } from './screens/ControlPanel'
@@ -30,7 +30,7 @@ function updateScreen(): void {
     hasRendered = true
     return
   }
-  
+
   // For control panel, we need to re-render on song changes
   // The efficient update system handles position/mode changes
   if (currentScreen === 'control-panel') {
@@ -60,20 +60,22 @@ function performRender(): void {
 async function init(): Promise<void> {
   // Detect screen type from URL
   currentScreen = getScreenType()
-  
+
   // Set up the state update callback
   setUpdateScreenCallback(updateScreen)
-  
+
   // Load initial data
   try {
-    const [lyricsData, videos] = await Promise.all([
-      fetchLyrics(),
+    const [songs, schedule, videos] = await Promise.all([
+      fetchSongs(),
+      fetchSchedule(),
       fetchVideoAssets()
     ])
-    
+
     // Initial data load - triggers first render
     updateState({
-      lyricsData,
+      songs,
+      schedule,
       availableVideos: videos
     })
   } catch (error) {
@@ -82,11 +84,11 @@ async function init(): Promise<void> {
     performRender()
     hasRendered = true
   }
-  
+
   // Apply saved theme
   document.body.setAttribute('data-theme', state.theme)
-  
-  console.log(`🚀 MAGI Projection System initialized as: ${currentScreen}`)
+
+  console.log(`[MAGI] System initialized as: ${currentScreen}`)
 }
 
 // Start the application

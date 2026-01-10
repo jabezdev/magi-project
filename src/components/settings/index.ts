@@ -8,6 +8,7 @@
 import { saveTheme, saveDisplaySettings, saveConfidenceMonitorSettings, updateState } from '../../state'
 import { socketService } from '../../services/socket'
 import { setModalOpen } from '../../utils/keyboard'
+import { ICONS } from '../../constants/icons'
 import type { DisplaySettings, ConfidenceMonitorSettings } from '../../types'
 
 import { renderMainScreenTab, initMainScreenTabListeners } from './MainScreenTab'
@@ -77,24 +78,24 @@ function render(): void {
     <div class="settings-modal">
       <div class="settings-sidebar">
         <div class="settings-logo">
-          <span class="settings-logo-icon">⚙</span>
+          <span class="settings-logo-icon">${ICONS.settings}</span>
           <span>Settings</span>
         </div>
         <nav class="settings-nav">
           <button class="settings-nav-item ${activeTab === 'main' ? 'active' : ''}" data-tab="main">
-            <span class="nav-icon">🖥</span>
+            <span class="nav-icon">${ICONS.screen}</span>
             <span>Main Screen</span>
           </button>
           <button class="settings-nav-item ${activeTab === 'confidence' ? 'active' : ''}" data-tab="confidence">
-            <span class="nav-icon">📺</span>
+            <span class="nav-icon">${ICONS.monitor}</span>
             <span>Confidence Monitor</span>
           </button>
           <button class="settings-nav-item ${activeTab === 'media' ? 'active' : ''}" data-tab="media">
-            <span class="nav-icon">🎬</span>
+            <span class="nav-icon">${ICONS.media}</span>
             <span>Media</span>
           </button>
           <button class="settings-nav-item ${activeTab === 'general' ? 'active' : ''}" data-tab="general">
-            <span class="nav-icon">🎨</span>
+            <span class="nav-icon">${ICONS.palette}</span>
             <span>General</span>
           </button>
         </nav>

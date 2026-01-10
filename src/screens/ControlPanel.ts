@@ -5,7 +5,6 @@
  * Uses efficient DOM updates for slide selection changes.
  */
 
-import type { SongSet } from '../types'
 import { state, subscribeToState, StateChangeKey } from '../state'
 import {
   goLive,
@@ -14,6 +13,8 @@ import {
   nextSlide
 } from '../actions/controlPanel'
 import { initKeyboardHandlers, setupKeyboardListener, removeKeyboardListener } from '../utils/keyboard'
+import { toggleShortcutsModal } from '../components/ShortcutsModal'
+
 
 import {
   renderSongListColumn,
@@ -33,6 +34,8 @@ import {
 // Track initialization state
 let isInitialized = false
 let unsubscribe: (() => void) | null = null
+// Track layout state
+let activeSongListWidth = 280
 
 /**
  * Cleanup control panel resources
@@ -54,7 +57,8 @@ function initKeyboard(): void {
     nextSlide,
     prevSlide,
     goLive,
-    setDisplayMode
+    setDisplayMode,
+    toggleHelp: toggleShortcutsModal
   })
   setupKeyboardListener()
 }
@@ -102,24 +106,29 @@ export function renderControlPanel(): void {
   const app = document.getElementById('app')
   if (!app) return
 
-  const sets = state.lyricsData?.sets || []
+  // const sets = state.lyricsData?.sets || [] // Deprecated
 
-  app.innerHTML = buildControlPanelHTML(sets)
+  app.innerHTML = buildControlPanelHTML()
 
   attachControlPanelListeners()
   initKeyboard()
   setupEfficientUpdates()
+
+  // Restore layout
+  const cpMain = document.querySelector('.cp-main') as HTMLElement
+  if (cpMain) {
+    cpMain.style.setProperty('--song-list-width', `${activeSongListWidth}px`)
+  }
+
   isInitialized = true
 }
 
-/**
- * Build the control panel HTML structure
- */
-function buildControlPanelHTML(sets: SongSet[]): string {
+function buildControlPanelHTML(): string {
   return `
     <div class="control-panel no-navbar">
       <div class="cp-main">
-        ${renderSongListColumn(sets)}
+        ${renderSongListColumn()}
+        <div class="resizer" id="cp-resizer"></div>
         ${renderPreviewColumn()}
         ${renderLiveColumn()}
       </div>
@@ -134,4 +143,45 @@ function attachControlPanelListeners(): void {
   initSongListListeners()
   initPreviewListeners()
   initLiveListeners()
+
+
+
+  // Settings button listener removed as it's now in SongListColumn
+  initResizer()
+}
+
+function initResizer(): void {
+  const resizer = document.getElementById('cp-resizer')
+  const cpMain = document.querySelector('.cp-main') as HTMLElement
+
+  if (!resizer || !cpMain) return
+
+  let isResizing = false
+
+  resizer.addEventListener('mousedown', () => {
+    isResizing = true
+    resizer.classList.add('resizing')
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  })
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isResizing) return
+
+    // Calculate new width relative to cpMain left edge
+    // But simpler: just use e.clientX if sidebar is at left edge.
+    // Let's assume CP is full width.
+    const newWidth = Math.max(200, Math.min(600, e.clientX))
+    activeSongListWidth = newWidth
+    cpMain.style.setProperty('--song-list-width', `${newWidth}px`)
+  })
+
+  document.addEventListener('mouseup', () => {
+    if (isResizing) {
+      isResizing = false
+      resizer.classList.remove('resizing')
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  })
 }

@@ -89,7 +89,14 @@ export function updateDisplayMode(): void {
             break
     }
 
-    updateHTML(overlay, contentHTML)
+    // Use View Transition API if available
+    if (document.startViewTransition) {
+        document.startViewTransition(() => {
+            updateHTML(overlay, contentHTML)
+        })
+    } else {
+        updateHTML(overlay, contentHTML)
+    }
 
     // Re-setup video autoplay for logo if it's a video
     if (displayMode === 'logo') {
@@ -108,7 +115,15 @@ export function updateLyricsDisplay(): void {
 
     if (lyricsEl && displayMode === 'lyrics' && liveSong) {
         const lyricsText = getSlideText(liveSong, liveVariation, livePosition) || ''
-        updateHTML(lyricsEl, formatLyricsText(lyricsText))
+
+        // Use View Transition API if available
+        if (document.startViewTransition) {
+            document.startViewTransition(() => {
+                updateHTML(lyricsEl, formatLyricsText(lyricsText))
+            })
+        } else {
+            updateHTML(lyricsEl, formatLyricsText(lyricsText))
+        }
     }
 }
 

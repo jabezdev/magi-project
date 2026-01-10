@@ -1,7 +1,7 @@
 // Core data types for the projection system
 
 // Song part types
-export type PartType = 'v1' | 'v2' | 'v3' | 'v4' | 'ch' | 'pch' | 'br' | 'tag' | 'intro' | 'outro' | 'inst'
+export type PartType = string // 'v1' | 'v2' | 'v3' | 'v4' | 'ch' | 'pch' | 'br' | 'tag' | 'intro' | 'outro' | 'inst'
 
 export interface SongPart {
   id: PartType
@@ -23,21 +23,33 @@ export interface Song {
   variations: SongVariation[]
 }
 
+// Schedule types
+export interface ScheduleItem {
+  songId: number
+  variationId: number | string
+}
+
+export interface Schedule {
+  date: string
+  items: ScheduleItem[]
+}
+
+export interface SongSummary {
+  id: number
+  title: string
+  artist?: string
+  variations?: SongVariation[]
+}
+
 export interface SongSet {
   id: number
   name: string
-  title?: string // Deprecated: use 'name' instead
   songs: Song[]
 }
 
+// Deprecated: LyricsData was monolothic
 export interface LyricsData {
-  sets: SongSet[]
-  defaultBackgroundVideo?: string
-  theme?: {
-    primaryColor: string
-    accentColor: string
-    textColor: string
-  }
+  sets: SongSet[] // Kept for type compat during migration if any
 }
 
 export type DisplayMode = 'lyrics' | 'logo' | 'black' | 'clear'
@@ -92,7 +104,14 @@ export interface AppState {
   availableVideos: VideoFile[]
   logoMedia: string
   displayMode: DisplayMode
+
+  // Data State
+  songs: SongSummary[]
+  schedule: Schedule
+
+  // Legacy Data (Deprecated)
   lyricsData: LyricsData | null
+
   // UI settings
   theme: 'light' | 'dark'
   displaySettings: DisplaySettings

@@ -5,7 +5,7 @@
  * Components can subscribe to specific state changes instead of full re-renders.
  */
 
-import type { AppState, Song, DisplaySettings, ConfidenceMonitorSettings } from '../types'
+import type { AppState, DisplaySettings, ConfidenceMonitorSettings } from '../types'
 import { DEFAULT_DISPLAY_SETTINGS, DEFAULT_CONFIDENCE_MONITOR_SETTINGS, DEFAULT_POSITION, DEFAULT_BACKGROUND_VIDEO, DEFAULT_LOGO_MEDIA, STORAGE_KEYS } from '../constants/defaults'
 import { socketService } from '../services/socket'
 
@@ -50,14 +50,18 @@ export const state: AppState = {
   availableVideos: [],
   logoMedia: DEFAULT_LOGO_MEDIA,
   displayMode: 'clear',
+
+  songs: [],
+  schedule: { date: new Date().toISOString(), items: [] },
   lyricsData: null,
+
   theme: loadSavedTheme(),
   displaySettings: loadSavedDisplaySettings(),
   confidenceMonitorSettings: loadSavedConfidenceMonitorSettings()
 }
 
 // Types for state change notifications
-export type StateChangeKey = keyof AppState | 'preview' | 'live' | 'display' | 'all'
+export type StateChangeKey = keyof AppState | 'preview' | 'live' | 'display' | 'all' | 'data'
 
 type StateSubscriber = (changedKeys: StateChangeKey[]) => void
 
@@ -88,11 +92,12 @@ export function subscribeToState(callback: StateSubscriber): () => void {
  */
 function getChangedGroups(updatedKeys: Array<keyof AppState>): StateChangeKey[] {
   const groups: StateChangeKey[] = [...updatedKeys]
-  
+
   const previewKeys: Array<keyof AppState> = ['previewSong', 'previewVariation', 'previewPosition']
   const liveKeys: Array<keyof AppState> = ['liveSong', 'liveVariation', 'livePosition']
   const displayKeys: Array<keyof AppState> = ['displayMode', 'displaySettings', 'backgroundVideo', 'logoMedia']
-  
+  const dataKeys: Array<keyof AppState> = ['songs', 'schedule', 'lyricsData']
+
   if (previewKeys.some(k => updatedKeys.includes(k))) {
     groups.push('preview')
   }
@@ -102,7 +107,10 @@ function getChangedGroups(updatedKeys: Array<keyof AppState>): StateChangeKey[] 
   if (displayKeys.some(k => updatedKeys.includes(k))) {
     groups.push('display')
   }
-  
+  if (dataKeys.some(k => updatedKeys.includes(k))) {
+    groups.push('data')
+  }
+
   return groups
 }
 
@@ -113,12 +121,12 @@ function notifySubscribers(): void {
   if (pendingUpdate !== null) {
     return // Update already scheduled
   }
-  
+
   pendingUpdate = requestAnimationFrame(() => {
     const changes = Array.from(pendingChanges)
     pendingChanges.clear()
     pendingUpdate = null
-    
+
     // Notify all subscribers
     for (const subscriber of subscribers) {
       try {
@@ -138,19 +146,19 @@ function notifySubscribers(): void {
  */
 export function updateState(newState: Partial<AppState>, skipRender = false): void {
   const changedKeys = Object.keys(newState) as Array<keyof AppState>
-  
+
   // Apply state changes
   Object.assign(state, newState)
-  
+
   // Track changes for batched notification
   const groups = getChangedGroups(changedKeys)
   for (const key of groups) {
     pendingChanges.add(key)
   }
-  
+
   // Notify subscribers (batched)
   notifySubscribers()
-  
+
   // Legacy: trigger full re-render if not skipped
   if (!skipRender && updateScreenCallback) {
     updateScreenCallback()
@@ -182,20 +190,6 @@ export function saveConfidenceMonitorSettings(settings: ConfidenceMonitorSetting
   state.confidenceMonitorSettings = settings
   localStorage.setItem(STORAGE_KEYS.CONFIDENCE_MONITOR_SETTINGS, JSON.stringify(settings))
   socketService.updateConfidenceMonitorSettings(settings)
-}
-
-/**
- * Find a song by ID in the lyrics data
- */
-export function findSongById(id: number): Song | null {
-  if (!state.lyricsData) return null
-  
-  for (const set of state.lyricsData.sets) {
-    const song = set.songs.find(s => s.id === id)
-    if (song) return song
-  }
-  
-  return null
 }
 
 // Setup socket listener for state updates

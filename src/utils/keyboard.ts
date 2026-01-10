@@ -9,6 +9,7 @@ export interface KeyboardHandlers {
   prevSlide: () => void
   goLive: () => void
   setDisplayMode: (mode: DisplayMode) => void
+  toggleHelp: () => void
 }
 
 let handlers: KeyboardHandlers | null = null
@@ -33,12 +34,12 @@ export function initKeyboardHandlers(handlerFunctions: KeyboardHandlers): void {
  */
 export function handleKeyboard(e: KeyboardEvent): void {
   if (!handlers || isModalOpen) return
-  
+
   // Ignore if typing in an input field
   if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) {
     return
   }
-  
+
   switch (e.key) {
     case 'ArrowRight':
     case ' ':
@@ -64,6 +65,13 @@ export function handleKeyboard(e: KeyboardEvent): void {
     case 'l':
     case 'L':
       handlers.setDisplayMode('logo')
+      break
+    case '?':
+      e.preventDefault()
+      handlers.toggleHelp()
+      break
+    case 'Escape':
+      handlers.setDisplayMode('lyrics')
       break
   }
 }

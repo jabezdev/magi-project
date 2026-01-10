@@ -5,7 +5,7 @@
  */
 
 import { io, Socket } from 'socket.io-client'
-import type { AppState, SlideUpdate, VideoUpdate, DisplayModeUpdate, DisplaySettings, ConfidenceMonitorSettings, SlidePosition } from '../types'
+import type { AppState, SlideUpdate, VideoUpdate, DisplayModeUpdate, DisplaySettings, ConfidenceMonitorSettings } from '../types'
 
 type StateUpdateCallback = (state: Partial<AppState>) => void
 
@@ -20,13 +20,13 @@ class SocketService {
 
   private setupListeners(): void {
     this.socket.on('connect', () => {
-      console.log('🔌 Connected to server:', this.socket.id)
+      console.log('[Socket] Connected to server:', this.socket.id)
       // Request current state when connecting
       this.socket.emit('request-state')
     })
 
     this.socket.on('disconnect', () => {
-      console.log('❌ Disconnected from server')
+      console.log('[Socket] Disconnected from server')
     })
 
     this.socket.on('slide-updated', (data: SlideUpdate) => {
@@ -68,7 +68,7 @@ class SocketService {
     })
 
     this.socket.on('state-sync', (state: Partial<AppState>) => {
-      console.log('📥 Received state sync:', state)
+      console.log('[Socket] Received state sync:', state)
       this.notifyStateUpdate(state)
     })
   }

@@ -1,8 +1,76 @@
 /* ========== SONGS COLUMN ========== */
+.cp-songs {
+    min-width: 200px;
+    max-width: 400px;
+}
+
 .cp-songs .cp-column-body {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    height: 100%;
+    overflow: hidden;
+    padding: 0;
+    gap: 0;
+}
+
+.cp-section {
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.cp-section-body {
+    padding: 0.5rem;
+}
+
+/* Schedule: Auto height, max-height e.g. 30% */
+.schedule-section {
+    flex-shrink: 0;
+    max-height: 30%;
+    overflow-y: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.schedule-section .cp-section-body {
+    overflow-y: auto;
+}
+
+.schedule-section .song-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+/* Library: Takes remaining space */
+.library-section {
+    flex: 1;
+    overflow-y: hidden;
+    min-height: 100px;
+}
+
+.library-section .cp-section-body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 0.5rem;
+    overflow-y: hidden;
+}
+
+.library-section .song-list {
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+/* Video Section: Fixed at bottom */
+.video-section {
+    flex-shrink: 0;
+    margin-top: 0;
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-secondary);
 }
 
 .song-sets {
@@ -28,8 +96,10 @@
 
 .song-item {
     display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
     padding: 0.5rem 0.75rem;
     background: var(--bg-tertiary);
     border: 1px solid transparent;
@@ -58,9 +128,63 @@
     font-size: 0.8rem;
     font-weight: 500;
     color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Safeguard for icons */
+.header-icon svg {
+    width: 14px;
+    height: 14px;
 }
 
 .song-item .song-artist {
     font-size: 0.7rem;
     color: var(--text-muted);
+}
+
+.song-item .song-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.song-item .song-actions,
+.song-item .song-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.variation-select {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-size: 0.7rem;
+    padding: 0.1rem 0.25rem;
+    border-radius: 4px;
+    max-width: 120px;
+}
+
+.song-item .icon-btn {
+    opacity: 0.6;
+    padding: 2px;
+}
+
+.song-item:hover .icon-btn {
+    opacity: 1;
+}
+
+.song-item .add-schedule-btn:hover {
+    color: var(--accent-primary);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.song-item .remove-schedule-btn:hover {
+    color: var(--live-red);
+    background: rgba(220, 38, 38, 0.1);
 }
