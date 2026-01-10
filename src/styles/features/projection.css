@@ -27,7 +27,7 @@
 }
 
 .content-overlay.lyrics {
-    background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.5));
+    background: transparent;
 }
 
 .content-overlay.black {
@@ -162,14 +162,14 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 40px;
+    padding: 0.5rem 1rem;
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
 }
 
 .cm-clock {
-    font-size: 1.25rem;
+    font-size: var(--cm-clock-size, 1.25rem);
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     color: var(--text-primary);
@@ -178,10 +178,25 @@
 .cm-teleprompter {
     flex: 1;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    padding: 2rem;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+    padding-top: var(--cm-margin-top, 0.5rem);
+    padding-bottom: var(--cm-margin-bottom, 0.5rem);
+    padding-left: var(--cm-margin-left, 0.5rem);
+    padding-right: var(--cm-margin-right, 0.5rem);
+}
+
+/* Hide scrollbar but keep functionality */
+.cm-teleprompter::-webkit-scrollbar {
+    width: 0;
+    background: transparent;
+}
+
+.cm-teleprompter {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
 .teleprompter-scroll {
@@ -189,8 +204,13 @@
     flex-direction: column;
     align-items: stretch;
     width: 100%;
-    max-width: 1000px;
-    transition: transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* Spacers to allow first/last slide to be centered */
+.tp-spacer-top,
+.tp-spacer-bottom {
+    flex-shrink: 0;
+    height: 40vh;
 }
 
 .tp-slide {
@@ -227,7 +247,9 @@
 }
 
 .tp-prev .tp-part-indicator span,
-.tp-next .tp-part-indicator span {
+.tp-next .tp-part-indicator span,
+.tp-past .tp-part-indicator span,
+.tp-future .tp-part-indicator span {
     color: var(--text-muted);
 }
 
@@ -239,7 +261,9 @@
 }
 
 .tp-prev,
-.tp-next {
+.tp-next,
+.tp-past,
+.tp-future {
     opacity: var(--cm-prev-next-opacity, 0.35);
 }
 
@@ -258,35 +282,6 @@
 .tp-current .tp-text {
     color: var(--text-primary);
     font-weight: 500;
-}
-
-/* Smooth scroll animation */
-@keyframes scrollUp {
-    from {
-        transform: translateY(20px);
-        opacity: 0.5;
-    }
-
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-@keyframes scrollDown {
-    from {
-        transform: translateY(-20px);
-        opacity: 0.5;
-    }
-
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-.teleprompter-scroll {
-    animation: scrollUp 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 .tp-part-label {

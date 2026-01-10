@@ -82,6 +82,18 @@ export interface ConfidenceMonitorSettings {
   fontFamily: string
   lineHeight: number
   prevNextOpacity: number
+  clockSize: number
+  marginTop: number
+  marginBottom: number
+  marginLeft: number
+  marginRight: number
+}
+
+export interface LayoutSettings {
+  songsColumnWidth: number | null
+  scheduleSectionHeight: number | null
+  librarySectionHeight: number | null
+  backgroundsSectionHeight: number | null
 }
 
 // Represents the current slide position
@@ -116,6 +128,7 @@ export interface AppState {
   theme: 'light' | 'dark'
   displaySettings: DisplaySettings
   confidenceMonitorSettings: ConfidenceMonitorSettings
+  layoutSettings: LayoutSettings
 }
 
 export interface VideoFile {
@@ -146,4 +159,29 @@ export interface DisplaySettingsUpdate {
   settings: DisplaySettings
 }
 
-export type ScreenType = 'control-panel' | 'main-projection' | 'confidence-monitor'
+export interface LowerThirdsSettings {
+  // Background
+  backgroundColor: string
+  backgroundOpacity: number
+  // Text styling
+  fontFamily: string
+  fontSize: number
+  fontWeight: string
+  textColor: string
+  textAlign: 'left' | 'center' | 'right'
+  allCaps: boolean
+  // Position and sizing
+  position: 'bottom' | 'top'
+  marginBottom: number
+  marginTop: number
+  marginLeft: number
+  marginRight: number
+  paddingVertical: number
+  paddingHorizontal: number
+  // Visibility
+  visible: boolean
+  // Animation
+  animationDuration: number
+}
+
+export type ScreenType = 'control-panel' | 'main-projection' | 'confidence-monitor' | 'lower-thirds'

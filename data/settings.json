@@ -1,0 +1,40 @@
+{
+  "theme": "dark",
+  "displaySettings": {
+    "fontSize": 6,
+    "fontFamily": "system-ui",
+    "lineHeight": 1,
+    "textColor": "#ffffff",
+    "allCaps": true,
+    "textShadow": true,
+    "shadowBlur": 7,
+    "shadowOffsetX": 2,
+    "shadowOffsetY": 2,
+    "textOutline": false,
+    "outlineWidth": 1.5,
+    "outlineColor": "#000000",
+    "marginTop": 10,
+    "marginBottom": 20,
+    "marginLeft": 5,
+    "marginRight": 5
+  },
+  "confidenceMonitorSettings": {
+    "fontSize": 8.5,
+    "fontFamily": "system-ui",
+    "lineHeight": 1,
+    "prevNextOpacity": 0.75,
+    "clockSize": 3,
+    "marginTop": 2,
+    "marginBottom": 2,
+    "marginLeft": 0,
+    "marginRight": 0
+  },
+  "currentSchedule": "2026-01-11",
+  "layoutSettings": {
+    "songsColumnWidth": null,
+    "scheduleSectionHeight": 254,
+    "librarySectionHeight": 418,
+    "backgroundsSectionHeight": 219
+  },
+  "backgroundVideo": "/public/videos/background.mp4"
+}

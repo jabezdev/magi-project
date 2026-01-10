@@ -16,6 +16,9 @@ export function getScreenType(): ScreenType {
   if (path === '/confidence') {
     return 'confidence-monitor'
   }
+  if (path === '/thirds') {
+    return 'lower-thirds'
+  }
   
   return 'control-panel'
 }
@@ -33,4 +36,11 @@ export function isProjectionScreen(): boolean {
  */
 export function isControlPanel(): boolean {
   return getScreenType() === 'control-panel'
+}
+
+/**
+ * Checks if we're on the lower thirds screen
+ */
+export function isLowerThirdsScreen(): boolean {
+  return getScreenType() === 'lower-thirds'
 }

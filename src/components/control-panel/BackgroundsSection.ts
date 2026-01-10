@@ -7,8 +7,10 @@ export function renderBackgroundsSection(): string {
     return `
     <div class="video-section">
       <div class="cp-column-header">
-        <span class="header-icon">${ICONS.video}</span>
-        <span>Backgrounds</span>
+        <div class="header-left">
+          <span class="header-icon">${ICONS.video}</span>
+          <span>BACKGROUNDS</span>
+        </div>
       </div>
       <div class="video-grid">
         ${state.availableVideos.map(video => `

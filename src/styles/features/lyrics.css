@@ -96,3 +96,100 @@
 .slide-btn.live .slide-text {
     color: var(--text-primary);
 }
+
+/* ========== RESPONSIVE STYLES ========== */
+
+@media (max-width: 1000px) {
+    .lyrics-scroll {
+        padding: 0.5rem;
+    }
+    
+    .song-info .song-name {
+        font-size: 0.9rem;
+    }
+    
+    .slide-btn {
+        padding: 0.4rem;
+        gap: 0.4rem;
+    }
+    
+    .slide-text {
+        font-size: 0.7rem;
+    }
+    
+    .part-header {
+        font-size: 0.6rem;
+    }
+}
+
+@media (max-width: 850px) {
+    .lyrics-scroll {
+        padding: 0.4rem;
+    }
+    
+    .song-info {
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.4rem;
+    }
+    
+    .song-info .song-name {
+        font-size: 0.85rem;
+    }
+    
+    .song-info .song-artist {
+        font-size: 0.65rem;
+    }
+    
+    .lyrics-arrangement {
+        gap: 0.5rem;
+    }
+    
+    .slide-btn {
+        padding: 0.35rem;
+        gap: 0.35rem;
+    }
+    
+    .slide-num {
+        font-size: 0.6rem;
+        min-width: 14px;
+    }
+    
+    .slide-text {
+        font-size: 0.65rem;
+        line-height: 1.3;
+    }
+}
+
+@media (max-width: 700px) {
+    .lyrics-scroll {
+        padding: 0.3rem;
+    }
+    
+    .song-info .song-name {
+        font-size: 0.8rem;
+    }
+    
+    .lyrics-arrangement {
+        gap: 0.4rem;
+    }
+    
+    .slide-btn {
+        padding: 0.3rem;
+        gap: 0.25rem;
+        border-radius: 4px;
+    }
+    
+    .slide-num {
+        font-size: 0.55rem;
+        min-width: 12px;
+    }
+    
+    .slide-text {
+        font-size: 0.6rem;
+    }
+    
+    .part-header {
+        font-size: 0.55rem;
+        padding: 0.2rem 0;
+    }
+}

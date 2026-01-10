@@ -54,7 +54,7 @@ export function updateDisabled(element: HTMLButtonElement | null, disabled: bool
 }
 
 /**
- * Update a video source without recreating the element
+ * Update a video source with smooth fade transition
  */
 export function updateVideoSource(video: HTMLVideoElement | null, src: string): void {
   if (!video) return
@@ -65,9 +65,65 @@ export function updateVideoSource(video: HTMLVideoElement | null, src: string): 
   const newPath = new URL(src, window.location.origin).pathname
   
   if (currentPath !== newPath) {
-    video.src = src
-    video.load()
-    video.play().catch(() => {})
+    // Create a new video element for crossfade
+    const container = video.parentElement
+    if (!container) {
+      // Fallback: just swap the source
+      video.src = src
+      video.load()
+      video.play().catch(() => {})
+      return
+    }
+
+    // Create new video with same classes
+    const newVideo = document.createElement('video')
+    newVideo.className = video.className
+    newVideo.src = src
+    newVideo.autoplay = true
+    newVideo.loop = true
+    newVideo.muted = true
+    newVideo.playsInline = true
+    newVideo.style.opacity = '0'
+    newVideo.style.transition = 'opacity 1s ease-in-out'
+    newVideo.style.position = 'absolute'
+    newVideo.style.top = '0'
+    newVideo.style.left = '0'
+    newVideo.style.width = '100%'
+    newVideo.style.height = '100%'
+    newVideo.style.objectFit = 'cover'
+    newVideo.style.zIndex = '1'
+    
+    // Ensure old video has proper positioning
+    video.style.transition = 'opacity 1s ease-in-out'
+    video.style.position = 'absolute'
+    video.style.top = '0'
+    video.style.left = '0'
+    video.style.width = '100%'
+    video.style.height = '100%'
+    video.style.objectFit = 'cover'
+    video.style.zIndex = '0'
+    
+    container.appendChild(newVideo)
+    
+    // Start playing new video and fade in
+    newVideo.load()
+    newVideo.play().catch(() => {})
+    
+    // Fade in new video after a brief delay to ensure it's ready
+    requestAnimationFrame(() => {
+      newVideo.style.opacity = '1'
+      video.style.opacity = '0'
+    })
+    
+    // After transition, remove old video and reset styles
+    setTimeout(() => {
+      video.remove()
+      newVideo.style.transition = ''
+      newVideo.style.position = ''
+      newVideo.style.top = ''
+      newVideo.style.left = ''
+      newVideo.style.zIndex = ''
+    }, 1100) // Slightly longer than transition
   }
 }
 

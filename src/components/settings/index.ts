@@ -7,6 +7,7 @@
 
 import { saveTheme, saveDisplaySettings, saveConfidenceMonitorSettings, updateState } from '../../state'
 import { socketService } from '../../services/socket'
+import { saveSettings } from '../../services/api'
 import { setModalOpen } from '../../utils/keyboard'
 import { ICONS } from '../../constants/icons'
 import type { DisplaySettings, ConfidenceMonitorSettings } from '../../types'
@@ -229,7 +230,12 @@ function applySettings(): void {
         fontSize: parseFloat((document.getElementById('cm-font-size') as HTMLInputElement).value),
         fontFamily: (document.getElementById('cm-font-family') as HTMLSelectElement).value,
         lineHeight: parseFloat((document.getElementById('cm-line-height') as HTMLInputElement).value),
-        prevNextOpacity: parseFloat((document.getElementById('cm-opacity') as HTMLInputElement).value)
+        prevNextOpacity: parseFloat((document.getElementById('cm-opacity') as HTMLInputElement).value),
+        clockSize: parseFloat((document.getElementById('cm-clock-size') as HTMLInputElement).value),
+        marginTop: parseFloat((document.getElementById('cm-margin-top') as HTMLInputElement).value),
+        marginBottom: parseFloat((document.getElementById('cm-margin-bottom') as HTMLInputElement).value),
+        marginLeft: parseFloat((document.getElementById('cm-margin-left') as HTMLInputElement).value),
+        marginRight: parseFloat((document.getElementById('cm-margin-right') as HTMLInputElement).value)
     }
 
     // Logo
@@ -241,4 +247,6 @@ function applySettings(): void {
 
     updateState({ logoMedia })
     socketService.updateLogo(logoMedia)
+    // Save logo path to server
+    saveSettings({ logoMedia }).catch(console.error)
 }

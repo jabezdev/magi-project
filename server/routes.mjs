@@ -193,27 +193,119 @@ export function setupRoutes(app, __dirname) {
 
     // --- SCHEDULE ---
 
-    app.get('/api/schedule', (req, res) => {
+    // List all available schedules
+    app.get('/api/schedules', (req, res) => {
         try {
-            // Support multiple schedules later, for now just 'current.json'
-            const path = join(__dirname, 'data', 'schedules', 'current.json')
+            const schedulesDir = join(__dirname, 'data', 'schedules')
+            if (!fs.existsSync(schedulesDir)) {
+                return res.json([])
+            }
+            const files = fs.readdirSync(schedulesDir)
+            const schedules = files
+                .filter(f => f.endsWith('.json'))
+                .map(file => {
+                    try {
+                        const content = JSON.parse(fs.readFileSync(join(schedulesDir, file), 'utf-8'))
+                        const name = file.replace('.json', '')
+                        return {
+                            name,
+                            filename: file,
+                            date: content.date || null,
+                            itemCount: content.items?.length || 0
+                        }
+                    } catch {
+                        return null
+                    }
+                })
+                .filter(Boolean)
+                .sort((a, b) => a.name.localeCompare(b.name))
+            res.json(schedules)
+        } catch (error) {
+            console.error('Failed to list schedules:', error)
+            res.status(500).json({ error: 'Failed to list schedules' })
+        }
+    })
+
+    // Get a specific schedule by name
+    app.get('/api/schedule/:name', (req, res) => {
+        try {
+            const name = req.params.name
+            const path = join(__dirname, 'data', 'schedules', `${name}.json`)
             if (fs.existsSync(path)) {
-                res.json(JSON.parse(fs.readFileSync(path, 'utf-8')))
+                const schedule = JSON.parse(fs.readFileSync(path, 'utf-8'))
+                schedule._name = name // Include schedule name in response
+                res.json(schedule)
             } else {
-                res.json({ date: new Date().toISOString(), items: [] })
+                res.status(404).json({ error: 'Schedule not found' })
             }
         } catch (error) {
             res.status(500).json({ error: 'Failed to get schedule' })
         }
     })
 
+    app.get('/api/schedule', (req, res) => {
+        try {
+            // Support multiple schedules later, for now just 'current.json'
+            const path = join(__dirname, 'data', 'schedules', 'current.json')
+            if (fs.existsSync(path)) {
+                const schedule = JSON.parse(fs.readFileSync(path, 'utf-8'))
+                schedule._name = 'current'
+                res.json(schedule)
+            } else {
+                res.json({ date: new Date().toISOString(), items: [], _name: 'current' })
+            }
+        } catch (error) {
+            res.status(500).json({ error: 'Failed to get schedule' })
+        }
+    })
+
+    // Save schedule (default to 'current')
     app.post('/api/schedule', (req, res) => {
         try {
             const path = join(__dirname, 'data', 'schedules', 'current.json')
-            fs.writeFileSync(path, JSON.stringify(req.body, null, 2))
-            res.json({ success: true })
+            const data = { ...req.body }
+            delete data._name // Don't save internal field
+            fs.writeFileSync(path, JSON.stringify(data, null, 2))
+            res.json({ success: true, name: 'current' })
         } catch (error) {
             res.status(500).json({ error: 'Failed to save schedule' })
+        }
+    })
+
+    // Save schedule with specific name
+    app.post('/api/schedule/:name', (req, res) => {
+        try {
+            const name = req.params.name
+            const path = join(__dirname, 'data', 'schedules', `${name}.json`)
+            const data = { ...req.body }
+            delete data._name // Don't save internal field
+            fs.writeFileSync(path, JSON.stringify(data, null, 2))
+            res.json({ success: true, name })
+        } catch (error) {
+            res.status(500).json({ error: 'Failed to save schedule' })
+        }
+    })
+
+    // Create new schedule
+    app.post('/api/schedules/new', (req, res) => {
+        try {
+            const { name } = req.body
+            if (!name) {
+                return res.status(400).json({ error: 'Schedule name is required' })
+            }
+            const safeName = sanitizeFilename(name)
+            const path = join(__dirname, 'data', 'schedules', `${safeName}.json`)
+            if (fs.existsSync(path)) {
+                return res.status(409).json({ error: 'Schedule already exists' })
+            }
+            const newSchedule = {
+                date: new Date().toISOString().split('T')[0],
+                items: []
+            }
+            fs.writeFileSync(path, JSON.stringify(newSchedule, null, 2))
+            res.json({ success: true, name: safeName })
+        } catch (error) {
+            res.status(500).json({ error: 'Failed to create schedule' })
         }
     })
 
@@ -255,6 +347,42 @@ export function setupRoutes(app, __dirname) {
         } catch (error) {
             console.error('Failed to list videos:', error)
             res.status(500).json({ error: 'Failed to list videos' })
+        }
+    })
+
+    // --- SETTINGS ---
+
+    // Get settings
+    app.get('/api/settings', (req, res) => {
+        try {
+            const settingsPath = join(__dirname, 'data', 'settings.json')
+            if (fs.existsSync(settingsPath)) {
+                res.json(JSON.parse(fs.readFileSync(settingsPath, 'utf-8')))
+            } else {
+                // Return empty settings, client will use defaults
+                res.json({})
+            }
+        } catch (error) {
+            console.error('Failed to get settings:', error)
+            res.status(500).json({ error: 'Failed to get settings' })
+        }
+    })
+
+    // Save settings
+    app.post('/api/settings', (req, res) => {
+        try {
+            const settingsPath = join(__dirname, 'data', 'settings.json')
+            // Merge with existing settings
+            let existing = {}
+            if (fs.existsSync(settingsPath)) {
+                existing = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
+            }
+            const merged = { ...existing, ...req.body }
+            fs.writeFileSync(settingsPath, JSON.stringify(merged, null, 2))
+            res.json({ success: true })
+        } catch (error) {
+            console.error('Failed to save settings:', error)
+            res.status(500).json({ error: 'Failed to save settings' })
         }
     })
 }

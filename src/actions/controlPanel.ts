@@ -9,6 +9,7 @@ import type { Song, SlidePosition, DisplayMode } from '../types'
 import { state, updateState } from '../state'
 import { socketService } from '../services/socket'
 import { getNextPosition, getPrevPosition } from '../utils/slides'
+import { saveSettings } from '../services/api'
 
 /**
  * Select a song for preview
@@ -87,6 +88,8 @@ export function selectVideo(path: string): void {
   state.backgroundVideo = path
   socketService.updateVideo(path)
   updateState({ backgroundVideo: path }, true) // Skip full re-render
+  // Save to server
+  saveSettings({ backgroundVideo: path }).catch(console.error)
 }
 
 /**

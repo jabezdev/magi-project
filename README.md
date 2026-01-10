@@ -4,10 +4,11 @@ A comprehensive church projection system built with **Vite**, **TypeScript**, **
 
 ## 🎯 Features
 
-- **3 Synchronized Screens:**
+- **4 Synchronized Screens:**
   - **Control Panel**: Manage song selection, verses, and background videos
   - **Main Projection Screen**: Display lyrics with looping video background
   - **Confidence Monitor**: Operator preview with current and next slide information
+  - **Lower Thirds**: Standalone screen for lower third graphics with chroma key support
 
 - **Real-time Updates**: Socket.io synchronization between all screens
 - **Lyrics Management**: JSON-based song database with multiple verses
@@ -61,8 +62,9 @@ magi/project/
 
 4. **Access the application:**
    - Control Panel: `http://localhost:3000`
-   - Main Projection: `http://localhost:3000?screen=main-projection`
-   - Confidence Monitor: `http://localhost:3000?screen=confidence-monitor`
+   - Main Projection: `http://localhost:3000/main`
+   - Confidence Monitor: `http://localhost:3000/confidence`
+   - Lower Thirds: `http://localhost:3000/thirds`
 
 ### Docker Deployment
 

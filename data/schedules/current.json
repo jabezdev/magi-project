@@ -2,16 +2,16 @@
   "date": "2026-01-10",
   "items": [
     {
+      "songId": 3,
+      "variationId": "default"
+    },
+    {
       "songId": 1,
-      "variationId": 1
+      "variationId": "default"
     },
     {
       "songId": 2,
-      "variationId": 1
-    },
-    {
-      "songId": 3,
-      "variationId": 1
+      "variationId": "default"
     }
   ]
 }

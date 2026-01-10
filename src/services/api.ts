@@ -90,11 +90,40 @@ export async function fetchSchedule(): Promise<Schedule> {
 }
 
 /**
+ * Fetch list of all available schedules
+ */
+export async function fetchScheduleList(): Promise<{ name: string; filename: string; date: string | null; itemCount: number }[]> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/schedules`)
+    if (!response.ok) throw new Error('Failed to fetch schedules')
+    return await response.json()
+  } catch (error) {
+    console.error('API Error - fetchScheduleList:', error)
+    return []
+  }
+}
+
+/**
+ * Fetch a specific schedule by name
+ */
+export async function fetchScheduleByName(name: string): Promise<Schedule | null> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/schedule/${encodeURIComponent(name)}`)
+    if (!response.ok) throw new Error('Failed to fetch schedule')
+    return await response.json()
+  } catch (error) {
+    console.error('API Error - fetchScheduleByName:', error)
+    return null
+  }
+}
+
+/**
  * Save schedule
  */
-export async function saveSchedule(schedule: Schedule): Promise<void> {
+export async function saveSchedule(schedule: Schedule, name?: string): Promise<void> {
   try {
-    const response = await fetch(`${getApiBaseUrl()}/schedule`, {
+    const url = name ? `${getApiBaseUrl()}/schedule/${encodeURIComponent(name)}` : `${getApiBaseUrl()}/schedule`
+    const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(schedule)
@@ -103,6 +132,24 @@ export async function saveSchedule(schedule: Schedule): Promise<void> {
   } catch (error) {
     console.error('API Error - saveSchedule:', error)
     throw error
+  }
+}
+
+/**
+ * Create a new schedule
+ */
+export async function createSchedule(name: string): Promise<{ success: boolean; name: string } | null> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/schedules/new`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    })
+    if (!response.ok) throw new Error('Failed to create schedule')
+    return await response.json()
+  } catch (error) {
+    console.error('API Error - createSchedule:', error)
+    return null
   }
 }
 
@@ -134,6 +181,49 @@ export async function fetchConfig(): Promise<{ appTitle: string; screens: string
       appTitle: 'MAGI Church Projection System',
       screens: ['control-panel', 'main-projection', 'confidence-monitor']
     }
+  }
+}
+
+/**
+ * Settings interface for server persistence
+ */
+export interface ServerSettings {
+  theme?: 'light' | 'dark'
+  displaySettings?: Record<string, unknown>
+  confidenceMonitorSettings?: Record<string, unknown>
+  currentSchedule?: string
+  logoMedia?: string
+  backgroundVideo?: string
+}
+
+/**
+ * Fetch settings from server
+ */
+export async function fetchSettings(): Promise<ServerSettings> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/settings`)
+    if (!response.ok) throw new Error('Failed to fetch settings')
+    return await response.json()
+  } catch (error) {
+    console.error('API Error - fetchSettings:', error)
+    return {}
+  }
+}
+
+/**
+ * Save settings to server
+ */
+export async function saveSettings(settings: Partial<ServerSettings>): Promise<void> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings)
+    })
+    if (!response.ok) throw new Error('Failed to save settings')
+  } catch (error) {
+    console.error('API Error - saveSettings:', error)
+    throw error
   }
 }
 

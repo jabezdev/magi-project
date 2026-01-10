@@ -36,6 +36,20 @@
     gap: 0.5rem;
 }
 
+.cp-column-header .header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.cp-column-header .header-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+}
+
 .song-count {
     font-size: 0.65rem;
     font-weight: 500;
@@ -45,17 +59,20 @@
     border-radius: 10px;
 }
 
-/* Schedule: Auto height, max-height e.g. 30% */
+/* Schedule: Flexible height with scroll */
 .schedule-section {
     flex-shrink: 0;
-    max-height: 30%;
-    overflow-y: hidden;
+    min-height: 80px;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
 .schedule-section .cp-section-body {
     overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
 }
 
 .schedule-section .song-list {
@@ -74,35 +91,83 @@
     font-size: 0.75rem;
 }
 
-/* Library: Takes remaining space */
+/* Library: Flexible with scroll */
 .library-section {
     flex: 1;
-    overflow-y: hidden;
+    overflow: hidden;
     min-height: 100px;
+    display: flex;
+    flex-direction: column;
 }
 
 .library-section .cp-section-body {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    flex: 1;
     padding: 0.5rem;
-    overflow-y: hidden;
+    overflow: hidden;
 }
 
 .library-section .song-list {
     overflow-y: auto;
+    overflow-x: hidden;
     flex: 1;
     display: flex;
     flex-direction: column;
     gap: 0.2rem;
 }
 
-/* Video Section: Fixed at bottom */
+/* Video Section: Flexible at bottom */
 .video-section {
     flex-shrink: 0;
-    margin-top: 0;
+    min-height: 60px;
     border-top: 1px solid var(--border-color);
     background: var(--bg-secondary);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.video-section .cp-column-header {
+    flex-shrink: 0;
+}
+
+.video-section .video-grid {
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+}
+
+/* Section Resizer */
+.section-resizer {
+    height: 6px;
+    background: var(--bg-secondary);
+    cursor: row-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.15s;
+}
+
+.section-resizer:hover,
+.section-resizer.resizing {
+    background: var(--accent-primary);
+}
+
+.section-resizer::after {
+    content: '';
+    width: 30px;
+    height: 2px;
+    background: var(--border-color);
+    border-radius: 1px;
+}
+
+.section-resizer:hover::after,
+.section-resizer.resizing::after {
+    background: var(--bg-primary);
 }
 
 .song-sets {
@@ -211,6 +276,36 @@
     flex-shrink: 0;
 }
 
+/* Schedule Item: Variation on right, delete hidden until hover */
+.song-item.schedule-item {
+    cursor: grab;
+}
+
+.song-item.schedule-item:active {
+    cursor: grabbing;
+}
+
+.song-item.schedule-item .song-meta {
+    position: relative;
+    transition: transform 0.15s ease;
+}
+
+.song-item.schedule-item .remove-schedule-btn {
+    position: absolute;
+    right: -24px;
+    opacity: 0;
+    transition: opacity 0.15s ease, right 0.15s ease;
+}
+
+.song-item.schedule-item:hover .song-meta {
+    transform: translateX(-24px);
+}
+
+.song-item.schedule-item:hover .remove-schedule-btn {
+    opacity: 1;
+    right: -24px;
+}
+
 /* Variation Badge */
 .variation-badge {
     font-size: 0.65rem;
@@ -293,4 +388,345 @@
 
 .search-input::placeholder {
     color: var(--text-muted);
+}
+
+/* Fuzzy Search Highlights */
+.fuzzy-match {
+    background: rgba(99, 102, 241, 0.25);
+    color: var(--accent-primary);
+    padding: 0 1px;
+    border-radius: 2px;
+}
+
+.no-results {
+    padding: 1rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+/* ========== SCHEDULE SELECTOR ========== */
+
+.schedule-selector-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.25rem 0.5rem;
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.schedule-selector-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-primary);
+}
+
+.schedule-selector-btn svg {
+    width: 14px;
+    height: 14px;
+    color: var(--text-muted);
+}
+
+.current-schedule-name {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Schedule Dropdown - Centered Popup */
+.schedule-dropdown {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+}
+
+.schedule-section {
+    position: relative;
+}
+
+.schedule-dropdown-content {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+    min-width: 300px;
+    max-width: 400px;
+    animation: popup-in 0.15s ease-out;
+}
+
+@keyframes popup-in {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.schedule-dropdown-header {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.schedule-dropdown-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.schedule-dropdown-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.schedule-dropdown-item:hover {
+    background: var(--bg-hover);
+}
+
+.schedule-dropdown-item.active {
+    background: rgba(99, 102, 241, 0.15);
+}
+
+.schedule-dropdown-item .schedule-name {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.schedule-dropdown-item .schedule-item-count {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.schedule-dropdown-footer {
+    padding: 0.5rem;
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+}
+
+.btn-new-schedule {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    width: 100%;
+    padding: 0.4rem;
+    background: transparent;
+    border: 1px dashed var(--border-color);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.btn-new-schedule:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+.btn-new-schedule svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* ========== DRAG AND DROP ========== */
+
+.drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    color: var(--text-muted);
+    cursor: grab;
+    opacity: 0;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+.drag-handle svg {
+    width: 12px;
+    height: 12px;
+}
+
+.song-item:hover .drag-handle {
+    opacity: 1;
+}
+
+.song-item.dragging {
+    opacity: 0.5;
+    background: var(--bg-hover);
+}
+
+.song-item.drag-over-top {
+    border-top: 2px solid var(--accent-primary);
+    margin-top: -1px;
+}
+
+.song-item.drag-over-bottom {
+    border-bottom: 2px solid var(--accent-primary);
+    margin-bottom: -1px;
+}
+
+/* ========== RESPONSIVE STYLES ========== */
+
+@media (max-width: 1000px) {
+    .song-item {
+        padding: 0.3rem 0.5rem;
+    }
+    
+    .song-item .song-title {
+        font-size: 0.75rem;
+    }
+    
+    .song-order {
+        font-size: 0.6rem;
+        width: 14px;
+    }
+    
+    .variation-badge {
+        font-size: 0.6rem;
+        padding: 0.1rem 0.3rem;
+    }
+    
+    .search-input {
+        padding: 0.3rem 0.5rem;
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 850px) {
+    .song-item.compact {
+        padding: 0.25rem 0.4rem;
+        gap: 0.3rem;
+    }
+    
+    .song-item .song-title {
+        font-size: 0.7rem;
+    }
+    
+    .drag-handle {
+        width: 14px;
+        height: 14px;
+    }
+    
+    .drag-handle svg {
+        width: 10px;
+        height: 10px;
+    }
+    
+    .icon-btn-sm {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .icon-btn-sm svg {
+        width: 12px;
+        height: 12px;
+    }
+    
+    /* Hide song count badges on small screens */
+    .song-count {
+        display: none;
+    }
+    
+    /* Schedule dropdown adjustments */
+    .schedule-selector-btn {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.7rem;
+    }
+    
+    .schedule-selector-btn svg {
+        width: 12px;
+        height: 12px;
+    }
+    
+    .current-schedule-name {
+        max-width: 80px;
+    }
+}
+
+@media (max-width: 700px) {
+    .song-item.compact {
+        padding: 0.2rem 0.3rem;
+        gap: 0.2rem;
+    }
+    
+    .song-item .song-title {
+        font-size: 0.65rem;
+    }
+    
+    .song-order {
+        display: none;
+    }
+    
+    .drag-handle {
+        width: 12px;
+        height: 12px;
+    }
+    
+    .variation-badge {
+        max-width: 40px;
+        font-size: 0.55rem;
+        padding: 0.05rem 0.2rem;
+    }
+    
+    .search-input {
+        padding: 0.25rem 0.4rem;
+        font-size: 0.7rem;
+        margin-bottom: 0.3rem;
+    }
+    
+    .current-schedule-name {
+        max-width: 60px;
+    }
+    
+    .schedule-dropdown {
+        left: 0.25rem;
+        right: 0.25rem;
+    }
+    
+    .schedule-dropdown-item {
+        padding: 0.4rem 0.5rem;
+    }
+    
+    .schedule-dropdown-item .schedule-name {
+        font-size: 0.75rem;
+    }
+    
+    .schedule-dropdown-item .schedule-item-count {
+        font-size: 0.6rem;
+    }
 }

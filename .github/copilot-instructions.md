@@ -8,6 +8,7 @@ A multi-screen projection system for church worship featuring:
 - **Control Panel**: Manage songs and verses
 - **Main Projection Screen**: Display lyrics with video background
 - **Confidence Monitor**: Operator preview screen
+- **Lower Thirds**: Standalone chroma key graphics for video production
 
 All screens sync in real-time via Socket.io.
 
@@ -38,8 +39,17 @@ All screens sync in real-time via Socket.io.
 ## Screen Access
 
 - **Control Panel**: `http://localhost:3000`
-- **Main Projection**: `http://localhost:3000?screen=main-projection`
-- **Confidence Monitor**: `http://localhost:3000?screen=confidence-monitor`
+- **Main Projection**: `http://localhost:3000/main`
+- **Confidence Monitor**: `http://localhost:3000/confidence`
+- **Lower Thirds**: `http://localhost:3000/thirds`
+
+## Lower Thirds Screen
+
+The lower thirds screen is a standalone graphics screen for video production:
+- Settings are stored in browser localStorage (client-side only)
+- Default background is chroma green (#00FF00) for keying
+- Supports primary and secondary text with customizable fonts and colors
+- Keyboard shortcuts: Space (toggle visibility), F (fullscreen), Esc (close settings)
 
 ## Docker Deployment
 

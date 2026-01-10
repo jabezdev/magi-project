@@ -6,11 +6,12 @@
  */
 
 import './style.css'
-import { fetchSongs, fetchSchedule, fetchVideoAssets } from './services/api'
-import { state, updateState, setUpdateScreenCallback } from './state'
+import { fetchSongs, fetchSchedule, fetchScheduleByName, fetchVideoAssets } from './services/api'
+import { state, updateState, setUpdateScreenCallback, loadSettingsFromServer, getSavedCurrentSchedule } from './state'
 import { getScreenType } from './utils/screen'
 import { renderControlPanel } from './screens/ControlPanel'
 import { renderProjectionScreen } from './screens/ProjectionScreen'
+import { renderLowerThirdsScreen } from './screens/LowerThirds'
 import type { ScreenType } from './types'
 
 // Store the current screen type
@@ -51,6 +52,9 @@ function performRender(): void {
     case 'confidence-monitor':
       renderProjectionScreen(currentScreen)
       break
+    case 'lower-thirds':
+      renderLowerThirdsScreen()
+      break
   }
 }
 
@@ -64,13 +68,38 @@ async function init(): Promise<void> {
   // Set up the state update callback
   setUpdateScreenCallback(updateScreen)
 
+  // Lower thirds screen is standalone - doesn't need server data
+  if (currentScreen === 'lower-thirds') {
+    renderLowerThirdsScreen()
+    hasRendered = true
+    console.log(`[MAGI] System initialized as: ${currentScreen}`)
+    return
+  }
+
+  // Load settings from server first (merges with localStorage)
+  await loadSettingsFromServer()
+
   // Load initial data
   try {
-    const [songs, schedule, videos] = await Promise.all([
+    // Check if there's a saved schedule name
+    const savedScheduleName = getSavedCurrentSchedule()
+    
+    const [songs, videos] = await Promise.all([
       fetchSongs(),
-      fetchSchedule(),
       fetchVideoAssets()
     ])
+
+    // Load the saved schedule or default to 'current'
+    let schedule
+    if (savedScheduleName && savedScheduleName !== 'current') {
+      schedule = await fetchScheduleByName(savedScheduleName)
+      if (!schedule) {
+        // Fall back to current if saved schedule doesn't exist
+        schedule = await fetchSchedule()
+      }
+    } else {
+      schedule = await fetchSchedule()
+    }
 
     // Initial data load - triggers first render
     updateState({

@@ -12,7 +12,7 @@ export function renderMainScreenTab(): string {
           <div class="setting-item">
             <label>Font Size</label>
             <div class="setting-control">
-              <input type="range" id="main-font-size" min="1" max="8" step="0.5" value="${ds.fontSize}">
+              <input type="range" id="main-font-size" min="1" max="12" step="0.5" value="${ds.fontSize}">
               <span class="setting-value" id="main-font-size-value">${ds.fontSize}rem</span>
             </div>
           </div>

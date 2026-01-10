@@ -57,7 +57,7 @@ export function renderLiveColumn(): string {
                               data-slide="${slideIndex}"
                               data-context="live">
                         <span class="slide-num">${slideIndex + 1}</span>
-                        <span class="slide-text">${slideText.replace(/\n/g, ' / ')}</span>
+                        <span class="slide-text">${slideText.replace(/\n/g, '<br>')}</span>
                       </button>
                     `
   }).join('')}

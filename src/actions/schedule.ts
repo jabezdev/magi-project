@@ -1,5 +1,5 @@
 
-import { state, updateState } from '../state'
+import { state, updateState, getSavedCurrentSchedule } from '../state'
 import { saveSchedule } from '../services/api'
 import type { Schedule, ScheduleItem } from '../types'
 
@@ -8,6 +8,7 @@ import type { Schedule, ScheduleItem } from '../types'
  */
 export async function addToSchedule(songId: number, variationId: number | string = 'default'): Promise<void> {
     const currentSchedule = state.schedule
+    const scheduleName = getSavedCurrentSchedule()
     const newItems = [
         ...currentSchedule.items,
         {
@@ -23,7 +24,7 @@ export async function addToSchedule(songId: number, variationId: number | string
 
     try {
         updateState({ schedule: newSchedule })
-        await saveSchedule(newSchedule)
+        await saveSchedule(newSchedule, scheduleName)
     } catch (e) {
         console.error('Failed to add to schedule', e)
         // Revert on failure? For now just log
@@ -35,6 +36,7 @@ export async function addToSchedule(songId: number, variationId: number | string
  */
 export async function removeFromSchedule(index: number): Promise<void> {
     const currentSchedule = state.schedule
+    const scheduleName = getSavedCurrentSchedule()
     if (index < 0 || index >= currentSchedule.items.length) return
 
     const newItems = [...currentSchedule.items]
@@ -47,7 +49,7 @@ export async function removeFromSchedule(index: number): Promise<void> {
 
     try {
         updateState({ schedule: newSchedule })
-        await saveSchedule(newSchedule)
+        await saveSchedule(newSchedule, scheduleName)
     } catch (e) {
         console.error('Failed to remove from schedule', e)
     }
@@ -58,6 +60,7 @@ export async function removeFromSchedule(index: number): Promise<void> {
  */
 export async function updateScheduleItem(index: number, updates: Partial<ScheduleItem>): Promise<void> {
     const currentSchedule = state.schedule
+    const scheduleName = getSavedCurrentSchedule()
     if (index < 0 || index >= currentSchedule.items.length) return
 
     const newItems = [...currentSchedule.items]
@@ -70,7 +73,7 @@ export async function updateScheduleItem(index: number, updates: Partial<Schedul
 
     try {
         updateState({ schedule: newSchedule })
-        await saveSchedule(newSchedule)
+        await saveSchedule(newSchedule, scheduleName)
     } catch (e) {
         console.error('Failed to update schedule item', e)
     }
@@ -81,6 +84,7 @@ export async function updateScheduleItem(index: number, updates: Partial<Schedul
  */
 export async function moveScheduleItem(fromIndex: number, toIndex: number): Promise<void> {
     const currentSchedule = state.schedule
+    const scheduleName = getSavedCurrentSchedule()
     const items = [...currentSchedule.items]
 
     if (fromIndex < 0 || fromIndex >= items.length || toIndex < 0 || toIndex >= items.length) return
@@ -95,7 +99,7 @@ export async function moveScheduleItem(fromIndex: number, toIndex: number): Prom
 
     try {
         updateState({ schedule: newSchedule })
-        await saveSchedule(newSchedule)
+        await saveSchedule(newSchedule, scheduleName)
     } catch (e) {
         console.error('Failed to move schedule item', e)
     }

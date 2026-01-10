@@ -127,3 +127,76 @@
     background: var(--bg-secondary);
     border-top: 1px solid var(--border-color);
 }
+
+/* ========== RESPONSIVE STYLES ========== */
+
+/* Medium screens (< 1200px) */
+@media (max-width: 1200px) {
+    .cp-main {
+        grid-template-columns: var(--song-list-width, 240px) 4px 1fr 1fr;
+    }
+}
+
+/* Small screens (< 1000px) */
+@media (max-width: 1000px) {
+    .cp-main {
+        grid-template-columns: var(--song-list-width, 200px) 4px 1fr 1fr;
+    }
+    
+    .cp-preview,
+    .cp-live {
+        min-width: 150px;
+    }
+    
+    .cp-column-header {
+        padding: 0.4rem 0.6rem;
+    }
+}
+
+/* Very small screens (< 850px) - narrow song list more */
+@media (max-width: 850px) {
+    .cp-main {
+        grid-template-columns: var(--song-list-width, 180px) 4px 1fr 1fr;
+    }
+    
+    .cp-songs {
+        min-width: 160px;
+    }
+    
+    .cp-preview,
+    .cp-live {
+        min-width: 120px;
+    }
+    
+    .cp-column-header {
+        padding: 0.35rem 0.5rem;
+        font-size: 0.7rem;
+    }
+}
+
+/* Extra small screens (< 700px) - compact mode */
+@media (max-width: 700px) {
+    .cp-main {
+        grid-template-columns: var(--song-list-width, 160px) 4px 1fr 1fr;
+    }
+    
+    .cp-songs {
+        min-width: 140px;
+    }
+    
+    .cp-preview,
+    .cp-live {
+        min-width: 100px;
+    }
+    
+    .cp-column-header {
+        padding: 0.3rem 0.4rem;
+        font-size: 0.65rem;
+        height: 32px;
+    }
+    
+    .header-icon {
+        width: 12px;
+        height: 12px;
+    }
+}

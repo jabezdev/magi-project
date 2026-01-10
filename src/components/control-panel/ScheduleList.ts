@@ -1,8 +1,11 @@
-import { state } from '../../state'
+import { state, updateState, getSavedCurrentSchedule, saveCurrentScheduleName } from '../../state'
 import { ICONS } from '../../constants/icons'
 import { selectSongForPreview } from '../../actions/controlPanel'
-import { fetchSongById, saveSchedule } from '../../services/api'
-import { removeFromSchedule, updateScheduleItem } from '../../actions/schedule'
+import { fetchSongById, saveSchedule, fetchScheduleList, fetchScheduleByName, createSchedule } from '../../services/api'
+import { removeFromSchedule, updateScheduleItem, moveScheduleItem } from '../../actions/schedule'
+
+// Track current schedule name - initialize from saved value
+let currentScheduleName = getSavedCurrentSchedule()
 
 export function renderScheduleList(): string {
   const schedule = state.schedule
@@ -15,13 +18,21 @@ export function renderScheduleList(): string {
         <div class="cp-column-header">
             <div class="header-left">
                 <span class="header-icon">${ICONS.calendar || '📅'}</span>
-                <span>Schedule</span>
+                <span class="header-title">SCHEDULE</span>
+                <button class="schedule-selector-btn" title="Select Schedule">
+                  <span class="current-schedule-name">${currentScheduleName}</span>
+                  ${ICONS.chevronDown}
+                </button>
             </div>
-            <button class="icon-btn-sm save-schedule-btn" title="Save Schedule">${ICONS.save}</button>
+            <div class="header-right">
+                <button class="icon-btn-sm new-schedule-btn" title="New Schedule">${ICONS.plus}</button>
+                <button class="icon-btn-sm save-schedule-btn" title="Save Schedule">${ICONS.save}</button>
+            </div>
         </div>
         <div class="cp-section-body empty-state">
             <span class="empty-msg">No songs scheduled</span>
         </div>
+        <div class="schedule-dropdown" id="schedule-dropdown" style="display: none;"></div>
       </div>
     `
   }
@@ -31,13 +42,20 @@ export function renderScheduleList(): string {
       <div class="cp-column-header">
         <div class="header-left">
             <span class="header-icon">${ICONS.calendar || '📅'}</span>
-            <span>Schedule</span>
+            <span class="header-title">SCHEDULE</span>
+            <button class="schedule-selector-btn" title="Select Schedule">
+              <span class="current-schedule-name">${currentScheduleName}</span>
+              ${ICONS.chevronDown}
+            </button>
             <span class="song-count">${itemCount}</span>
         </div>
-        <button class="icon-btn-sm save-schedule-btn" title="Save Schedule">${ICONS.save}</button>
+        <div class="header-right">
+            <button class="icon-btn-sm new-schedule-btn" title="New Schedule">${ICONS.plus}</button>
+            <button class="icon-btn-sm save-schedule-btn" title="Save Schedule">${ICONS.save}</button>
+        </div>
       </div>
       <div class="cp-section-body">
-        <div class="song-list">
+        <div class="song-list" id="schedule-song-list">
           ${schedule.items.map((item, index) => {
     const song = songs.find(s => s.id === item.songId)
     if (!song) return '' // Skip if song not found
@@ -53,11 +71,11 @@ export function renderScheduleList(): string {
     }
 
     return `
-              <div class="song-item compact ${isSelected ? 'selected' : ''} ${isLive ? 'live' : ''}" 
+              <div class="song-item schedule-item compact ${isSelected ? 'selected' : ''} ${isLive ? 'live' : ''}" 
                       data-song-id="${song.id}" 
                       data-variation-id="${item.variationId}"
-                      data-index="${index}">
-                <span class="song-order">${index + 1}</span>
+                      data-index="${index}"
+                      draggable="true">
                 <span class="song-title">${song.title}</span>
                 <div class="song-meta">
                    ${variationBadge}
@@ -68,13 +86,40 @@ export function renderScheduleList(): string {
   }).join('')}
         </div>
       </div>
+      <div class="schedule-dropdown" id="schedule-dropdown" style="display: none;"></div>
     </div>
   `
 }
 
+// Drag and drop state
+let draggedIndex: number | null = null
+
 export function initScheduleListListeners(): void {
   const section = document.querySelector('.schedule-section')
   if (!section) return
+
+  // Schedule selector button
+  const selectorBtn = section.querySelector('.schedule-selector-btn')
+  if (selectorBtn) {
+    selectorBtn.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      await toggleScheduleDropdown()
+    })
+  }
+
+  // Close dropdown when clicking outside (only add once)
+  if (!(window as any).__scheduleDropdownListenerAdded) {
+    (window as any).__scheduleDropdownListenerAdded = true
+    document.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('schedule-dropdown')
+      if (dropdown && dropdown.style.display === 'block') {
+        const selectorBtn = document.querySelector('.schedule-selector-btn')
+        if (!dropdown.contains(e.target as Node) && !selectorBtn?.contains(e.target as Node)) {
+          dropdown.style.display = 'none'
+        }
+      }
+    })
+  }
 
   // Save Schedule button
   const saveBtn = section.querySelector('.save-schedule-btn')
@@ -82,7 +127,7 @@ export function initScheduleListListeners(): void {
     saveBtn.addEventListener('click', async (e) => {
       e.stopPropagation()
       try {
-        await saveSchedule(state.schedule)
+        await saveSchedule(state.schedule, currentScheduleName)
         // Visual feedback
         saveBtn.classList.add('saved')
         setTimeout(() => saveBtn.classList.remove('saved'), 1500)
@@ -91,6 +136,26 @@ export function initScheduleListListeners(): void {
       }
     })
   }
+
+  // New Schedule button
+  const newScheduleBtn = section.querySelector('.new-schedule-btn')
+  if (newScheduleBtn) {
+    newScheduleBtn.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      // Auto-generate name based on today's date
+      const today = new Date().toISOString().split('T')[0]
+      const result = await createSchedule(today)
+      if (result?.success) {
+        await loadSchedule(result.name)
+      } else {
+        // If schedule with today's date exists, just switch to it
+        await loadSchedule(today)
+      }
+    })
+  }
+
+  // Initialize drag and drop
+  initDragAndDrop(section)
 
   section.querySelectorAll('.song-item').forEach(item => {
     item.addEventListener('click', async (e) => {
@@ -139,6 +204,11 @@ export function initScheduleListListeners(): void {
       const nextVariation = song.variations[nextIdx]
 
       updateScheduleItem(index, { variationId: nextVariation.id })
+      
+      // Also update preview if this song is currently being previewed
+      if (state.previewSong?.id === songId) {
+        selectSongForPreview(state.previewSong, nextIdx)
+      }
     })
   })
 
@@ -150,4 +220,181 @@ export function initScheduleListListeners(): void {
       removeFromSchedule(index)
     })
   })
+}
+
+function initDragAndDrop(section: Element): void {
+  const songList = section.querySelector('#schedule-song-list')
+  if (!songList) return
+
+  const songItems = section.querySelectorAll('.song-item[draggable="true"]')
+
+  songItems.forEach(item => {
+    item.addEventListener('dragstart', (e) => {
+      const event = e as DragEvent
+      draggedIndex = parseInt((item as HTMLElement).getAttribute('data-index') || '0')
+      ;(item as HTMLElement).classList.add('dragging')
+      event.dataTransfer?.setData('text/plain', String(draggedIndex))
+      event.dataTransfer!.effectAllowed = 'move'
+    })
+
+    item.addEventListener('dragend', () => {
+      (item as HTMLElement).classList.remove('dragging')
+      draggedIndex = null
+      // Remove all drag-over classes
+      section.querySelectorAll('.song-item').forEach(el => {
+        el.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom')
+      })
+    })
+
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault()
+      const event = e as DragEvent
+      event.dataTransfer!.dropEffect = 'move'
+
+      const rect = (item as HTMLElement).getBoundingClientRect()
+      const midY = rect.top + rect.height / 2
+
+      // Remove previous classes
+      item.classList.remove('drag-over-top', 'drag-over-bottom')
+
+      if (event.clientY < midY) {
+        item.classList.add('drag-over-top')
+      } else {
+        item.classList.add('drag-over-bottom')
+      }
+    })
+
+    item.addEventListener('dragleave', () => {
+      item.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom')
+    })
+
+    item.addEventListener('drop', async (e) => {
+      e.preventDefault()
+      const event = e as DragEvent
+
+      const fromIndex = draggedIndex
+      if (fromIndex === null) return
+
+      const toIndex = parseInt((item as HTMLElement).getAttribute('data-index') || '0')
+
+      // Determine if dropping above or below
+      const rect = (item as HTMLElement).getBoundingClientRect()
+      const midY = rect.top + rect.height / 2
+      let finalToIndex = toIndex
+
+      if (event.clientY < midY) {
+        // Dropping above this item
+        finalToIndex = toIndex
+      } else {
+        // Dropping below this item
+        finalToIndex = toIndex + 1
+      }
+
+      // Adjust for moving down
+      if (fromIndex < finalToIndex) {
+        finalToIndex--
+      }
+
+      if (fromIndex !== finalToIndex) {
+        await moveScheduleItem(fromIndex, finalToIndex)
+      }
+
+      // Cleanup
+      item.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom')
+    })
+  })
+}
+
+async function toggleScheduleDropdown(): Promise<void> {
+  const dropdown = document.getElementById('schedule-dropdown')
+  if (!dropdown) {
+    console.error('Schedule dropdown not found')
+    return
+  }
+
+  // Check if already visible (block or empty means it could be visible)
+  const isVisible = dropdown.style.display === 'block'
+  if (isVisible) {
+    dropdown.style.display = 'none'
+    return
+  }
+
+  // Fetch schedule list
+  const schedules = await fetchScheduleList()
+
+  dropdown.innerHTML = `
+    <div class="schedule-dropdown-content">
+      <div class="schedule-dropdown-header">Select Schedule</div>
+      <div class="schedule-dropdown-list">
+        ${schedules.map(s => `
+          <div class="schedule-dropdown-item ${s.name === currentScheduleName ? 'active' : ''}" data-name="${s.name}">
+            <span class="schedule-name">${s.name}</span>
+            <span class="schedule-item-count">${s.itemCount} songs</span>
+          </div>
+        `).join('')}
+      </div>
+      <div class="schedule-dropdown-footer">
+        <button class="btn-new-schedule">${ICONS.plus} New Schedule</button>
+      </div>
+    </div>
+  `
+
+  dropdown.style.display = 'block'
+
+  // Add click listeners
+  dropdown.querySelectorAll('.schedule-dropdown-item').forEach(item => {
+    item.addEventListener('click', async () => {
+      const name = item.getAttribute('data-name')
+      if (name) {
+        await loadSchedule(name)
+        dropdown.style.display = 'none'
+      }
+    })
+  })
+
+  // New schedule button
+  dropdown.querySelector('.btn-new-schedule')?.addEventListener('click', async () => {
+    const name = prompt('Enter new schedule name:')
+    if (name && name.trim()) {
+      const result = await createSchedule(name.trim())
+      if (result?.success) {
+        await loadSchedule(result.name)
+        dropdown.style.display = 'none'
+      } else {
+        alert('Failed to create schedule. It may already exist.')
+      }
+    }
+  })
+}
+
+async function loadSchedule(name: string): Promise<void> {
+  const schedule = await fetchScheduleByName(name)
+  if (schedule) {
+    currentScheduleName = name
+    saveCurrentScheduleName(name) // Persist to server and localStorage
+    updateState({ schedule })
+    // Update the displayed name
+    const nameEl = document.querySelector('.current-schedule-name')
+    if (nameEl) {
+      nameEl.textContent = name
+    }
+  }
+}
+
+// Export for external use
+export function getCurrentScheduleName(): string {
+  return currentScheduleName
+}
+
+export function setCurrentScheduleName(name: string): void {
+  currentScheduleName = name
+  saveCurrentScheduleName(name)
+}
+
+// Initialize schedule on first load
+export async function initializeSchedule(): Promise<void> {
+  const savedName = getSavedCurrentSchedule()
+  if (savedName && savedName !== 'current') {
+    await loadSchedule(savedName)
+  }
 }

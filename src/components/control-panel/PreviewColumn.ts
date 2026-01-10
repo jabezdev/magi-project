@@ -62,7 +62,7 @@ export function renderPreviewColumn(): string {
                               data-slide="${slideIndex}"
                               data-context="preview">
                         <span class="slide-num">${slideIndex + 1}</span>
-                        <span class="slide-text">${slideText.replace(/\n/g, ' / ')}</span>
+                        <span class="slide-text">${slideText.replace(/\n/g, '<br>')}</span>
                       </button>
                     `
   }).join('')}
