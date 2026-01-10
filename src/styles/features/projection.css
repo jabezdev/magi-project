@@ -1,0 +1,350 @@
+/* ========== MAIN PROJECTION SCREEN ========== */
+.projection-screen {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    background: #000;
+}
+
+.background-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+}
+
+.content-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    transition: background 0.3s ease;
+}
+
+.content-overlay.lyrics {
+    background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.5));
+}
+
+.content-overlay.black {
+    background: #000;
+}
+
+.content-overlay.clear {
+    background: transparent;
+}
+
+.content-overlay.logo {
+    background: #000;
+}
+
+.black-screen {
+    width: 100%;
+    height: 100%;
+    background: #000;
+}
+
+.lyrics-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: white;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0.7;
+        transform: translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.lyric-line {
+    margin-bottom: 0.25em;
+}
+
+.logo-media {
+    max-width: 80%;
+    max-height: 80%;
+    object-fit: contain;
+}
+
+/* Fullscreen Button - appears on hover */
+.fullscreen-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.3s ease, background 0.2s ease;
+}
+
+.fullscreen-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.projection-screen:hover .fullscreen-btn,
+.confidence-screen:hover .fullscreen-btn {
+    opacity: 1;
+}
+
+/* Margin Markers Overlay */
+.margin-markers {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 50;
+}
+
+.margin-marker {
+    position: absolute;
+    background: rgba(255, 0, 0, 0.2);
+    border: 1px dashed rgba(255, 0, 0, 0.6);
+}
+
+.margin-marker.top {
+    top: 0;
+    left: 0;
+    right: 0;
+}
+
+.margin-marker.bottom {
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
+.margin-marker.left {
+    top: 0;
+    bottom: 0;
+    left: 0;
+}
+
+.margin-marker.right {
+    top: 0;
+    bottom: 0;
+    right: 0;
+}
+
+/* ========== CONFIDENCE MONITOR ========== */
+.confidence-screen {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--bg-primary);
+}
+
+.cm-navbar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 40px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.cm-clock {
+    font-size: 1.25rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+}
+
+.cm-teleprompter {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 2rem;
+}
+
+.teleprompter-scroll {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    max-width: 1000px;
+    transition: transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.tp-slide {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    padding: 1.5rem 0;
+}
+
+.tp-slide.tp-empty {
+    min-height: 80px;
+}
+
+/* Part indicator on the left, rotated 90 degrees */
+.tp-part-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.tp-part-indicator span {
+    position: absolute;
+    white-space: nowrap;
+    transform: rotate(-90deg);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent-primary);
+}
+
+.tp-prev .tp-part-indicator span,
+.tp-next .tp-part-indicator span {
+    color: var(--text-muted);
+}
+
+.tp-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding-left: 1rem;
+}
+
+.tp-prev,
+.tp-next {
+    opacity: var(--cm-prev-next-opacity, 0.35);
+}
+
+/* All slides have the same text size */
+.tp-text {
+    font-size: var(--cm-font-size, 2.5rem);
+    line-height: var(--cm-line-height, 1.4);
+    font-family: var(--cm-font-family, system-ui);
+    color: var(--text-secondary);
+}
+
+.tp-current {
+    opacity: 1;
+}
+
+.tp-current .tp-text {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+/* Smooth scroll animation */
+@keyframes scrollUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0.5;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes scrollDown {
+    from {
+        transform: translateY(-20px);
+        opacity: 0.5;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.teleprompter-scroll {
+    animation: scrollUp 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.tp-part-label {
+    display: none;
+}
+
+.mode-overlay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.mode-overlay span {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 0.5rem;
+}
+
+.mode-overlay.black {
+    background: #000;
+    color: #333;
+}
+
+.mode-overlay.clear {
+    background: transparent;
+    color: var(--accent-primary);
+}
+
+.mode-overlay.logo {
+    background: transparent;
+    color: var(--accent-secondary);
+}
+
+.cm-empty {
+    font-size: 1.25rem;
+    color: var(--text-muted);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .cp-main {
+        grid-template-columns: 240px 1fr 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .cp-main {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr 1fr;
+    }
+
+    .cp-songs {
+        max-height: 200px;
+    }
+
+    .tp-current .tp-text {
+        font-size: 1.5rem;
+    }
+}

@@ -1,0 +1,65 @@
+/* ========== LIVE STATUS & CONTROLS ========== */
+.live-header {
+    background: var(--bg-secondary) !important;
+    gap: 0.5rem;
+}
+
+.live-header .header-go-live {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.7rem;
+}
+
+.live-header .header-go-live:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.live-song-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(220, 38, 38, 0.1);
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+}
+
+.live-song-info .live-dot {
+    flex-shrink: 0;
+}
+
+.live-song-info .song-name {
+    margin: 0;
+}
+
+.live-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.live-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--live-red);
+    border-radius: 50%;
+    animation: pulse-dot 1.5s infinite;
+}
+
+@keyframes pulse-dot {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+}
+
+.display-controls {
+    display: flex;
+    gap: 0.25rem;
+    margin-left: auto;
+}

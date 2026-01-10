@@ -1,0 +1,66 @@
+/* ========== SONGS COLUMN ========== */
+.cp-songs .cp-column-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.song-sets {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.song-set {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.set-header {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    padding: 0.25rem 0.5rem;
+}
+
+.song-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-tertiary);
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+    width: 100%;
+}
+
+.song-item:hover {
+    background: var(--bg-hover);
+}
+
+.song-item.selected {
+    border-color: var(--accent-primary);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.song-item.live {
+    border-color: var(--live-red);
+    background: rgba(220, 38, 38, 0.1);
+}
+
+.song-item .song-title {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.song-item .song-artist {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}

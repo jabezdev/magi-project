@@ -1,0 +1,98 @@
+/* ========== LYRICS & PREVIEW ========== */
+.lyrics-scroll {
+    padding: 0.75rem;
+}
+
+.song-info {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.song-info .song-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.song-info .song-artist {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.lyrics-arrangement {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.lyrics-part {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.part-header {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--accent-primary);
+    padding: 0.25rem 0;
+}
+
+.part-slides {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.slide-btn {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: var(--bg-tertiary);
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    text-align: left;
+    width: 100%;
+}
+
+.slide-btn:hover {
+    background: var(--bg-hover);
+}
+
+.slide-btn:active {
+    transform: scale(0.98);
+}
+
+.slide-btn.active {
+    border-color: var(--accent-primary);
+    background: rgba(99, 102, 241, 0.15);
+}
+
+.slide-btn.live {
+    border-color: var(--live-red);
+    background: rgba(220, 38, 38, 0.15);
+}
+
+.slide-num {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    min-width: 16px;
+}
+
+.slide-text {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.slide-btn.active .slide-text,
+.slide-btn.live .slide-text {
+    color: var(--text-primary);
+}
