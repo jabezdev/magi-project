@@ -11,18 +11,19 @@ export function renderLibraryList(): string {
     return `
     <div class="cp-section library-section">
       <div class="cp-column-header">
-        <span class="header-icon">${ICONS.music || '🎵'}</span>
-        <span>All Songs</span>
+        <div class="header-left">
+          <span class="header-icon">${ICONS.music || '🎵'}</span>
+          <span>Library</span>
+          <span class="song-count">${songs.length}</span>
+        </div>
+        <button class="icon-btn-sm new-song-btn" title="New Song">${ICONS.plus}</button>
       </div>
       <div class="cp-section-body">
-         <input type="text" id="library-search" placeholder="Search songs..." class="search-input" />
+         <input type="text" id="library-search" placeholder="Search..." class="search-input" />
          <div class="song-list" id="library-list-container">
             ${songs.map(song => `
-              <div class="song-item ${state.previewSong?.id === song.id ? 'selected' : ''}" data-song-id="${song.id}">
-                <div class="song-info">
-                    <span class="song-title">${song.title}</span>
-                    <span class="song-artist">${song.artist || ''}</span>
-                </div>
+              <div class="song-item compact ${state.previewSong?.id === song.id ? 'selected' : ''}" data-song-id="${song.id}">
+                <span class="song-title">${song.title}</span>
                 <div class="song-actions">
                     <button class="icon-btn-sm add-schedule-btn" data-id="${song.id}" title="Add to Schedule">${ICONS.plus}</button>
                     <button class="icon-btn-sm edit-song-btn" data-id="${song.id}" title="Edit Song">${ICONS.edit}</button>
@@ -38,6 +39,11 @@ export function renderLibraryList(): string {
 export function initLibraryListListeners(): void {
     const section = document.querySelector('.library-section')
     if (!section) return
+
+    // New Song button
+    section.querySelector('.new-song-btn')?.addEventListener('click', () => {
+        openSongEditor()
+    })
 
     // Song selection
     section.querySelectorAll('.song-item').forEach(item => {

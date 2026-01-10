@@ -1,22 +1,26 @@
 import { state } from '../../state'
 import { ICONS } from '../../constants/icons'
 import { selectSongForPreview } from '../../actions/controlPanel'
-import { fetchSongById } from '../../services/api'
+import { fetchSongById, saveSchedule } from '../../services/api'
 import { removeFromSchedule, updateScheduleItem } from '../../actions/schedule'
 
 export function renderScheduleList(): string {
   const schedule = state.schedule
   const songs = state.songs
+  const itemCount = schedule?.items?.length || 0
 
   if (!schedule || schedule.items.length === 0) {
     return `
       <div class="cp-section schedule-section">
-        <div class="cp-section-header">
-            <span class="header-icon">${ICONS.calendar || '📅'}</span>
-            <span>Schedule</span>
+        <div class="cp-column-header">
+            <div class="header-left">
+                <span class="header-icon">${ICONS.calendar || '📅'}</span>
+                <span>Schedule</span>
+            </div>
+            <button class="icon-btn-sm save-schedule-btn" title="Save Schedule">${ICONS.save}</button>
         </div>
         <div class="cp-section-body empty-state">
-            No songs scheduled
+            <span class="empty-msg">No songs scheduled</span>
         </div>
       </div>
     `
@@ -25,8 +29,12 @@ export function renderScheduleList(): string {
   return `
     <div class="cp-section schedule-section">
       <div class="cp-column-header">
-        <span class="header-icon">${ICONS.calendar || '📅'}</span>
-        <span>Schedule (${new Date(schedule.date).toLocaleDateString()})</span>
+        <div class="header-left">
+            <span class="header-icon">${ICONS.calendar || '📅'}</span>
+            <span>Schedule</span>
+            <span class="song-count">${itemCount}</span>
+        </div>
+        <button class="icon-btn-sm save-schedule-btn" title="Save Schedule">${ICONS.save}</button>
       </div>
       <div class="cp-section-body">
         <div class="song-list">
@@ -34,36 +42,26 @@ export function renderScheduleList(): string {
     const song = songs.find(s => s.id === item.songId)
     if (!song) return '' // Skip if song not found
 
-    // Check if this song is currently selected/live
-    // Note: We need to check if the *scheduled item* is selected.
-    // But state only tracks `previewSong`. 
-    // For now, highlight if IDs match.
     const isSelected = state.previewSong?.id === song.id
     const isLive = state.liveSong?.id === song.id
 
-    // Variations dropdown
-    let variationSelect = ''
+    // Compact variation display
+    let variationBadge = ''
     if (song.variations && song.variations.length > 0) {
-      const options = song.variations.map(v =>
-        `<option value="${v.id}" ${String(v.id) === String(item.variationId) ? 'selected' : ''}>${v.name}</option>`
-      ).join('')
-      variationSelect = `<select class="variation-select" data-index="${index}">${options}</select>`
-    } else {
-      variationSelect = '<span class="no-variations">Default</span>'
+      const selectedVar = song.variations.find(v => String(v.id) === String(item.variationId))
+      variationBadge = `<span class="variation-badge" title="Click to change">${selectedVar?.name || 'Default'}</span>`
     }
 
     return `
-              <div class="song-item ${isSelected ? 'selected' : ''} ${isLive ? 'live' : ''}" 
+              <div class="song-item compact ${isSelected ? 'selected' : ''} ${isLive ? 'live' : ''}" 
                       data-song-id="${song.id}" 
                       data-variation-id="${item.variationId}"
                       data-index="${index}">
-                <div class="song-info">
-                    <span class="song-title">${song.title}</span>
-                    <span class="song-artist">${song.artist || ''}</span>
-                </div>
+                <span class="song-order">${index + 1}</span>
+                <span class="song-title">${song.title}</span>
                 <div class="song-meta">
-                   ${variationSelect}
-                   <button class="icon-btn-sm remove-schedule-btn" data-index="${index}" title="Remove from schedule">${ICONS.trash}</button>
+                   ${variationBadge}
+                   <button class="icon-btn-sm remove-schedule-btn" data-index="${index}" title="Remove">${ICONS.trash}</button>
                 </div>
               </div>
             `
@@ -78,10 +76,26 @@ export function initScheduleListListeners(): void {
   const section = document.querySelector('.schedule-section')
   if (!section) return
 
+  // Save Schedule button
+  const saveBtn = section.querySelector('.save-schedule-btn')
+  if (saveBtn) {
+    saveBtn.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      try {
+        await saveSchedule(state.schedule)
+        // Visual feedback
+        saveBtn.classList.add('saved')
+        setTimeout(() => saveBtn.classList.remove('saved'), 1500)
+      } catch (err) {
+        console.error('Failed to save schedule:', err)
+      }
+    })
+  }
+
   section.querySelectorAll('.song-item').forEach(item => {
     item.addEventListener('click', async (e) => {
       // Prevent if clicking interactive elements
-      if ((e.target as HTMLElement).closest('.variation-select') ||
+      if ((e.target as HTMLElement).closest('.variation-badge') ||
         (e.target as HTMLElement).closest('.remove-schedule-btn')) {
         return
       }
@@ -94,8 +108,6 @@ export function initScheduleListListeners(): void {
 
       if (song) {
         // If variationId is provided, we should select that variation.
-        // selectSongForPreview defaults to 0. 
-        // We might need to look up the variation index.
         let varIndex = 0
         if (variationId) {
           const idx = song.variations.findIndex(v => String(v.id) === String(variationId))
@@ -107,22 +119,35 @@ export function initScheduleListListeners(): void {
     })
   })
 
+  // Variation badge click - cycle through variations
+  section.querySelectorAll('.variation-badge').forEach(badge => {
+    badge.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      const songItem = (e.target as HTMLElement).closest('.song-item')
+      if (!songItem) return
+
+      const index = parseInt(songItem.getAttribute('data-index') || '0')
+      const songId = parseInt(songItem.getAttribute('data-song-id') || '0')
+      const currentVariationId = songItem.getAttribute('data-variation-id')
+
+      const song = state.songs.find(s => s.id === songId)
+      if (!song || !song.variations || song.variations.length <= 1) return
+
+      // Find current variation index and cycle to next
+      const currentIdx = song.variations.findIndex(v => String(v.id) === String(currentVariationId))
+      const nextIdx = (currentIdx + 1) % song.variations.length
+      const nextVariation = song.variations[nextIdx]
+
+      updateScheduleItem(index, { variationId: nextVariation.id })
+    })
+  })
+
   // Remove buttons
   section.querySelectorAll('.remove-schedule-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation()
       const index = parseInt(btn.getAttribute('data-index') || '0')
       removeFromSchedule(index)
-    })
-  })
-
-  // Variation Selects
-  section.querySelectorAll('.variation-select').forEach(select => {
-    select.addEventListener('change', (e) => {
-      e.stopPropagation()
-      const index = parseInt(select.getAttribute('data-index') || '0')
-      const value = (e.target as HTMLSelectElement).value
-      updateScheduleItem(index, { variationId: value })
     })
   })
 }
