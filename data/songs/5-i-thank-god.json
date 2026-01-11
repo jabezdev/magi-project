@@ -1,0 +1,93 @@
+{
+  "id": 5,
+  "title": "I Thank God",
+  "artist": "Maverick Music",
+  "parts": [
+    {
+      "id": "v1",
+      "label": "Verse 1",
+      "slides": [
+        "Wandering into the night\nWanting a place to hide",
+        "This weary soul\nThis bag of bones",
+        "And I try with all my might\nBut I just can't win the fight",
+        "I'm slowly drifting\nA vagabond"
+      ]
+    },
+    {
+      "id": "P-CH 1",
+      "label": "Pre-Chorus 1",
+      "slides": [
+        "And just when I ran out of road",
+        "I met a man I didn't know",
+        "And He told me that I was not alone"
+      ]
+    },
+    {
+      "id": "C1",
+      "label": "Chorus 1",
+      "slides": [
+        "He picked me up, He turned me around\nHe placed my feet on solid ground",
+        "I thank the Master, I thank the Savior",
+        "Because He healed my heart, He changed my name\nForever free, I'm not the same",
+        "I thank the Master, I thank the Savior",
+        "I thank God"
+      ]
+    },
+    {
+      "id": "v2",
+      "label": "Verse 2",
+      "slides": [
+        "I cannot deny what I see\nGot no choice but to beliеve",
+        "My doubts are burning\nLike ashеs in the wind",
+        "So, so long to my old friends\nBurden and bitterness",
+        "You can just keep it moving\nNah, you ain't welcome here"
+      ]
+    },
+    {
+      "id": "P-CH 2",
+      "label": "Pre-Chorus 2",
+      "slides": [
+        "From now 'til I walk the streets of gold",
+        "I'll sing of how You saved my soul",
+        "This wayward son has found his way back home"
+      ]
+    },
+    {
+      "id": "BR 1",
+      "label": "Bridge 1",
+      "slides": [
+        "Hell lost another one, I am free\nI am free, I am free",
+        "Hell lost another one, I am free\nI am free, I am free"
+      ]
+    },
+    {
+      "id": "BR 2",
+      "label": "Bridge 2",
+      "slides": [
+        "Get up, get up, get up\nGet up outta that grave",
+        "Get up, get up, get up\nGet up outta that grave"
+      ]
+    }
+  ],
+  "variations": [
+    {
+      "id": 1768088275030,
+      "name": "Oceans Music",
+      "arrangement": [
+        "v1",
+        "P-CH 1",
+        "C1",
+        "v2",
+        "P-CH 2",
+        "C1",
+        "BR 1",
+        "BR 1",
+        "BR 1",
+        "C1",
+        "BR 2",
+        "BR 2",
+        "C1"
+      ]
+    }
+  ]
+}

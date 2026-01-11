@@ -37,19 +37,18 @@ export function buildConfidenceMonitorHTML(): string {
 }
 
 function buildTeleprompterContent(song: Song | null, variation: number, position: SlidePosition, displayMode: string): string {
-    // Handle special display modes
+    // Build mode overlay for non-lyrics modes
+    let modeOverlay = ''
     if (displayMode === 'black') {
-        return '<div class="mode-overlay black"><span>BLACK</span></div>'
-    }
-    if (displayMode === 'clear') {
-        return '<div class="mode-overlay clear"><span>CLEAR</span></div>'
-    }
-    if (displayMode === 'logo') {
-        return '<div class="mode-overlay logo"><span>LOGO</span></div>'
+        modeOverlay = '<div class="mode-overlay black"><span>BLACK</span></div>'
+    } else if (displayMode === 'clear') {
+        modeOverlay = '<div class="mode-overlay clear"><span>CLEAR</span></div>'
+    } else if (displayMode === 'logo') {
+        modeOverlay = '<div class="mode-overlay logo"><span>LOGO</span></div>'
     }
 
     if (!song) {
-        return '<div class="cm-empty">No song loaded</div>'
+        return modeOverlay + '<div class="cm-empty">No song loaded</div>'
     }
 
     // Get all slides for the arrangement
@@ -87,6 +86,7 @@ function buildTeleprompterContent(song: Song | null, variation: number, position
     }).join('')
 
     return `
+    ${modeOverlay}
     <div class="teleprompter-scroll" data-current-index="${currentFlatIndex}" data-song-id="${song.id}">
       <div class="tp-spacer-top"></div>
       ${slidesHTML}
@@ -129,12 +129,15 @@ export function updateTeleprompterContent(): void {
 
     if (!teleprompter) return
 
-    // Check if song changed or mode changed - need full rebuild
+    // Check if song changed - need full rebuild of lyrics
     const currentSongId = existingScroll?.getAttribute('data-song-id')
     const newSongId = liveSong?.id?.toString() || ''
-    const needsFullRebuild = !existingScroll || currentSongId !== newSongId || displayMode !== 'lyrics'
+    const songChanged = !existingScroll || currentSongId !== newSongId
 
-    if (needsFullRebuild) {
+    // Always update mode overlay
+    updateModeOverlay(teleprompter, displayMode)
+
+    if (songChanged) {
         updateHTML(teleprompter, buildTeleprompterContent(liveSong, liveVariation, livePosition, displayMode))
         // After rebuild, scroll to current slide
         scrollToCurrentSlide()
@@ -142,6 +145,23 @@ export function updateTeleprompterContent(): void {
         // Just update slide classes and scroll
         updateSlideClasses(livePosition)
         scrollToCurrentSlide()
+    }
+}
+
+function updateModeOverlay(teleprompter: Element, displayMode: string): void {
+    // Remove existing overlay
+    const existingOverlay = teleprompter.querySelector('.mode-overlay')
+    if (existingOverlay) {
+        existingOverlay.remove()
+    }
+
+    // Add new overlay if not in lyrics mode
+    if (displayMode === 'black') {
+        teleprompter.insertAdjacentHTML('afterbegin', '<div class="mode-overlay black"><span>BLACK</span></div>')
+    } else if (displayMode === 'clear') {
+        teleprompter.insertAdjacentHTML('afterbegin', '<div class="mode-overlay clear"><span>CLEAR</span></div>')
+    } else if (displayMode === 'logo') {
+        teleprompter.insertAdjacentHTML('afterbegin', '<div class="mode-overlay logo"><span>LOGO</span></div>')
     }
 }
 

@@ -1,0 +1,71 @@
+{
+  "id": 6,
+  "title": "Goodness of God",
+  "artist": "Bethel Music",
+  "parts": [
+    {
+      "id": "v1",
+      "label": "Verse 1",
+      "slides": [
+        "I love You, Lord\nOh, Your mercy never failed me",
+        "All my days, I've been held in Your hands",
+        "From the moment that I wake up\nUntil I lay my head",
+        "Oh, I will sing of the goodness of God"
+      ]
+    },
+    {
+      "id": "Ch 1",
+      "label": "Chorus",
+      "slides": [
+        "And all my life You have been faithful",
+        "And all my life You have been so, so good",
+        "With every breath that I am able",
+        "Oh, I will sing of the goodness of God"
+      ]
+    },
+    {
+      "id": "v2",
+      "label": "Verse 2",
+      "slides": [
+        "I love Your voice\nYou have led me through the fire",
+        "And in darkest night You are close like no other",
+        "I've known You as a Father\nI've known You as a Friend",
+        "And I have lived in the goodness of God"
+      ]
+    },
+    {
+      "id": "BR",
+      "label": "Bridge",
+      "slides": [
+        "Your goodness is running after\nit's running after me",
+        "Your goodness is running after\nit's running after me",
+        "With my life laid down, I'm surrendered now\nI give You everything",
+        "Your goodness is running after\nit's running after me"
+      ]
+    },
+    {
+      "id": "End",
+      "label": "End",
+      "slides": [
+        "Oh, I will sing of the goodness of God"
+      ]
+    }
+  ],
+  "variations": [
+    {
+      "id": 1768088787111,
+      "name": "Essential Worship (Jason Ingram)",
+      "arrangement": [
+        "v1",
+        "Ch 1",
+        "v2",
+        "Ch 1",
+        "BR",
+        "BR",
+        "Ch 1",
+        "Ch 1",
+        "End"
+      ]
+    }
+  ]
+}

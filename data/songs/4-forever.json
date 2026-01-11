@@ -1,0 +1,104 @@
+{
+  "id": 4,
+  "title": "Forever",
+  "artist": "Chris Tomlin",
+  "parts": [
+    {
+      "id": "v1",
+      "label": "Verse 1",
+      "slides": [
+        "Give thanks to the Lord our God and King\nHis love endures forever",
+        "For He is good, He is above all things\nHis love endures forever"
+      ]
+    },
+    {
+      "id": "P-ch",
+      "label": "Pre-Chorus",
+      "slides": [
+        "Sing praise, sing praise"
+      ]
+    },
+    {
+      "id": "v2",
+      "label": "Verse 2",
+      "slides": [
+        "With a mighty hand and outstretched arm\nHis love endures forever",
+        "For the life that's been reborn\nHis love endures forever"
+      ]
+    },
+    {
+      "id": "C1",
+      "label": "Chorus 1",
+      "slides": [
+        "Forever God is faithful\nForever God is strong",
+        "Forever God is with us\nForever and ever"
+      ]
+    },
+    {
+      "id": "C2",
+      "label": "Chorus 2",
+      "slides": [
+        "Forever God is faithful\nForever God is strong",
+        "Forever God is with us\nForever and ever",
+        "Forever"
+      ]
+    },
+    {
+      "id": "v3",
+      "label": "Verse 3",
+      "slides": [
+        "From the rising to the setting sun\nHis love endures forever",
+        "By the grace of God we will carry on\nHis love endures forever"
+      ]
+    },
+    {
+      "id": "BR",
+      "label": "Bridge",
+      "slides": [
+        "His love endures forever\nHis love endures forever"
+      ]
+    },
+    {
+      "id": "C3",
+      "label": "Chorus 3",
+      "slides": [
+        "Forever You are faithful\nForever You are strong",
+        "Forever You are with us\nForever and ever"
+      ]
+    },
+    {
+      "id": "C4",
+      "label": "Chorus 4",
+      "slides": [
+        "Forever You are faithful\nForever You are strong",
+        "Forever You are with us\nForever and ever",
+        "Forever"
+      ]
+    }
+  ],
+  "variations": [
+    {
+      "id": 1768088025111,
+      "name": "Default",
+      "arrangement": [
+        "v1",
+        "P-ch",
+        "v2",
+        "P-ch",
+        "P-ch",
+        "C2",
+        "v3",
+        "P-ch",
+        "P-ch",
+        "C1",
+        "C2",
+        "BR",
+        "BR",
+        "BR",
+        "BR",
+        "P-ch",
+        "P-ch"
+      ]
+    }
+  ]
+}

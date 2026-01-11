@@ -18,9 +18,6 @@ import { fetchSongById } from '../services/api'
 // Local storage key for mobile font size
 const MOBILE_FONT_SIZE_KEY = 'magi-mobile-font-size'
 
-// Track if user has manually scrolled
-let userHasScrolled = false
-let scrollTimeout: number | null = null
 // Track currently viewed song (may differ from live)
 let viewedSong: Song | null = null
 let viewedVariation: number = 0
@@ -54,14 +51,10 @@ export function buildMobileScreenHTML(): string {
   const { displayMode, liveSong, liveVariation, livePosition, confidenceMonitorSettings, schedule, songs } = state
   const mobileFontSize = loadMobileFontSize()
 
-  // Initialize viewed song to live song
-  if (!viewedSong && liveSong) {
-    viewedSong = liveSong
-    viewedVariation = liveVariation
-  }
-
+  // Use live song by default
   const currentSong = viewedSong || liveSong
   const currentVariation = viewedSong ? viewedVariation : liveVariation
+  const isViewingLiveSong = !viewedSong || !!(liveSong && viewedSong.id === liveSong.id)
 
   // Build inline styles from settings (borrowing from confidence monitor)
   const mobileStyles = `
@@ -78,11 +71,11 @@ export function buildMobileScreenHTML(): string {
   return `
     <div class="mobile-screen" style="${mobileStyles}">
       ${buildMobileNavbar(currentSong, schedule, songs)}
-      ${buildArrangementBar(currentSong, currentVariation, livePosition)}
+      ${buildArrangementBar(currentSong, currentVariation, livePosition, isViewingLiveSong)}
       <div class="mobile-teleprompter">
-        ${buildMobileTeleprompterContent(currentSong, currentVariation, livePosition, displayMode)}
+        ${buildTeleprompterContent(currentSong, currentVariation, livePosition, displayMode, isViewingLiveSong)}
       </div>
-      ${buildRealignButton()}
+      ${buildRealignButton(!isViewingLiveSong)}
       ${buildSettingsPanel(mobileFontSize)}
       <button class="mobile-settings-btn" title="Settings">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -92,7 +85,6 @@ export function buildMobileScreenHTML(): string {
 }
 
 function buildMobileNavbar(currentSong: Song | null, schedule: Schedule, songs: SongSummary[]): string {
-  // Build song selector dropdown with scheduled songs
   const scheduledSongs = schedule.items.map(item => {
     const song = songs.find(s => s.id === item.songId)
     return song ? { id: song.id, title: song.title, variationId: item.variationId } : null
@@ -115,17 +107,18 @@ function buildMobileNavbar(currentSong: Song | null, schedule: Schedule, songs: 
   `
 }
 
-function buildArrangementBar(song: Song | null, variation: number, position: SlidePosition): string {
+function buildArrangementBar(song: Song | null, variation: number, position: SlidePosition, isViewingLiveSong: boolean): string {
   if (!song) {
     return '<div class="mobile-arrangement"></div>'
   }
 
   const arrangement = song.variations[variation]?.arrangement || []
+  const currentPartIndex = isViewingLiveSong ? position.partIndex : -1
 
   const partsHTML = arrangement.map((partId, index) => {
     const part = song.parts.find(p => p.id === partId)
     const label = part?.label || partId
-    const isActive = index === position.partIndex
+    const isActive = index === currentPartIndex
     
     return `
       <button class="mobile-arrangement-item ${isActive ? 'active' : ''}" 
@@ -143,44 +136,48 @@ function buildArrangementBar(song: Song | null, variation: number, position: Sli
   `
 }
 
-function buildMobileTeleprompterContent(song: Song | null, variation: number, position: SlidePosition, displayMode: string): string {
-  // Handle special display modes
-  if (displayMode === 'black') {
-    return '<div class="mode-overlay black"><span>BLACK</span></div>'
-  }
-  if (displayMode === 'clear') {
-    return '<div class="mode-overlay clear"><span>CLEAR</span></div>'
-  }
-  if (displayMode === 'logo') {
-    return '<div class="mode-overlay logo"><span>LOGO</span></div>'
+function buildTeleprompterContent(song: Song | null, variation: number, position: SlidePosition, displayMode: string, isViewingLiveSong: boolean): string {
+  // Handle special display modes (only show for live song)
+  if (isViewingLiveSong) {
+    if (displayMode === 'black') {
+      return '<div class="mode-overlay black"><span>BLACK</span></div>'
+    }
+    if (displayMode === 'clear') {
+      return '<div class="mode-overlay clear"><span>CLEAR</span></div>'
+    }
+    if (displayMode === 'logo') {
+      return '<div class="mode-overlay logo"><span>LOGO</span></div>'
+    }
   }
 
   if (!song) {
     return '<div class="cm-empty">No song loaded</div>'
   }
 
-  // Get all slides for the arrangement
   const allSlides = getAllSlides(song, variation)
 
-  // Find current slide index in flat list
-  let currentFlatIndex = 0
-  for (let i = 0; i < allSlides.length; i++) {
-    if (allSlides[i].position.partIndex === position.partIndex &&
-        allSlides[i].position.slideIndex === position.slideIndex) {
-      currentFlatIndex = i
-      break
+  // Find current slide index in flat list (only highlight for live song)
+  let currentFlatIndex = isViewingLiveSong ? 0 : -1
+  if (isViewingLiveSong) {
+    for (let i = 0; i < allSlides.length; i++) {
+      if (allSlides[i].position.partIndex === position.partIndex &&
+          allSlides[i].position.slideIndex === position.slideIndex) {
+        currentFlatIndex = i
+        break
+      }
     }
   }
 
-  // Build all slides for smooth scrolling teleprompter
   const slidesHTML = allSlides.map((slide, index) => {
     let slideClass = 'tp-slide'
-    if (index < currentFlatIndex) {
-      slideClass += ' tp-past'
-    } else if (index === currentFlatIndex) {
-      slideClass += ' tp-current'
-    } else {
-      slideClass += ' tp-future'
+    if (isViewingLiveSong) {
+      if (index < currentFlatIndex) {
+        slideClass += ' tp-past'
+      } else if (index === currentFlatIndex) {
+        slideClass += ' tp-current'
+      } else {
+        slideClass += ' tp-future'
+      }
     }
 
     return `
@@ -202,9 +199,9 @@ function buildMobileTeleprompterContent(song: Song | null, variation: number, po
   `
 }
 
-function buildRealignButton(): string {
+function buildRealignButton(show: boolean): string {
   return `
-    <button class="mobile-realign-btn hidden" id="mobile-realign-btn" title="Realign with live">
+    <button class="mobile-realign-btn ${show ? '' : 'hidden'}" id="mobile-realign-btn" title="Realign with live">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
       <span>Sync</span>
     </button>
@@ -235,7 +232,7 @@ function buildSettingsPanel(fontSize: number): string {
 
 // ========== Event Handlers ==========
 
-export function setupMobileEventListeners(): void {
+function setupMobileEventListeners(): void {
   // Song selector
   const songSelect = document.getElementById('mobile-song-select') as HTMLSelectElement
   if (songSelect) {
@@ -269,12 +266,6 @@ export function setupMobileEventListeners(): void {
   document.querySelectorAll('.mobile-font-btn').forEach(btn => {
     btn.addEventListener('click', handleFontSizeChange)
   })
-
-  // Scroll detection for realign button
-  const teleprompter = document.querySelector('.mobile-teleprompter')
-  if (teleprompter) {
-    teleprompter.addEventListener('scroll', handleUserScroll)
-  }
 }
 
 async function handleSongChange(e: Event): Promise<void> {
@@ -296,12 +287,43 @@ async function handleSongChange(e: Event): Promise<void> {
     viewedSong = song
     viewedVariation = variationIndex
 
-    // Update the teleprompter content
-    updateMobileTeleprompterContent()
-    updateArrangementBar()
-    
-    // Show realign button if viewing different song than live
-    showRealignButtonIfNeeded()
+    // Show the sync button since we're viewing a different song
+    const realignBtn = document.getElementById('mobile-realign-btn')
+    if (realignBtn) {
+      realignBtn.classList.remove('hidden')
+    }
+
+    // Rebuild teleprompter content for this song
+    const teleprompter = document.querySelector('.mobile-teleprompter')
+    if (teleprompter) {
+      updateHTML(teleprompter, buildTeleprompterContent(song, variationIndex, state.livePosition, state.displayMode, false))
+    }
+
+    // Rebuild arrangement bar
+    const arrangementContainer = document.querySelector('.mobile-arrangement')
+    if (arrangementContainer) {
+      const arrangement = song.variations[variationIndex]?.arrangement || []
+      const partsHTML = arrangement.map((partId, index) => {
+        const part = song.parts.find(p => p.id === partId)
+        const label = part?.label || partId
+        return `
+          <button class="mobile-arrangement-item" 
+                  data-part-index="${index}"
+                  title="${label}">
+            ${partId}
+          </button>
+        `
+      }).join('')
+      arrangementContainer.innerHTML = partsHTML
+      
+      // Re-attach event listeners for arrangement items
+      document.querySelectorAll('.mobile-arrangement-item').forEach(item => {
+        item.addEventListener('click', handleArrangementClick)
+      })
+    }
+
+    // Scroll to top
+    scrollToSlideIndex(0)
   }
 }
 
@@ -309,11 +331,6 @@ function handleArrangementClick(e: Event): void {
   const btn = e.currentTarget as HTMLElement
   const partIndex = parseInt(btn.dataset.partIndex || '0', 10)
   
-  // Scroll to the first slide of that part
-  scrollToPartIndex(partIndex)
-}
-
-function scrollToPartIndex(partIndex: number): void {
   const currentSong = viewedSong || state.liveSong
   if (!currentSong) return
 
@@ -322,72 +339,25 @@ function scrollToPartIndex(partIndex: number): void {
   // Find the first slide with this part index
   const slideIndex = allSlides.findIndex(s => s.position.partIndex === partIndex)
   if (slideIndex >= 0) {
-    const slideEl = document.getElementById(`mobile-tp-slide-${slideIndex}`)
-    if (slideEl) {
-      slideEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      userHasScrolled = true
-      showRealignButton()
-    }
+    scrollToSlideIndex(slideIndex)
   }
-}
-
-function handleUserScroll(): void {
-  userHasScrolled = true
-  
-  // Clear existing timeout
-  if (scrollTimeout) {
-    clearTimeout(scrollTimeout)
-  }
-
-  // Show realign button after user stops scrolling
-  scrollTimeout = window.setTimeout(() => {
-    showRealignButtonIfNeeded()
-  }, 150)
 }
 
 function handleRealign(): void {
-  userHasScrolled = false
-  
-  // Reset viewed song to live song
-  viewedSong = state.liveSong
-  viewedVariation = state.liveVariation
-  
-  // Update song selector
-  const songSelect = document.getElementById('mobile-song-select') as HTMLSelectElement
-  if (songSelect && state.liveSong) {
-    songSelect.value = String(state.liveSong.id)
+  // Reset to live song
+  viewedSong = null
+  viewedVariation = 0
+
+  // Hide the sync button
+  const realignBtn = document.getElementById('mobile-realign-btn')
+  if (realignBtn) {
+    realignBtn.classList.add('hidden')
   }
 
-  // Update content and scroll to current position
-  updateMobileTeleprompterContent()
+  // Trigger an update to rebuild with live song
+  updateTeleprompterContent()
   updateArrangementBar()
-  scrollToCurrentSlide()
-  hideRealignButton()
-}
-
-function showRealignButton(): void {
-  const btn = document.getElementById('mobile-realign-btn')
-  if (btn) {
-    btn.classList.remove('hidden')
-  }
-}
-
-function hideRealignButton(): void {
-  const btn = document.getElementById('mobile-realign-btn')
-  if (btn) {
-    btn.classList.add('hidden')
-  }
-}
-
-function showRealignButtonIfNeeded(): void {
-  // Show if user scrolled OR viewing different song than live
-  const isViewingDifferentSong = viewedSong && state.liveSong && viewedSong.id !== state.liveSong.id
-  
-  if (userHasScrolled || isViewingDifferentSong) {
-    showRealignButton()
-  } else {
-    hideRealignButton()
-  }
+  updateSongSelector()
 }
 
 function toggleSettingsPanel(): void {
@@ -426,38 +396,31 @@ function handleFontSizeChange(e: Event): void {
   }
 }
 
-// ========== Update Functions ==========
+// ========== Update Functions (called from state subscription) ==========
 
-export function updateMobileTeleprompterContent(): void {
+function updateTeleprompterContent(): void {
   const { displayMode, liveSong, liveVariation, livePosition } = state
   const teleprompter = document.querySelector('.mobile-teleprompter')
   const existingScroll = teleprompter?.querySelector('.teleprompter-scroll')
 
   if (!teleprompter) return
 
-  // Use viewed song or live song
-  const currentSong = viewedSong || liveSong
-  const currentVariation = viewedSong ? viewedVariation : liveVariation
+  // Only update if viewing live song
+  const isViewingLiveSong = !viewedSong || (liveSong && viewedSong.id === liveSong.id)
+  if (!isViewingLiveSong) return
 
   // Check if song changed - need full rebuild
   const currentSongId = existingScroll?.getAttribute('data-song-id')
-  const newSongId = currentSong?.id?.toString() || ''
+  const newSongId = liveSong?.id?.toString() || ''
   const needsFullRebuild = !existingScroll || currentSongId !== newSongId || displayMode !== 'lyrics'
 
   if (needsFullRebuild) {
-    updateHTML(teleprompter, buildMobileTeleprompterContent(currentSong, currentVariation, livePosition, displayMode))
-    // After rebuild, scroll to current slide only if not user-scrolled
-    if (!userHasScrolled) {
-      scrollToCurrentSlide()
-    }
-    // Re-attach scroll listener
-    teleprompter.addEventListener('scroll', handleUserScroll)
-  } else if (!userHasScrolled) {
-    // Just update slide classes and scroll (only for live song)
-    if (!viewedSong || viewedSong.id === liveSong?.id) {
-      updateSlideClasses(livePosition)
-      scrollToCurrentSlide()
-    }
+    updateHTML(teleprompter, buildTeleprompterContent(liveSong, liveVariation, livePosition, displayMode, true))
+    scrollToCurrentSlide()
+  } else {
+    // Just update slide classes and scroll
+    updateSlideClasses(livePosition)
+    scrollToCurrentSlide()
   }
 }
 
@@ -467,21 +430,21 @@ function updateArrangementBar(): void {
   
   if (!arrangementContainer) return
 
-  const currentSong = viewedSong || liveSong
-  const currentVariation = viewedSong ? viewedVariation : liveVariation
+  // Only update if viewing live song
+  const isViewingLiveSong = !viewedSong || (liveSong && viewedSong.id === liveSong.id)
+  if (!isViewingLiveSong) return
 
-  if (!currentSong) {
+  if (!liveSong) {
     arrangementContainer.innerHTML = ''
     return
   }
 
-  const arrangement = currentSong.variations[currentVariation]?.arrangement || []
-  const currentPartIndex = viewedSong ? -1 : livePosition.partIndex // Only highlight if viewing live song
+  const arrangement = liveSong.variations[liveVariation]?.arrangement || []
 
   const partsHTML = arrangement.map((partId, index) => {
-    const part = currentSong.parts.find(p => p.id === partId)
+    const part = liveSong.parts.find(p => p.id === partId)
     const label = part?.label || partId
-    const isActive = index === currentPartIndex
+    const isActive = index === livePosition.partIndex
     
     return `
       <button class="mobile-arrangement-item ${isActive ? 'active' : ''}" 
@@ -501,12 +464,10 @@ function updateArrangementBar(): void {
 }
 
 function updateSlideClasses(position: SlidePosition): void {
-  const currentSong = viewedSong || state.liveSong
-  const currentVariation = viewedSong ? viewedVariation : state.liveVariation
-  
-  if (!currentSong) return
+  const { liveSong, liveVariation } = state
+  if (!liveSong) return
 
-  const allSlides = getAllSlides(currentSong, currentVariation)
+  const allSlides = getAllSlides(liveSong, liveVariation)
   
   // Find current slide index
   let currentFlatIndex = 0
@@ -551,7 +512,19 @@ function scrollToCurrentSlide(): void {
   })
 }
 
-export function updateMobileScreenStyles(): void {
+function scrollToSlideIndex(index: number): void {
+  requestAnimationFrame(() => {
+    const slide = document.getElementById(`mobile-tp-slide-${index}`)
+    if (slide) {
+      slide.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      })
+    }
+  })
+}
+
+function updateMobileScreenStyles(): void {
   const { confidenceMonitorSettings } = state
   const mobileFontSize = loadMobileFontSize()
   const screen = document.querySelector('.mobile-screen') as HTMLElement
@@ -566,83 +539,6 @@ export function updateMobileScreenStyles(): void {
     screen.style.setProperty('--cm-margin-left', `${confidenceMonitorSettings.marginLeft}rem`)
     screen.style.setProperty('--cm-margin-right', `${confidenceMonitorSettings.marginRight}rem`)
   }
-}
-
-// Reset state when switching songs from live
-export function resetMobileViewState(): void {
-  userHasScrolled = false
-  viewedSong = null
-  viewedVariation = 0
-}
-
-// ========== Main Render Function ==========
-
-/**
- * Render the mobile screen
- */
-export function renderMobileScreen(): void {
-  const app = document.getElementById('app')
-  if (!app) return
-
-  // Clean up previous subscriptions
-  cleanup()
-
-  // Initial render
-  app.innerHTML = buildMobileScreenHTML()
-  
-  // Setup event listeners
-  setupMobileEventListeners()
-
-  // Setup state subscriptions for live updates
-  setupMobileUpdates()
-
-  isInitialized = true
-}
-
-/**
- * Cleanup function for when component unmounts
- */
-function cleanup(): void {
-  if (unsubscribe) {
-    unsubscribe()
-    unsubscribe = null
-  }
-  if (scrollTimeout) {
-    clearTimeout(scrollTimeout)
-    scrollTimeout = null
-  }
-  isInitialized = false
-}
-
-/**
- * Setup efficient updates for mobile screen
- */
-function setupMobileUpdates(): void {
-  unsubscribe = subscribeToState((changedKeys: StateChangeKey[]) => {
-    if (!isInitialized) return
-
-    // Update teleprompter content when live state changes
-    if (changedKeys.includes('live') || changedKeys.includes('displayMode')) {
-      // If not viewing a different song, update to live song
-      if (!viewedSong || viewedSong.id === state.liveSong?.id) {
-        viewedSong = state.liveSong
-        viewedVariation = state.liveVariation
-      }
-      updateMobileTeleprompterContent()
-      updateArrangementBar()
-      showRealignButtonIfNeeded()
-    }
-
-    // Update song selector when schedule changes
-    if (changedKeys.includes('data')) {
-      updateSongSelector()
-    }
-
-    // Update styles when confidence monitor settings change
-    if (changedKeys.includes('confidenceMonitorSettings')) {
-      updateMobileScreenStyles()
-    }
-  })
 }
 
 function updateSongSelector(): void {
@@ -666,4 +562,64 @@ function updateSongSelector(): void {
     : '<option value="">No songs scheduled</option>'
 
   songSelect.innerHTML = options
+}
+
+// Reset state
+export function resetMobileViewState(): void {
+  viewedSong = null
+  viewedVariation = 0
+}
+
+// ========== Main Render Function ==========
+
+export function renderMobileScreen(): void {
+  const app = document.getElementById('app')
+  if (!app) return
+
+  // Clean up previous subscriptions
+  cleanup()
+
+  // Initial render
+  app.innerHTML = buildMobileScreenHTML()
+  
+  // Setup event listeners
+  setupMobileEventListeners()
+
+  // Setup state subscriptions for live updates
+  setupMobileUpdates()
+
+  // Initial scroll to current slide
+  scrollToCurrentSlide()
+
+  isInitialized = true
+}
+
+function cleanup(): void {
+  if (unsubscribe) {
+    unsubscribe()
+    unsubscribe = null
+  }
+  isInitialized = false
+}
+
+function setupMobileUpdates(): void {
+  unsubscribe = subscribeToState((changedKeys: StateChangeKey[]) => {
+    if (!isInitialized) return
+
+    // Update teleprompter content when live state changes
+    if (changedKeys.includes('live') || changedKeys.includes('displayMode')) {
+      updateTeleprompterContent()
+      updateArrangementBar()
+    }
+
+    // Update song selector when schedule changes
+    if (changedKeys.includes('data')) {
+      updateSongSelector()
+    }
+
+    // Update styles when confidence monitor settings change
+    if (changedKeys.includes('confidenceMonitorSettings')) {
+      updateMobileScreenStyles()
+    }
+  })
 }
