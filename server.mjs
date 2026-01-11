@@ -27,6 +27,7 @@ app.use(cors())
 app.use(express.json())
 app.use(express.static('dist'))
 app.use('/public', express.static('public'))
+app.use('/media', express.static('data/videos'))
 
 // ============ SETUP MODULES ============
 setupRoutes(app, __dirname)

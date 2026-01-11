@@ -62,89 +62,115 @@ export function updateVideoSource(video: HTMLVideoElement | null, src: string): 
   if (!video) return
 
   const currentSrc = video.src || video.getAttribute('src') || ''
-  // Compare just the path portion, ignore origin for relative URLs
   const currentPath = new URL(currentSrc, window.location.origin).pathname
   const newPath = new URL(src, window.location.origin).pathname
+
+  // Check if src actually changed
+  if (currentPath === newPath) return
 
   // Clean up any pending transition cleanup
   if (transitionTimeoutId) {
     clearTimeout(transitionTimeoutId)
     transitionTimeoutId = null
-    // If a transition was happening, the 'old' video might still be there or fading.
-    // For simplicity, we just proceed. A more robust solution would track the 'next' video element too.
   }
 
-  if (currentPath !== newPath) {
-    // Create a new video element for crossfade
-    const container = video.parentElement
-    if (!container) {
-      // Fallback: just swap the source
-      video.src = src
-      video.load()
-      video.play().catch(() => { })
-      return
-    }
+  const container = video.parentElement
+  if (!container) {
+    video.src = src
+    video.load()
+    video.play().catch(() => { })
+    return
+  }
 
-    // Check if there's ALREADY a 'next' video (transition in progress)
-    // If so, we reuse it or replace it, instead of stacking a 3rd video.
-    // We can identify it by zIndex=1 usually, but let's just query.
-    const videos = container.querySelectorAll('video')
-    if (videos.length > 1) {
-      // Transition already happening. The last one is the 'new' one trying to fade in.
-      // We can just hijacking it.
-      const incomingVideo = videos[videos.length - 1] as HTMLVideoElement
-      incomingVideo.src = src
-      incomingVideo.load()
-      incomingVideo.play().catch(() => { })
-      return
-    }
+  let baseVideo = video
+  let incomingVideo: HTMLVideoElement | null = null
+  const videos = container.querySelectorAll('video')
 
-    // Create new video with same classes
-    const newVideo = document.createElement('video')
-    newVideo.className = video.className
-    newVideo.src = src
-    newVideo.autoplay = true
-    newVideo.loop = true
-    newVideo.muted = true
-    newVideo.playsInline = true
-    newVideo.style.opacity = '0'
-    newVideo.style.transition = 'opacity 1s ease-in-out'
-    newVideo.style.position = 'absolute'
-    newVideo.style.inset = '0'
-    newVideo.style.width = '100%'
-    newVideo.style.height = '100%'
-    newVideo.style.objectFit = 'cover'
-    newVideo.style.zIndex = '1'
+  // IDENTIFY STATE
+  if (videos.length > 1) {
+    // Transition in progress.
+    // The first video is the 'base' (fading out or waiting to be removed).
+    // The last video is the 'incoming' (fading in or waiting to load).
+    baseVideo = videos[0] as HTMLVideoElement
+    incomingVideo = videos[videos.length - 1] as HTMLVideoElement
+  } else {
+    // No transition active. Create the incoming video.
+    incomingVideo = document.createElement('video')
+    incomingVideo.className = video.className
+    // Apply standard styles
+    incomingVideo.style.position = 'absolute'
+    incomingVideo.style.inset = '0'
+    incomingVideo.style.width = '100%'
+    incomingVideo.style.height = '100%'
+    incomingVideo.style.objectFit = 'cover'
+    incomingVideo.style.zIndex = '1'
 
-    // Ensure old video has proper positioning
-    video.style.transition = 'opacity 1s ease-in-out'
-    video.style.position = 'absolute'
-    video.style.inset = '0'
-    video.style.zIndex = '0'
+    incomingVideo.autoplay = true
+    incomingVideo.loop = true
+    incomingVideo.muted = true
+    incomingVideo.playsInline = true
 
-    container.appendChild(newVideo)
+    container.appendChild(incomingVideo)
 
-    // Start playing new video and fade in
-    newVideo.load()
-    newVideo.play().catch(() => { })
+    // Prepare base video for fade out
+    baseVideo.style.transition = 'opacity 1s ease-in-out'
+    baseVideo.style.position = 'absolute'
+    baseVideo.style.inset = '0'
+    baseVideo.style.zIndex = '0'
+  }
 
-    // Fade in new video after a brief delay to ensure it's ready
+  // RESET INCOMING VIDEO (Reusable Logic)
+  // Instantly hide and reset incoming video so it doesn't flash the wrong content
+  incomingVideo.style.transition = 'none'
+  incomingVideo.style.opacity = '0'
+  // Force reflow
+  void incomingVideo.offsetHeight
+
+  // Restore transition
+  incomingVideo.style.transition = 'opacity 1s ease-in-out'
+
+  // Ensure base video is visible (fades back in if we interrupted a fade-out)
+  requestAnimationFrame(() => {
+    baseVideo.style.opacity = '1'
+  })
+
+  // LOAD NEW CONTENT
+  incomingVideo.src = src
+  incomingVideo.load()
+  incomingVideo.play().catch(() => { })
+
+  // START ANIMATION WHEN READY
+  const startTransition = () => {
+    // Double check if we are still the latest request? 
+    // (If another request came in during 'canplay', timeoutId would be cleared, 
+    // but we might still fire. However, the NEXT request would have hijacked 'incomingVideo'
+    // and changed its src. So we might be animating the NEW src. Which is fine.)
+
     requestAnimationFrame(() => {
-      newVideo.style.opacity = '1'
-      video.style.opacity = '0'
+      if (incomingVideo) incomingVideo.style.opacity = '1'
+      if (baseVideo) baseVideo.style.opacity = '0'
     })
 
-    // After transition, remove old video and reset styles
-    transitionTimeoutId = window.setTimeout(() => {
-      if (container.contains(video)) {
-        video.remove()
-      }
+    // Schedule cleanup
+    // We clear any existing timeout first (though handled at top, safety first)
+    if (transitionTimeoutId) clearTimeout(transitionTimeoutId)
 
-      // The new video becomes the 'main' video
-      newVideo.style.transition = ''
-      newVideo.style.zIndex = ''
+    transitionTimeoutId = window.setTimeout(() => {
+      if (container.contains(baseVideo) && container.querySelectorAll('video').length > 1) {
+        baseVideo.remove()
+      }
+      if (incomingVideo) {
+        incomingVideo.style.transition = ''
+        incomingVideo.style.zIndex = ''
+      }
       transitionTimeoutId = null
-    }, 1100) // Slightly longer than transition
+    }, 1100)
+  }
+
+  if (incomingVideo.readyState >= 3) {
+    startTransition()
+  } else {
+    incomingVideo.addEventListener('canplay', startTransition, { once: true })
   }
 }
 

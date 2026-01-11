@@ -178,7 +178,7 @@ export async function fetchVideoAssets(): Promise<{ name: string; path: string; 
     return await response.json()
   } catch (error) {
     console.error('API Error - fetchVideoAssets:', error)
-    return [{ name: 'background.mp4', path: '/public/videos/background.mp4' }]
+    return [{ name: 'background.mp4', path: '/media/background.mp4' }]
   }
 }
 

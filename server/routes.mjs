@@ -327,22 +327,68 @@ export function setupRoutes(app, __dirname) {
         })
     })
 
-    // List available videos in the public/videos folder
+    // List available videos in the data/videos folder
     app.get('/api/videos', (req, res) => {
         try {
-            const videosPath = join(__dirname, 'public', 'videos')
+            const videosPath = join(__dirname, 'data', 'videos')
+            const thumbsPath = join(__dirname, 'data', 'videos', 'thumbnails')
+
+            // Ensure thumbnails dir exists
+            if (!fs.existsSync(thumbsPath)) {
+                fs.mkdirSync(thumbsPath, { recursive: true })
+            }
+
             if (!fs.existsSync(videosPath)) {
                 return res.json([])
             }
             const files = fs.readdirSync(videosPath)
             const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv']
+
             const videos = files
                 .filter(file => videoExtensions.some(ext => file.toLowerCase().endsWith(ext)))
-                .map(file => ({
-                    name: file,
-                    path: `/public/videos/${file}`,
-                    thumbnail: `/public/videos/${file}` // Video element will generate thumbnail
-                }))
+                .map(file => {
+                    const videoPath = `/media/${file}`
+                    // Default thumbnail path (server generated)
+                    const thumbFileName = `${file}.jpg`
+                    const thumbFilePath = join(thumbsPath, thumbFileName)
+                    const thumbUrl = `/media/thumbnails/${thumbFileName}`
+
+                    let thumbnail = videoPath // Default to video itself (frontend fallback)
+
+                    // Check if generated thumbnail exists
+                    if (fs.existsSync(thumbFilePath)) {
+                        thumbnail = thumbUrl
+                    } else {
+                        // Generate thumbnail asynchronously
+                        // We use a small timeout to avoid blocking the response loop too much,
+                        // or just fire and forget.
+                        // Ideally checking existence prevents re-generation.
+                        import('child_process').then(({ exec }) => {
+                            const input = join(videosPath, file)
+                            const output = thumbFilePath
+                            // ffmpeg -i input -ss 00:00:01 -vframes 1 output.jpg
+                            exec(`ffmpeg -i "${input}" -ss 00:00:01 -vframes 1 "${output}"`, (err) => {
+                                if (err) console.error(`Failed to generate thumbnail for ${file}:`, err)
+                            })
+                        })
+                    }
+
+                    // Also check for manual sidecars in the main folder (legacy/manual override)
+                    const extensions = ['.jpg', '.jpeg', '.png', '.webp']
+                    const basePath = join(videosPath, file)
+                    for (const ext of extensions) {
+                        if (fs.existsSync(basePath + ext)) {
+                            thumbnail = `/media/${file}${ext}` // manual override
+                            break
+                        }
+                    }
+
+                    return {
+                        name: file,
+                        path: videoPath,
+                        thumbnail: thumbnail
+                    }
+                })
             res.json(videos)
         } catch (error) {
             console.error('Failed to list videos:', error)

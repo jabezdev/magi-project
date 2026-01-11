@@ -76,8 +76,8 @@ export const DEFAULT_POSITION: SlidePosition = {
   slideIndex: 0
 }
 
-export const DEFAULT_BACKGROUND_VIDEO = '/public/videos/background.mp4'
-export const DEFAULT_LOGO_MEDIA = '/public/videos/logo.mp4'
+export const DEFAULT_BACKGROUND_VIDEO = '/media/background.mp4'
+export const DEFAULT_LOGO_MEDIA = '/media/logo.mp4'
 
 export const STORAGE_KEYS = {
   THEME: 'magi-theme',
