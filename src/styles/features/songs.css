@@ -56,7 +56,7 @@
     color: var(--text-muted);
     background: var(--bg-tertiary);
     padding: 0.1rem 0.4rem;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
 }
 
 /* Schedule: Flexible height with scroll */
@@ -201,9 +201,9 @@
     padding: 0.4rem 0.6rem;
     background: var(--bg-tertiary);
     border: 1px solid transparent;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: background 0.1s, border-color 0.1s;
     text-align: left;
     width: 100%;
 }
@@ -312,7 +312,7 @@
     color: var(--text-secondary);
     background: var(--bg-primary);
     padding: 0.15rem 0.4rem;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
     transition: all 0.15s;
     border: 1px solid var(--border-color);
@@ -330,7 +330,7 @@
     color: var(--text-primary);
     font-size: 0.7rem;
     padding: 0.1rem 0.25rem;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     max-width: 120px;
 }
 
@@ -363,9 +363,17 @@
 }
 
 @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.2); }
-    100% { transform: scale(1); }
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
+
+    100% {
+        opacity: 1;
+    }
 }
 
 /* Search Input */
@@ -374,7 +382,7 @@
     padding: 0.4rem 0.6rem;
     background: var(--bg-tertiary);
     border: 1px solid var(--border-color);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     color: var(--text-primary);
     font-size: 0.8rem;
     margin-bottom: 0.5rem;
@@ -395,7 +403,7 @@
     background: rgba(99, 102, 241, 0.25);
     color: var(--accent-primary);
     padding: 0 1px;
-    border-radius: 2px;
+    border-radius: var(--radius-sm);
 }
 
 .no-results {
@@ -413,7 +421,7 @@
     gap: 0.35rem;
     background: var(--bg-tertiary);
     border: 1px solid var(--border-color);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     padding: 0.25rem 0.5rem;
     color: var(--text-primary);
     font-size: 0.8rem;
@@ -462,22 +470,23 @@
 .schedule-dropdown-content {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+    border-radius: var(--radius-md);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     overflow: hidden;
     min-width: 300px;
     max-width: 400px;
-    animation: popup-in 0.15s ease-out;
+    animation: popup-in 0.1s ease-out;
 }
 
 @keyframes popup-in {
     from {
         opacity: 0;
-        transform: scale(0.95);
+        transform: translateY(5px);
     }
+
     to {
         opacity: 1;
-        transform: scale(1);
+        transform: translateY(0);
     }
 }
 
@@ -539,7 +548,7 @@
     padding: 0.4rem;
     background: transparent;
     border: 1px dashed var(--border-color);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     color: var(--text-secondary);
     font-size: 0.8rem;
     cursor: pointer;
@@ -606,21 +615,21 @@
     .song-item {
         padding: 0.3rem 0.5rem;
     }
-    
+
     .song-item .song-title {
         font-size: 0.75rem;
     }
-    
+
     .song-order {
         font-size: 0.6rem;
         width: 14px;
     }
-    
+
     .variation-badge {
         font-size: 0.6rem;
         padding: 0.1rem 0.3rem;
     }
-    
+
     .search-input {
         padding: 0.3rem 0.5rem;
         font-size: 0.75rem;
@@ -632,47 +641,47 @@
         padding: 0.25rem 0.4rem;
         gap: 0.3rem;
     }
-    
+
     .song-item .song-title {
         font-size: 0.7rem;
     }
-    
+
     .drag-handle {
         width: 14px;
         height: 14px;
     }
-    
+
     .drag-handle svg {
         width: 10px;
         height: 10px;
     }
-    
+
     .icon-btn-sm {
         width: 20px;
         height: 20px;
     }
-    
+
     .icon-btn-sm svg {
         width: 12px;
         height: 12px;
     }
-    
+
     /* Hide song count badges on small screens */
     .song-count {
         display: none;
     }
-    
+
     /* Schedule dropdown adjustments */
     .schedule-selector-btn {
         padding: 0.2rem 0.4rem;
         font-size: 0.7rem;
     }
-    
+
     .schedule-selector-btn svg {
         width: 12px;
         height: 12px;
     }
-    
+
     .current-schedule-name {
         max-width: 80px;
     }
@@ -683,49 +692,49 @@
         padding: 0.2rem 0.3rem;
         gap: 0.2rem;
     }
-    
+
     .song-item .song-title {
         font-size: 0.65rem;
     }
-    
+
     .song-order {
         display: none;
     }
-    
+
     .drag-handle {
         width: 12px;
         height: 12px;
     }
-    
+
     .variation-badge {
         max-width: 40px;
         font-size: 0.55rem;
         padding: 0.05rem 0.2rem;
     }
-    
+
     .search-input {
         padding: 0.25rem 0.4rem;
         font-size: 0.7rem;
         margin-bottom: 0.3rem;
     }
-    
+
     .current-schedule-name {
         max-width: 60px;
     }
-    
+
     .schedule-dropdown {
         left: 0.25rem;
         right: 0.25rem;
     }
-    
+
     .schedule-dropdown-item {
         padding: 0.4rem 0.5rem;
     }
-    
+
     .schedule-dropdown-item .schedule-name {
         font-size: 0.75rem;
     }
-    
+
     .schedule-dropdown-item .schedule-item-count {
         font-size: 0.6rem;
     }

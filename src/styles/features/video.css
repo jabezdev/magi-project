@@ -7,11 +7,22 @@
     padding: 0.25rem 0.5rem;
 }
 
+/* Ensure scrolling in the new backgrounds row */
+.backgrounds-row .cp-column-body,
+.backgrounds-row .video-section {
+    height: 100%;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
 .video-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.375rem;
-    padding: 0.25rem;
+    /* Retain small thumbnail size but fill width */
+    grid-template-columns: repeat(auto-fill, minmax(var(--video-thumb-size, 80px), 1fr));
+    align-content: start;
+    gap: 0.5rem;
+    padding: 0.5rem;
 }
 
 .video-thumb {
@@ -21,7 +32,7 @@
     padding: 0.125rem;
     background: var(--bg-tertiary);
     border: 2px solid transparent;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
     transition: all 0.15s;
     overflow: hidden;
@@ -31,15 +42,33 @@
     background: var(--bg-hover);
 }
 
-.video-thumb.selected {
-    border-color: var(--accent-primary);
+/* Preview Selection (Click) - Blue Outline */
+.video-thumb.preview-active {
+    box-shadow: 0 0 0 3px var(--accent-primary);
+    border-color: transparent;
+    /* Box shadow handles the outline */
+    z-index: 1;
 }
 
-.thumb-video {
+/* Live Selection (Double Click) - Red Outline */
+.video-thumb.live-active {
+    box-shadow: 0 0 0 3px var(--live-red);
+    border-color: transparent;
+    z-index: 1;
+}
+
+/* Both Active - Red Outer, Blue Inner */
+.video-thumb.live-active.preview-active {
+    box-shadow: 0 0 0 3px var(--live-red), 0 0 0 6px var(--accent-primary);
+    z-index: 2;
+    /* Ensure it stays on top */
+}
+
+.thumb-media {
     width: 100%;
     aspect-ratio: 16 / 9;
     object-fit: cover;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     background: #000;
     display: block;
 }

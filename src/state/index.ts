@@ -55,6 +55,11 @@ function loadSavedCurrentSchedule(): string {
   return localStorage.getItem(STORAGE_KEYS.CURRENT_SCHEDULE) || 'current'
 }
 
+// Load saved preview background
+function loadSavedPreviewBackground(): string {
+  return localStorage.getItem(STORAGE_KEYS.PREVIEW_BACKGROUND) || DEFAULT_BACKGROUND_VIDEO
+}
+
 // Application state singleton
 export const state: AppState = {
   previewSong: null,
@@ -64,6 +69,7 @@ export const state: AppState = {
   liveVariation: 0,
   livePosition: { ...DEFAULT_POSITION },
   backgroundVideo: DEFAULT_BACKGROUND_VIDEO,
+  previewBackground: loadSavedPreviewBackground(),
   availableVideos: [],
   logoMedia: DEFAULT_LOGO_MEDIA,
   displayMode: 'clear',
@@ -113,7 +119,7 @@ function getChangedGroups(updatedKeys: Array<keyof AppState>): StateChangeKey[] 
 
   const previewKeys: Array<keyof AppState> = ['previewSong', 'previewVariation', 'previewPosition']
   const liveKeys: Array<keyof AppState> = ['liveSong', 'liveVariation', 'livePosition']
-  const displayKeys: Array<keyof AppState> = ['displayMode', 'displaySettings', 'backgroundVideo', 'logoMedia']
+  const displayKeys: Array<keyof AppState> = ['displayMode', 'displaySettings', 'backgroundVideo', 'previewBackground', 'logoMedia']
   const dataKeys: Array<keyof AppState> = ['songs', 'schedule', 'lyricsData']
 
   if (previewKeys.some(k => updatedKeys.includes(k))) {
@@ -321,6 +327,11 @@ export async function loadSettingsFromServer(): Promise<void> {
 
     if (serverSettings.backgroundVideo) {
       updates.backgroundVideo = serverSettings.backgroundVideo
+    }
+
+    if (serverSettings.previewBackground) {
+      updates.previewBackground = serverSettings.previewBackground
+      localStorage.setItem(STORAGE_KEYS.PREVIEW_BACKGROUND, serverSettings.previewBackground)
     }
 
     // Apply all updates and notify subscribers

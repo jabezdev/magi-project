@@ -49,6 +49,11 @@ export function selectPreviewVariation(index: number): void {
 export function goLive(): void {
   if (!state.previewSong) return
 
+  // Transition background video if they differ
+  if (state.previewBackground && state.previewBackground !== state.backgroundVideo) {
+    selectLiveVideo(state.previewBackground)
+  }
+
   const newLiveState = {
     liveSong: state.previewSong,
     liveVariation: state.previewVariation,
@@ -83,10 +88,23 @@ export function goLiveWithPosition(position: SlidePosition): void {
 }
 
 /**
- * Select a background video
+ * Select a background video for PREVIEW
+ * Uses efficient update
+ */
+export function selectPreviewVideo(path: string): void {
+  updateState({ previewBackground: path }, true) // Skip full re-render
+  saveSettings({ previewBackground: path }).catch(console.error)
+}
+
+/**
+ * Select a background video for LIVE
  * Uses efficient update
  */
 export function selectVideo(path: string): void {
+  selectLiveVideo(path)
+}
+
+export function selectLiveVideo(path: string): void {
   socketService.updateVideo(path)
   updateState({ backgroundVideo: path }, true) // Skip full re-render
   // Save to server

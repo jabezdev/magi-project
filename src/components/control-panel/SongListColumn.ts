@@ -1,6 +1,6 @@
 import { renderScheduleList, initScheduleListListeners } from './ScheduleList'
 import { renderLibraryList, initLibraryListListeners } from './LibraryList'
-import { renderBackgroundsSection, initBackgroundsListeners } from './BackgroundsSection'
+
 import { renderStatusIndicator, initStatusIndicatorListener } from './StatusIndicator'
 import { openSettings } from '../settings'
 import { renderControlPanel } from '../../screens/ControlPanel'
@@ -15,8 +15,6 @@ export function renderSongListColumn(): string {
         ${renderScheduleList()}
         <div class="section-resizer" data-resize="schedule-library"></div>
         ${renderLibraryList()}
-        <div class="section-resizer" data-resize="library-backgrounds"></div>
-        ${renderBackgroundsSection()}
       </div>
       <div class="cp-column-footer" style="justify-content: space-between; align-items: center;">
         ${renderStatusIndicator()}
@@ -29,7 +27,6 @@ export function renderSongListColumn(): string {
 export function initSongListListeners(): void {
   initScheduleListListeners()
   initLibraryListListeners()
-  initBackgroundsListeners()
   initStatusIndicatorListener()
   initSectionResizers()
   applySavedLayoutSettings()
@@ -46,8 +43,6 @@ function applySavedLayoutSettings(): void {
   // Apply saved section heights
   const scheduleSection = document.querySelector('.schedule-section') as HTMLElement
   const librarySection = document.querySelector('.library-section') as HTMLElement
-  const backgroundsSection = document.querySelector('.video-section') as HTMLElement
-
   if (scheduleSection && layout.scheduleSectionHeight) {
     scheduleSection.style.height = `${layout.scheduleSectionHeight}px`
     scheduleSection.style.flex = 'none'
@@ -57,23 +52,17 @@ function applySavedLayoutSettings(): void {
     librarySection.style.height = `${layout.librarySectionHeight}px`
     librarySection.style.flex = 'none'
   }
-
-  if (backgroundsSection && layout.backgroundsSectionHeight) {
-    backgroundsSection.style.height = `${layout.backgroundsSectionHeight}px`
-    backgroundsSection.style.flex = 'none'
-  }
 }
 
 function saveCurrentLayout(): void {
   const scheduleSection = document.querySelector('.schedule-section') as HTMLElement
   const librarySection = document.querySelector('.library-section') as HTMLElement
-  const backgroundsSection = document.querySelector('.video-section') as HTMLElement
 
   saveLayoutSettings({
     ...state.layoutSettings,
     scheduleSectionHeight: scheduleSection?.offsetHeight || null,
     librarySectionHeight: librarySection?.offsetHeight || null,
-    backgroundsSectionHeight: backgroundsSection?.offsetHeight || null
+    // backgroundsSectionHeight: backgroundsSection?.offsetHeight || null // moved
   })
 }
 

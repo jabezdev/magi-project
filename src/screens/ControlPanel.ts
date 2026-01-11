@@ -18,9 +18,11 @@ import { toggleShortcutsModal } from '../components/ShortcutsModal'
 
 import {
   renderSongListColumn,
+  renderProjectionControlColumn,
   renderPreviewColumn,
-  renderLiveColumn,
+  renderLiveColumn, // Keep these if needed by internal updates, but we use ProjectionControl used generally
   initSongListListeners,
+  initProjectionControlListeners,
   initPreviewListeners,
   initLiveListeners,
   updateVideoSelection,
@@ -98,7 +100,7 @@ function setupEfficientUpdates(): void {
     }
 
     // Handle video selection change
-    if (changedKeys.includes('backgroundVideo')) {
+    if (changedKeys.includes('backgroundVideo') || changedKeys.includes('previewBackground')) {
       updateVideoSelection()
     }
   })
@@ -186,8 +188,7 @@ function buildControlPanelHTML(): string {
       <div class="cp-main">
         ${renderSongListColumn()}
         <div class="resizer" id="cp-resizer"></div>
-        ${renderPreviewColumn()}
-        ${renderLiveColumn()}
+        ${renderProjectionControlColumn()}
       </div>
     </div>
   `
@@ -198,10 +199,7 @@ function buildControlPanelHTML(): string {
  */
 function attachControlPanelListeners(): void {
   initSongListListeners()
-  initPreviewListeners()
-  initLiveListeners()
-
-
+  initProjectionControlListeners()
 
   // Settings button listener removed as it's now in SongListColumn
   initResizer()

@@ -32,9 +32,11 @@
   "currentSchedule": "2026-01-11",
   "layoutSettings": {
     "songsColumnWidth": null,
-    "scheduleSectionHeight": 204,
-    "librarySectionHeight": 345,
-    "backgroundsSectionHeight": 342
+    "scheduleSectionHeight": 220,
+    "librarySectionHeight": 391,
+    "backgroundsSectionHeight": 265,
+    "thumbnailSize": 150
   },
-  "backgroundVideo": "/media/red_bokeh.mp4"
+  "backgroundVideo": "/media/teal_squares.mp4",
+  "previewBackground": "/media/light_burst.mp4"
 }

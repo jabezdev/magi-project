@@ -1,7 +1,7 @@
 import { state } from '../state'
 import type { DisplaySettings } from '../types'
 import { getSlideText } from '../utils/slides'
-import { updateHTML, updateVideoSource } from '../utils/dom'
+import { updateHTML } from '../utils/dom'
 import { socketService } from '../services/socket'
 
 export function buildMainProjectionHTML(): string {
@@ -41,7 +41,8 @@ export function buildMainProjectionHTML(): string {
 
     return `
     <div class="projection-screen main-projection">
-      <video class="background-video" src="${backgroundVideo}" autoplay loop muted playsinline></video>
+      <video class="background-video bg-layer-1 active" src="${backgroundVideo}" autoplay loop muted playsinline></video>
+      <video class="background-video bg-layer-2" autoplay loop muted playsinline></video>
       <div class="content-overlay ${displayMode}">
         ${contentHTML}
       </div>
@@ -105,8 +106,47 @@ export function updateDisplayMode(): void {
 }
 
 export function updateBackgroundVideo(): void {
-    const video = document.querySelector('.background-video') as HTMLVideoElement
-    updateVideoSource(video, state.backgroundVideo)
+    const video1 = document.querySelector('.bg-layer-1') as HTMLVideoElement
+    const video2 = document.querySelector('.bg-layer-2') as HTMLVideoElement
+
+    if (!video1 || !video2) return
+
+    // Determine active and next
+    // The active one is the one visible.
+    const active = video1.classList.contains('active') ? video1 : video2
+    const next = video1.classList.contains('active') ? video2 : video1
+
+    // Check if we need to change anything
+    const currentSrc = next.getAttribute('src')
+    if (currentSrc === state.backgroundVideo) {
+        // If next is already loaded with this video, just ensure it plays and is active
+        // This might happen if we rapidly switch back and forth
+        if (!next.classList.contains('active')) {
+            next.classList.add('active')
+            active.classList.remove('active')
+        }
+        return
+    }
+
+    // Load new video into 'next'
+    next.setAttribute('src', state.backgroundVideo)
+    next.load()
+
+    const playAndFade = () => {
+        next.play().then(() => {
+            // Apply fade
+            next.classList.add('active')
+            active.classList.remove('active')
+        }).catch(err => {
+            console.error("BG Video play failed", err)
+        })
+    }
+
+    if (next.readyState >= 3) {
+        playAndFade()
+    } else {
+        next.addEventListener('canplay', playAndFade, { once: true })
+    }
 }
 
 export function updateLyricsDisplay(): void {

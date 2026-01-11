@@ -5,10 +5,11 @@
 import type { DisplaySettings, SlidePosition, ConfidenceMonitorSettings, LayoutSettings, LowerThirdsSettings } from '../types'
 
 export const DEFAULT_LAYOUT_SETTINGS: LayoutSettings = {
-  songsColumnWidth: null,
-  scheduleSectionHeight: null,
+  songsColumnWidth: 280,
+  scheduleSectionHeight: 300,
   librarySectionHeight: null,
-  backgroundsSectionHeight: null
+  backgroundsSectionHeight: 200,
+  thumbnailSize: 80
 }
 
 export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
@@ -85,5 +86,6 @@ export const STORAGE_KEYS = {
   CONFIDENCE_MONITOR_SETTINGS: 'magi-confidence-monitor-settings',
   CURRENT_SCHEDULE: 'magi-current-schedule',
   LAYOUT_SETTINGS: 'magi-layout-settings',
-  LOWER_THIRDS_SETTINGS: 'magi-lower-thirds-settings'
+  LOWER_THIRDS_SETTINGS: 'magi-lower-thirds-settings',
+  PREVIEW_BACKGROUND: 'magi-preview-background'
 } as const

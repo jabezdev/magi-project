@@ -15,6 +15,8 @@
   --warning: #f59e0b;
   --danger: #ef4444;
   --live-red: #dc2626;
+  --radius-sm: 2px;
+  --radius-md: 4px;
 }
 
 [data-theme="light"] {

@@ -94,6 +94,7 @@ export interface LayoutSettings {
   scheduleSectionHeight: number | null
   librarySectionHeight: number | null
   backgroundsSectionHeight: number | null
+  thumbnailSize?: number // Optional, defaults to 80
 }
 
 // Represents the current slide position
@@ -112,6 +113,7 @@ export interface AppState {
   liveVariation: number
   livePosition: SlidePosition
   // Display settings
+  previewBackground: string
   backgroundVideo: string
   availableVideos: VideoFile[]
   logoMedia: string

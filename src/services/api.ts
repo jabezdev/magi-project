@@ -17,6 +17,7 @@ export interface ServerSettings {
   currentSchedule?: string
   logoMedia?: string
   backgroundVideo?: string
+  previewBackground?: string
 }
 
 // Configuration
