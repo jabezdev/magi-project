@@ -31,12 +31,14 @@
   },
   "currentSchedule": "2026-01-11",
   "layoutSettings": {
-    "songsColumnWidth": null,
-    "scheduleSectionHeight": 220,
-    "librarySectionHeight": 391,
-    "backgroundsSectionHeight": 265,
-    "thumbnailSize": 150
+    "songsColumnWidth": 410,
+    "scheduleSectionHeight": 433,
+    "librarySectionHeight": null,
+    "backgroundsSectionHeight": 308,
+    "thumbnailSize": 170,
+    "monitorColumnWidth": 444
   },
-  "backgroundVideo": "/media/teal_squares.mp4",
-  "previewBackground": "/media/light_burst.mp4"
+  "backgroundVideo": "/media/red_bokeh.mp4",
+  "previewBackground": "/media/red_bokeh.mp4",
+  "logoMedia": "/media/logo.mp4"
 }

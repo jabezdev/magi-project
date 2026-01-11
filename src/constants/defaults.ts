@@ -5,7 +5,7 @@
 import type { DisplaySettings, SlidePosition, ConfidenceMonitorSettings, LayoutSettings, LowerThirdsSettings } from '../types'
 
 export const DEFAULT_LAYOUT_SETTINGS: LayoutSettings = {
-  songsColumnWidth: 280,
+  songsColumnWidth: 350,
   scheduleSectionHeight: 300,
   librarySectionHeight: null,
   backgroundsSectionHeight: 200,

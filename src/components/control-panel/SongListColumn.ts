@@ -48,20 +48,22 @@ function applySavedLayoutSettings(): void {
     scheduleSection.style.flex = 'none'
   }
 
-  if (librarySection && layout.librarySectionHeight) {
-    librarySection.style.height = `${layout.librarySectionHeight}px`
-    librarySection.style.flex = 'none'
+  // We DO NOT apply librarySection height. It should retain flex: 1 to fill remaining space
+  // This prevents blank spaces if window size changes or if total fixed heights < container height
+  if (librarySection) {
+    librarySection.style.height = ''
+    librarySection.style.flex = '1'
   }
 }
 
 function saveCurrentLayout(): void {
   const scheduleSection = document.querySelector('.schedule-section') as HTMLElement
-  const librarySection = document.querySelector('.library-section') as HTMLElement
 
   saveLayoutSettings({
     ...state.layoutSettings,
     scheduleSectionHeight: scheduleSection?.offsetHeight || null,
-    librarySectionHeight: librarySection?.offsetHeight || null,
+    // We intentionally don't save library height as fixed, so it can flex
+    librarySectionHeight: null,
     // backgroundsSectionHeight: backgroundsSection?.offsetHeight || null // moved
   })
 }
@@ -72,7 +74,6 @@ function initSectionResizers(): void {
   resizers.forEach(resizer => {
     let startY = 0
     let startHeightAbove = 0
-    let startHeightBelow = 0
     let sectionAbove: HTMLElement | null = null
     let sectionBelow: HTMLElement | null = null
 
@@ -85,7 +86,6 @@ function initSectionResizers(): void {
 
       if (sectionAbove && sectionBelow) {
         startHeightAbove = sectionAbove.offsetHeight
-        startHeightBelow = sectionBelow.offsetHeight
         resizer.classList.add('resizing')
         document.addEventListener('mousemove', onMouseMove)
         document.addEventListener('mouseup', onMouseUp)
@@ -97,12 +97,13 @@ function initSectionResizers(): void {
 
       const deltaY = e.clientY - startY
       const newHeightAbove = Math.max(60, startHeightAbove + deltaY)
-      const newHeightBelow = Math.max(60, startHeightBelow - deltaY)
 
       sectionAbove.style.height = `${newHeightAbove}px`
       sectionAbove.style.flex = 'none'
-      sectionBelow.style.height = `${newHeightBelow}px`
-      sectionBelow.style.flex = 'none'
+
+      // We don't set sectionBelow height. Let it flex.
+      // sectionBelow.style.height = `${newHeightBelow}px`
+      sectionBelow.style.flex = '1'
     }
 
     const onMouseUp = () => {

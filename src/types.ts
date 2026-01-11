@@ -95,6 +95,7 @@ export interface LayoutSettings {
   librarySectionHeight: number | null
   backgroundsSectionHeight: number | null
   thumbnailSize?: number // Optional, defaults to 80
+  monitorColumnWidth?: number | null // Optional, defaults to 300
 }
 
 // Represents the current slide position

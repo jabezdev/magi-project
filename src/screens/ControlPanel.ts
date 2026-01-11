@@ -5,7 +5,7 @@
  * Uses efficient DOM updates for slide selection changes.
  */
 
-import { state, subscribeToState, StateChangeKey } from '../state'
+import { state, subscribeToState, StateChangeKey, saveLayoutSettings } from '../state'
 import {
   goLive,
   setDisplayMode,
@@ -19,10 +19,12 @@ import { toggleShortcutsModal } from '../components/ShortcutsModal'
 import {
   renderSongListColumn,
   renderProjectionControlColumn,
+  renderOutputMonitorColumn,
   renderPreviewColumn,
   renderLiveColumn, // Keep these if needed by internal updates, but we use ProjectionControl used generally
   initSongListListeners,
   initProjectionControlListeners,
+  initOutputMonitorListeners,
   initPreviewListeners,
   initLiveListeners,
   updateVideoSelection,
@@ -39,7 +41,8 @@ import {
 let isInitialized = false
 let unsubscribe: (() => void) | null = null
 // Track layout state
-let activeSongListWidth = 280
+let activeSongListWidth = state.layoutSettings.songsColumnWidth || 350
+let activeMonitorColumnWidth = state.layoutSettings.monitorColumnWidth || 300
 
 /**
  * Cleanup control panel resources
@@ -176,7 +179,14 @@ export function renderControlPanel(): void {
   // Restore layout
   const cpMain = document.querySelector('.cp-main') as HTMLElement
   if (cpMain) {
+    if (state.layoutSettings.songsColumnWidth) {
+      activeSongListWidth = state.layoutSettings.songsColumnWidth
+    }
+    if (state.layoutSettings.monitorColumnWidth) {
+      activeMonitorColumnWidth = state.layoutSettings.monitorColumnWidth
+    }
     cpMain.style.setProperty('--song-list-width', `${activeSongListWidth}px`)
+    cpMain.style.setProperty('--monitor-column-width', `${activeMonitorColumnWidth}px`)
   }
 
   isInitialized = true
@@ -189,6 +199,8 @@ function buildControlPanelHTML(): string {
         ${renderSongListColumn()}
         <div class="resizer" id="cp-resizer"></div>
         ${renderProjectionControlColumn()}
+        <div class="resizer" id="cp-resizer-monitors"></div>
+        ${renderOutputMonitorColumn()}
       </div>
     </div>
   `
@@ -203,6 +215,8 @@ function attachControlPanelListeners(): void {
 
   // Settings button listener removed as it's now in SongListColumn
   initResizer()
+  initMonitorResizer()
+  initOutputMonitorListeners()
 }
 
 function initResizer(): void {
@@ -224,9 +238,9 @@ function initResizer(): void {
     if (!isResizing) return
 
     // Calculate new width relative to cpMain left edge
-    // But simpler: just use e.clientX if sidebar is at left edge.
-    // Let's assume CP is full width.
-    const newWidth = Math.max(200, Math.min(600, e.clientX))
+    // Max width is 50% of window width to ensure space for other columns
+    const max = window.innerWidth * 0.5
+    const newWidth = Math.max(200, Math.min(max, e.clientX))
     activeSongListWidth = newWidth
     cpMain.style.setProperty('--song-list-width', `${newWidth}px`)
   })
@@ -237,6 +251,69 @@ function initResizer(): void {
       resizer.classList.remove('resizing')
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
+
+      // Save the new width
+      saveLayoutSettings({
+        ...state.layoutSettings,
+        songsColumnWidth: activeSongListWidth
+      })
+    }
+  })
+}
+
+
+function initMonitorResizer(): void {
+  const resizer = document.getElementById('cp-resizer-monitors')
+  const cpMain = document.querySelector('.cp-main') as HTMLElement
+
+  if (!resizer || !cpMain) return
+
+  let isResizing = false
+
+  resizer.addEventListener('mousedown', () => {
+    isResizing = true
+    resizer.classList.add('resizing')
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  })
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isResizing) return
+
+    // Monitor column is on the right. Width = WindowWidth - MouseX
+    // Calculate max width based on viewport height to prevent overflow
+    // Total height = height(16:9) + height(4:3) + height(16:9) + gaps
+    // H = W*(9/16) + W*(3/4) + W*(9/16) = W*(1.875)
+    // H_vp > H + Fixed (approx 200px for headers/padding)
+    // W < (H_vp - 200) / 1.875
+    const FIXED_V_SPACE = 120
+    const availHeight = window.innerHeight - FIXED_V_SPACE
+    const calcMaxWidth = Math.floor(Math.max(200, availHeight / 1.875))
+
+    // Also limit by window width (allow up to 50% of screen)
+    const maxWidth = Math.min(calcMaxWidth, window.innerWidth * 0.5)
+
+    const newWidth = Math.max(200, Math.min(maxWidth, window.innerWidth - e.clientX))
+
+    activeMonitorColumnWidth = newWidth
+    cpMain.style.setProperty('--monitor-column-width', `${newWidth}px`)
+  })
+
+  document.addEventListener('mouseup', () => {
+    if (isResizing) {
+      isResizing = false
+      resizer.classList.remove('resizing')
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+
+      // Save the new width
+      saveLayoutSettings({
+        ...state.layoutSettings,
+        monitorColumnWidth: activeMonitorColumnWidth
+      })
+
+      // Trigger resize for iframes in OutputMonitorColumn
+      initOutputMonitorListeners()
     }
   })
 }

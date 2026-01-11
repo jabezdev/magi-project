@@ -1,7 +1,8 @@
 /* ========== SONGS COLUMN ========== */
 .cp-songs {
     min-width: 200px;
-    max-width: 400px;
+    height: 100%;
+    /* Ensure full height */
 }
 
 .cp-songs .cp-column-body {
@@ -11,6 +12,8 @@
     overflow: hidden;
     padding: 0;
     gap: 0;
+    flex: 1;
+    /* Ensure body takes available space */
 }
 
 .cp-section {
@@ -106,6 +109,8 @@
     flex: 1;
     padding: 0.5rem;
     overflow: hidden;
+    height: 100%;
+    /* Ensure body fills section */
 }
 
 .library-section .song-list {

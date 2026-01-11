@@ -4,3 +4,4 @@ export * from './PreviewColumn'
 export * from './LiveColumn'
 
 export * from './ProjectionControlColumn'
+export * from './OutputMonitorColumn'
