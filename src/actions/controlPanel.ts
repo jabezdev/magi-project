@@ -16,10 +16,11 @@ import { saveSettings } from '../services/api'
  * Requires full re-render since song content changes
  */
 export function selectSongForPreview(song: Song, variationIndex = 0): void {
-  state.previewSong = song
-  state.previewVariation = variationIndex
-  state.previewPosition = { partIndex: 0, slideIndex: 0 }
-  updateState({})
+  updateState({
+    previewSong: song,
+    previewVariation: variationIndex,
+    previewPosition: { partIndex: 0, slideIndex: 0 }
+  }, true) // Skip full re-render
 }
 
 /**
@@ -27,7 +28,6 @@ export function selectSongForPreview(song: Song, variationIndex = 0): void {
  * Uses efficient update - only slide selection changes
  */
 export function selectPreviewPosition(position: SlidePosition): void {
-  state.previewPosition = position
   updateState({ previewPosition: position }, true) // Skip full re-render
 }
 
@@ -36,9 +36,10 @@ export function selectPreviewPosition(position: SlidePosition): void {
  * Requires full re-render since arrangement changes
  */
 export function selectPreviewVariation(index: number): void {
-  state.previewVariation = index
-  state.previewPosition = { partIndex: 0, slideIndex: 0 }
-  updateState({})
+  updateState({
+    previewVariation: index,
+    previewPosition: { partIndex: 0, slideIndex: 0 }
+  }, true) // Skip full re-render
 }
 
 /**
@@ -48,19 +49,21 @@ export function selectPreviewVariation(index: number): void {
 export function goLive(): void {
   if (!state.previewSong) return
 
-  state.liveSong = state.previewSong
-  state.liveVariation = state.previewVariation
-  state.livePosition = { ...state.previewPosition }
-  state.displayMode = 'lyrics'
+  const newLiveState = {
+    liveSong: state.previewSong,
+    liveVariation: state.previewVariation,
+    livePosition: { ...state.previewPosition },
+    displayMode: 'lyrics' as DisplayMode
+  }
 
   socketService.updateSlide({
-    song: state.liveSong,
-    variation: state.liveVariation,
-    position: state.livePosition
+    song: newLiveState.liveSong,
+    variation: newLiveState.liveVariation,
+    position: newLiveState.livePosition
   })
   socketService.updateDisplayMode('lyrics')
 
-  updateState({})
+  updateState(newLiveState, true) // Skip full re-render
 }
 
 /**
@@ -70,11 +73,10 @@ export function goLive(): void {
 export function goLiveWithPosition(position: SlidePosition): void {
   if (!state.liveSong) return
 
-  state.livePosition = position
   socketService.updateSlide({
     song: state.liveSong,
     variation: state.liveVariation,
-    position: state.livePosition
+    position: position
   })
 
   updateState({ livePosition: position }, true) // Skip full re-render
@@ -85,7 +87,6 @@ export function goLiveWithPosition(position: SlidePosition): void {
  * Uses efficient update
  */
 export function selectVideo(path: string): void {
-  state.backgroundVideo = path
   socketService.updateVideo(path)
   updateState({ backgroundVideo: path }, true) // Skip full re-render
   // Save to server
@@ -97,7 +98,6 @@ export function selectVideo(path: string): void {
  * Uses efficient update
  */
 export function setDisplayMode(mode: DisplayMode): void {
-  state.displayMode = mode
   socketService.updateDisplayMode(mode)
   updateState({ displayMode: mode }, true) // Skip full re-render
 }

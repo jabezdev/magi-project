@@ -2,7 +2,22 @@
  * API Service Layer
  */
 
-import type { Song, Schedule, SongSummary } from '../types'
+import type { Song, Schedule, SongSummary, DisplaySettings, ConfidenceMonitorSettings, LayoutSettings } from '../types'
+
+// ... (existing code, relying on smart replacement to keep lines I don't touch) ...
+
+/**
+ * Settings interface for server persistence
+ */
+export interface ServerSettings {
+  theme?: 'light' | 'dark'
+  displaySettings?: DisplaySettings
+  confidenceMonitorSettings?: ConfidenceMonitorSettings
+  layoutSettings?: LayoutSettings
+  currentSchedule?: string
+  logoMedia?: string
+  backgroundVideo?: string
+}
 
 // Configuration
 const API_CONFIG = {
@@ -184,17 +199,6 @@ export async function fetchConfig(): Promise<{ appTitle: string; screens: string
   }
 }
 
-/**
- * Settings interface for server persistence
- */
-export interface ServerSettings {
-  theme?: 'light' | 'dark'
-  displaySettings?: Record<string, unknown>
-  confidenceMonitorSettings?: Record<string, unknown>
-  currentSchedule?: string
-  logoMedia?: string
-  backgroundVideo?: string
-}
 
 /**
  * Fetch settings from server

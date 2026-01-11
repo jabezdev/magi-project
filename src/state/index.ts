@@ -5,7 +5,7 @@
  * Components can subscribe to specific state changes instead of full re-renders.
  */
 
-import type { AppState, DisplaySettings, ConfidenceMonitorSettings, LayoutSettings } from '../types'
+import type { AppState, DisplaySettings, ConfidenceMonitorSettings, LayoutSettings, Song } from '../types'
 import { DEFAULT_DISPLAY_SETTINGS, DEFAULT_CONFIDENCE_MONITOR_SETTINGS, DEFAULT_LAYOUT_SETTINGS, DEFAULT_POSITION, DEFAULT_BACKGROUND_VIDEO, DEFAULT_LOGO_MEDIA, STORAGE_KEYS } from '../constants/defaults'
 import { socketService } from '../services/socket'
 import { saveSettings as saveSettingsToServer, fetchSettings } from '../services/api'
@@ -163,10 +163,46 @@ function notifySubscribers(): void {
  * @param skipRender - If true, skip the full re-render (use for granular updates)
  */
 export function updateState(newState: Partial<AppState>, skipRender = false): void {
-  const changedKeys = Object.keys(newState) as Array<keyof AppState>
+  const effectiveUpdates: Partial<AppState> = {}
+  const changedKeys: Array<keyof AppState> = []
+
+  // Filter out unchanged values to prevent unnecessary triggers
+  for (const [key, value] of Object.entries(newState)) {
+    const k = key as keyof AppState
+    const currentValue = state[k]
+
+    // Custom equality checks
+    let hasChanged = false
+
+    // Check for Songs (compare by ID)
+    if ((k === 'liveSong' || k === 'previewSong') && value && currentValue) {
+      const newSong = value as Song
+      const oldSong = currentValue as Song
+      if (newSong.id !== oldSong.id) {
+        hasChanged = true
+      }
+    }
+    // Check for Layout settings (deep compare simplified)
+    else if (k === 'layoutSettings' && value && currentValue) {
+      if (JSON.stringify(value) !== JSON.stringify(currentValue)) {
+        hasChanged = true
+      }
+    }
+    // Strict equality for primitives and references
+    else if (value !== currentValue) {
+      hasChanged = true
+    }
+
+    if (hasChanged) {
+      effectiveUpdates[k] = value as any
+      changedKeys.push(k)
+    }
+  }
+
+  if (changedKeys.length === 0) return
 
   // Apply state changes
-  Object.assign(state, newState)
+  Object.assign(state, effectiveUpdates)
 
   // Track changes for batched notification
   const groups = getChangedGroups(changedKeys)
@@ -248,45 +284,45 @@ export function getSavedCurrentSchedule(): string {
 export async function loadSettingsFromServer(): Promise<void> {
   try {
     const serverSettings = await fetchSettings()
-    
+
     const updates: Partial<AppState> = {}
-    
+
     if (serverSettings.theme) {
       updates.theme = serverSettings.theme
       localStorage.setItem(STORAGE_KEYS.THEME, serverSettings.theme)
       document.body.setAttribute('data-theme', serverSettings.theme)
     }
-    
+
     if (serverSettings.displaySettings) {
       const merged = { ...DEFAULT_DISPLAY_SETTINGS, ...serverSettings.displaySettings } as DisplaySettings
       updates.displaySettings = merged
       localStorage.setItem(STORAGE_KEYS.DISPLAY_SETTINGS, JSON.stringify(merged))
     }
-    
+
     if (serverSettings.confidenceMonitorSettings) {
       const merged = { ...DEFAULT_CONFIDENCE_MONITOR_SETTINGS, ...serverSettings.confidenceMonitorSettings } as ConfidenceMonitorSettings
       updates.confidenceMonitorSettings = merged
       localStorage.setItem(STORAGE_KEYS.CONFIDENCE_MONITOR_SETTINGS, JSON.stringify(merged))
     }
-    
+
     if (serverSettings.layoutSettings) {
       const merged = { ...DEFAULT_LAYOUT_SETTINGS, ...serverSettings.layoutSettings } as LayoutSettings
       updates.layoutSettings = merged
       localStorage.setItem(STORAGE_KEYS.LAYOUT_SETTINGS, JSON.stringify(merged))
     }
-    
+
     if (serverSettings.currentSchedule) {
       localStorage.setItem(STORAGE_KEYS.CURRENT_SCHEDULE, serverSettings.currentSchedule)
     }
-    
+
     if (serverSettings.logoMedia) {
       updates.logoMedia = serverSettings.logoMedia
     }
-    
+
     if (serverSettings.backgroundVideo) {
       updates.backgroundVideo = serverSettings.backgroundVideo
     }
-    
+
     // Apply all updates and notify subscribers
     if (Object.keys(updates).length > 0) {
       updateState(updates)
@@ -298,5 +334,5 @@ export async function loadSettingsFromServer(): Promise<void> {
 
 // Setup socket listener for state updates
 socketService.onStateUpdate((newState) => {
-  updateState(newState)
+  updateState(newState, true) // Skip full re-render for socket updates too
 })

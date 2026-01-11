@@ -28,7 +28,9 @@ import {
   updatePreviewNavButtons,
   updateLiveSlideSelection,
   updateLiveNavButtons,
-  updateDisplayModeButtons
+  updateDisplayModeButtons,
+  updateSongSelectionUI,
+  updateLiveStatusUI
 } from '../components/control-panel'
 
 // Track initialization state
@@ -76,10 +78,18 @@ function setupEfficientUpdates(): void {
       updatePreviewNavButtons()
     }
 
+    if (changedKeys.includes('previewSong') || changedKeys.includes('previewVariation')) {
+      handlePreviewChange()
+    }
+
     // Handle live changes efficiently
     if (changedKeys.includes('livePosition')) {
       updateLiveSlideSelection()
       updateLiveNavButtons()
+    }
+
+    if (changedKeys.includes('liveSong') || changedKeys.includes('liveVariation')) {
+      handleLiveChange()
     }
 
     // Handle display mode changes
@@ -92,6 +102,53 @@ function setupEfficientUpdates(): void {
       updateVideoSelection()
     }
   })
+}
+
+function handlePreviewChange(): void {
+  // 1. Update selection in song lists (schedule & library)
+  updateSongSelectionUI()
+
+  // 2. Re-render ONLY the preview column
+  const previewContainer = document.querySelector('.cp-preview')
+  if (previewContainer) {
+    const tempContainer = document.createElement('div')
+    tempContainer.innerHTML = renderPreviewColumn()
+    const newPreview = tempContainer.firstElementChild
+
+    if (newPreview) {
+      previewContainer.replaceWith(newPreview)
+      // Re-attach listeners for the new DOM
+      initPreviewListeners()
+      // We need to make sure we also update the "Live" badges in the new preview if it matches live song
+      updatePreviewSlideSelection()
+    }
+  }
+}
+
+function handleLiveChange(): void {
+  // 1. Update live status in song lists
+  updateLiveStatusUI()
+
+  // 2. Update live status in preview column (if matching)
+  updatePreviewSlideSelection()
+
+  // 3. Re-render live column if needed (usually live column just shows static text or current slide)
+  // For now, simpler to just re-render live column content if we had one, but currently LiveColumn is simple.
+  // Let's assume RenderLiveColumn is cheap or we can just update it.
+  // Actually, LiveColumn usually needs re-render if the song changes to show the new song title/etc.
+  const liveContainer = document.querySelector('.cp-live')
+  if (liveContainer) {
+    const tempContainer = document.createElement('div')
+    tempContainer.innerHTML = renderLiveColumn()
+    const newLive = tempContainer.firstElementChild
+
+    if (newLive) {
+      liveContainer.replaceWith(newLive)
+      initLiveListeners()
+      // Restore proper slide selection
+      updateLiveSlideSelection()
+    }
+  }
 }
 
 /**

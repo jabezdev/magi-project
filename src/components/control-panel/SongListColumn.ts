@@ -42,22 +42,22 @@ export function initSongListListeners(): void {
 
 function applySavedLayoutSettings(): void {
   const layout = state.layoutSettings
-  
+
   // Apply saved section heights
   const scheduleSection = document.querySelector('.schedule-section') as HTMLElement
   const librarySection = document.querySelector('.library-section') as HTMLElement
   const backgroundsSection = document.querySelector('.video-section') as HTMLElement
-  
+
   if (scheduleSection && layout.scheduleSectionHeight) {
     scheduleSection.style.height = `${layout.scheduleSectionHeight}px`
     scheduleSection.style.flex = 'none'
   }
-  
+
   if (librarySection && layout.librarySectionHeight) {
     librarySection.style.height = `${layout.librarySectionHeight}px`
     librarySection.style.flex = 'none'
   }
-  
+
   if (backgroundsSection && layout.backgroundsSectionHeight) {
     backgroundsSection.style.height = `${layout.backgroundsSectionHeight}px`
     backgroundsSection.style.flex = 'none'
@@ -68,7 +68,7 @@ function saveCurrentLayout(): void {
   const scheduleSection = document.querySelector('.schedule-section') as HTMLElement
   const librarySection = document.querySelector('.library-section') as HTMLElement
   const backgroundsSection = document.querySelector('.video-section') as HTMLElement
-  
+
   saveLayoutSettings({
     ...state.layoutSettings,
     scheduleSectionHeight: scheduleSection?.offsetHeight || null,
@@ -79,21 +79,21 @@ function saveCurrentLayout(): void {
 
 function initSectionResizers(): void {
   const resizers = document.querySelectorAll('.section-resizer')
-  
+
   resizers.forEach(resizer => {
     let startY = 0
     let startHeightAbove = 0
     let startHeightBelow = 0
     let sectionAbove: HTMLElement | null = null
     let sectionBelow: HTMLElement | null = null
-    
+
     const onMouseDown = (e: MouseEvent) => {
       e.preventDefault()
       startY = e.clientY
-      
+
       sectionAbove = resizer.previousElementSibling as HTMLElement
       sectionBelow = resizer.nextElementSibling as HTMLElement
-      
+
       if (sectionAbove && sectionBelow) {
         startHeightAbove = sectionAbove.offsetHeight
         startHeightBelow = sectionBelow.offsetHeight
@@ -102,20 +102,20 @@ function initSectionResizers(): void {
         document.addEventListener('mouseup', onMouseUp)
       }
     }
-    
+
     const onMouseMove = (e: MouseEvent) => {
       if (!sectionAbove || !sectionBelow) return
-      
+
       const deltaY = e.clientY - startY
       const newHeightAbove = Math.max(60, startHeightAbove + deltaY)
       const newHeightBelow = Math.max(60, startHeightBelow - deltaY)
-      
+
       sectionAbove.style.height = `${newHeightAbove}px`
       sectionAbove.style.flex = 'none'
       sectionBelow.style.height = `${newHeightBelow}px`
       sectionBelow.style.flex = 'none'
     }
-    
+
     const onMouseUp = () => {
       resizer.classList.remove('resizing')
       document.removeEventListener('mousemove', onMouseMove)
@@ -123,7 +123,42 @@ function initSectionResizers(): void {
       // Save layout after resize is complete
       saveCurrentLayout()
     }
-    
+
     resizer.addEventListener('mousedown', onMouseDown as EventListener)
+  })
+}
+
+/**
+ * Update the selection state in the song lists without full re-render
+ */
+export function updateSongSelectionUI(): void {
+  const selectedId = state.previewSong?.id
+
+  // Update both schedule and library lists
+  document.querySelectorAll('.song-item').forEach(el => {
+    const id = parseInt(el.getAttribute('data-song-id') || '0')
+    if (id === selectedId) {
+      el.classList.add('selected')
+      // Ensure specific variation is highlighted if applicable (only for schedule items handling it strictly)
+      // But mainly just highlighting the song is enough for now or matching specifically.
+    } else {
+      el.classList.remove('selected')
+    }
+  })
+}
+
+/**
+ * Update the live state in the song lists without full re-render
+ */
+export function updateLiveStatusUI(): void {
+  const liveId = state.liveSong?.id
+
+  document.querySelectorAll('.song-item').forEach(el => {
+    const id = parseInt(el.getAttribute('data-song-id') || '0')
+    if (id === liveId) {
+      el.classList.add('live')
+    } else {
+      el.classList.remove('live')
+    }
   })
 }
