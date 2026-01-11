@@ -4,7 +4,7 @@ import { selectVideo } from '../../actions/controlPanel'
 import { toggleClass } from '../../utils/dom'
 
 export function renderBackgroundsSection(): string {
-    return `
+  return `
     <div class="video-section">
       <div class="cp-column-header">
         <div class="header-left">
@@ -15,7 +15,7 @@ export function renderBackgroundsSection(): string {
       <div class="video-grid">
         ${state.availableVideos.map(video => `
           <button class="video-thumb ${state.backgroundVideo === video.path ? 'selected' : ''}" data-video-path="${video.path}" title="${video.name}">
-            <video src="${video.path}" muted preload="metadata" class="thumb-video"></video>
+            <video data-src="${video.path}" muted preload="none" class="thumb-video"></video>
             <span class="video-name">${video.name.replace(/\.[^.]+$/, '')}</span>
           </button>
         `).join('')}
@@ -26,27 +26,48 @@ export function renderBackgroundsSection(): string {
 }
 
 export function initBackgroundsListeners(): void {
-    // Video selection - load thumbnail on hover
-    document.querySelectorAll('.video-thumb').forEach(btn => {
-        const video = btn.querySelector('.thumb-video') as HTMLVideoElement
-        if (video) {
-            // Seek to 1 second for thumbnail
-            video.currentTime = 1
-        }
-
-        btn.addEventListener('click', () => {
-            const path = btn.getAttribute('data-video-path') || ''
-            selectVideo(path)
-        })
+  // Video selection
+  document.querySelectorAll('.video-thumb').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const path = btn.getAttribute('data-video-path') || ''
+      selectVideo(path)
     })
+  })
+
+  // Lazy load videos using IntersectionObserver
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const video = entry.target as HTMLVideoElement
+        if (video.dataset.src) {
+          video.src = video.dataset.src
+          // Seek to 1s for thumbnail after metadata loads
+          video.addEventListener('loadedmetadata', () => {
+            video.currentTime = 1
+          }, { once: true })
+          video.load()
+          // Cleanup
+          video.removeAttribute('data-src')
+          observer.unobserve(video)
+        }
+      }
+    })
+  }, {
+    root: document.querySelector('.cp-songs'), // Use the scrolling container as root if possible, or null for viewport
+    rootMargin: '100px' // Preload slightly before appearing
+  })
+
+  document.querySelectorAll('.thumb-video').forEach(video => {
+    observer.observe(video)
+  })
 }
 
 export function updateVideoSelection(): void {
-    const { backgroundVideo } = state
-    const thumbs = document.querySelectorAll('.video-thumb')
+  const { backgroundVideo } = state
+  const thumbs = document.querySelectorAll('.video-thumb')
 
-    thumbs.forEach(thumb => {
-        const path = thumb.getAttribute('data-video-path')
-        toggleClass(thumb, 'selected', path === backgroundVideo)
-    })
+  thumbs.forEach(thumb => {
+    const path = thumb.getAttribute('data-video-path')
+    toggleClass(thumb, 'selected', path === backgroundVideo)
+  })
 }

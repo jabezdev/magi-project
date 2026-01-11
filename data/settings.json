@@ -32,9 +32,9 @@
   "currentSchedule": "2026-01-11",
   "layoutSettings": {
     "songsColumnWidth": null,
-    "scheduleSectionHeight": 254,
-    "librarySectionHeight": 382,
-    "backgroundsSectionHeight": 255
+    "scheduleSectionHeight": 204,
+    "librarySectionHeight": 325,
+    "backgroundsSectionHeight": 362
   },
   "backgroundVideo": "/public/videos/red_bokeh.mp4"
 }

@@ -115,14 +115,22 @@ export function updateLyricsDisplay(): void {
 
     if (lyricsEl && displayMode === 'lyrics' && liveSong) {
         const lyricsText = getSlideText(liveSong, liveVariation, livePosition) || ''
+        const lines = lyricsText ? lyricsText.split('\n') : []
 
-        // Use View Transition API if available
-        if (document.startViewTransition) {
-            document.startViewTransition(() => {
-                updateHTML(lyricsEl, formatLyricsText(lyricsText))
+        // Optimization: Recycle DOM nodes if line count matches
+        // This prevents layout thrashing
+        const existingLines = lyricsEl.querySelectorAll('.lyric-line')
+
+        if (existingLines.length === lines.length && lines.length > 0) {
+            // Smart update: just change text
+            existingLines.forEach((el, i) => {
+                if (el.textContent !== lines[i]) {
+                    el.textContent = lines[i]
+                }
             })
         } else {
-            updateHTML(lyricsEl, formatLyricsText(lyricsText))
+            // Full rebuild if structure changes
+            lyricsEl.innerHTML = formatLyricsText(lyricsText)
         }
     }
 }

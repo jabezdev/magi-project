@@ -170,7 +170,7 @@ function updateSlideClasses(position: SlidePosition): void {
     if (!liveSong) return
 
     const allSlides = getAllSlides(liveSong, liveVariation)
-    
+
     // Find current slide index
     let currentFlatIndex = 0
     for (let i = 0; i < allSlides.length; i++) {
@@ -194,24 +194,44 @@ function updateSlideClasses(position: SlidePosition): void {
     })
 
     // Update data attribute
-    const scrollContainer = document.querySelector('.teleprompter-scroll')
+    const scrollContainer = document.querySelector('.teleprompter-scroll') as HTMLElement
     if (scrollContainer) {
         scrollContainer.setAttribute('data-current-index', String(currentFlatIndex))
+        updateScrollPosition(scrollContainer, currentFlatIndex)
     }
 }
 
-function scrollToCurrentSlide(): void {
+function updateScrollPosition(container: HTMLElement, targetIndex: number): void {
     requestAnimationFrame(() => {
-        const currentSlide = document.querySelector('.tp-slide.tp-current')
-        const teleprompter = document.querySelector('.cm-teleprompter')
-        
-        if (currentSlide && teleprompter) {
-            currentSlide.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center'
-            })
+        const targetSlide = document.getElementById(`tp-slide-${targetIndex}`)
+        const teleprompter = document.querySelector('.cm-teleprompter') as HTMLElement
+
+        if (targetSlide && teleprompter) {
+            // Calculate center position
+            // We want the center of the slide to be at the center of the viewport
+            const slideTop = targetSlide.offsetTop
+            const slideHeight = targetSlide.offsetHeight
+            const viewportHeight = teleprompter.clientHeight
+
+            // The "top" spacer pushes everything down, so we just need to shift up
+            // by (slideTop + slideHeight/2) - (viewportHeight/2)
+            // But since we have spacers, let's just calculate relative to container top
+
+            let offset = slideTop + (slideHeight / 2) - (viewportHeight / 2)
+
+            // Apply transform
+            container.style.transform = `translateY(-${offset}px)`
         }
     })
+}
+
+function scrollToCurrentSlide(): void {
+    // Deprecated / wrapper for initial load
+    const container = document.querySelector('.teleprompter-scroll') as HTMLElement
+    if (container) {
+        const idx = parseInt(container.getAttribute('data-current-index') || '0')
+        updateScrollPosition(container, idx)
+    }
 }
 
 export function updateConfidenceMonitorStyles(): void {
