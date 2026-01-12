@@ -1,6 +1,6 @@
 import { join, dirname } from 'path'
 import fs from 'fs'
-import { sharedState, connectedClients } from './state.mjs'
+import { sharedState, connectedClients, updateAvailableVideos } from './state.mjs'
 
 // Helper to ensure directories exist
 function ensureDirs(__dirname) {
@@ -402,6 +402,19 @@ export function setupRoutes(app, __dirname, videoDir = null) {
         } catch (error) {
             console.error('Failed to list videos:', error)
             res.status(500).json({ error: 'Failed to list videos' })
+        }
+    })
+
+    // Refresh available videos
+    app.post('/api/videos/refresh', (req, res) => {
+        try {
+            const videosPath = videoDir
+            updateAvailableVideos(videosPath)
+            // Function updates sharedState.availableVideos in place
+            res.json(sharedState.availableVideos)
+        } catch (error) {
+            console.error('Failed to refresh videos:', error)
+            res.status(500).json({ error: 'Failed to refresh videos' })
         }
     })
 

@@ -19,7 +19,7 @@
     "marginRight": 5,
     "transitions": {
       "type": "crossfade",
-      "duration": 0.5
+      "duration": 0.3
     }
   },
   "confidenceMonitorSettings": {
@@ -45,8 +45,8 @@
     "scheduleSectionHeight": 433,
     "librarySectionHeight": null,
     "backgroundsSectionHeight": 308,
-    "thumbnailSize": 254.25,
-    "monitorColumnWidth": 444
+    "thumbnailSize": 246,
+    "monitorColumnWidth": 460
   },
   "backgroundVideo": "/media/red_bokeh.mp4",
   "previewBackground": "/media/red_bokeh.mp4",

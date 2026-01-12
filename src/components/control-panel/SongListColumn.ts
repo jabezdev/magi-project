@@ -1,10 +1,6 @@
 import { renderScheduleList, initScheduleListListeners } from './ScheduleList'
 import { renderLibraryList, initLibraryListListeners } from './LibraryList'
 
-import { renderStatusIndicator, initStatusIndicatorListener } from './StatusIndicator'
-import { openSettings } from '../settings'
-import { renderControlPanel } from '../../screens/ControlPanel'
-import { ICONS } from '../../constants/icons'
 import { state, saveLayoutSettings } from '../../state'
 
 export function renderSongListColumn(): string {
@@ -16,10 +12,6 @@ export function renderSongListColumn(): string {
         <div class="section-resizer" data-resize="schedule-library"></div>
         ${renderLibraryList()}
       </div>
-      <div class="cp-column-footer" style="justify-content: space-between; align-items: center;">
-        ${renderStatusIndicator()}
-        <button class="icon-btn settings-footer-btn" id="settings-btn" title="Settings">${ICONS.settings}</button>
-      </div>
     </div>
   `
 }
@@ -27,14 +19,8 @@ export function renderSongListColumn(): string {
 export function initSongListListeners(): void {
   initScheduleListListeners()
   initLibraryListListeners()
-  initStatusIndicatorListener()
   initSectionResizers()
   applySavedLayoutSettings()
-
-  // Settings button
-  document.getElementById('settings-btn')?.addEventListener('click', () => {
-    openSettings(() => renderControlPanel())
-  })
 }
 
 function applySavedLayoutSettings(): void {

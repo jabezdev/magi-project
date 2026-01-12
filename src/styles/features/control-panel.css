@@ -256,6 +256,8 @@
     gap: 1rem;
     padding: 1rem !important;
     background: var(--bg-tertiary);
+    overflow-y: auto !important;
+    /* Ensure auto behavior */
 }
 
 .monitor-group {

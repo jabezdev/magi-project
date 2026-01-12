@@ -1,4 +1,4 @@
-import { state, saveLayoutSettings, subscribeToState } from '../../state'
+import { state, saveLayoutSettings, subscribeToState, updateState } from '../../state'
 import { ICONS } from '../../constants/icons'
 import { selectLiveVideo, selectPreviewVideo } from '../../actions/controlPanel'
 import { toggleClass } from '../../utils/dom'
@@ -42,6 +42,7 @@ export function renderBackgroundsSection(): string {
           <span>BACKGROUNDS</span>
         </div>
         <div class="header-right" style="display: flex; gap: 4px;">
+          <button class="icon-btn" id="refresh-videos-btn" title="Refresh Videos" style="width: 24px; height: 24px; padding: 0;">${ICONS.refresh}</button>
           <!-- Zoom controls -->
           <button class="icon-btn" id="zoom-out-btn" title="Zoom Out" style="width: 24px; height: 24px; padding: 0;">${ICONS.minus || '-'}</button>
           <button class="icon-btn" id="zoom-in-btn" title="Zoom In" style="width: 24px; height: 24px; padding: 0;">${ICONS.plus || '+'}</button>
@@ -139,6 +140,33 @@ export function initBackgroundsListeners(): void {
       updateBackgroundsGrid()
     }
   })
+
+  // Refresh Button Listener
+  const refreshBtn = document.getElementById('refresh-videos-btn') as HTMLButtonElement
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', async () => {
+      // Visual feedback
+      refreshBtn.style.opacity = '0.5'
+      refreshBtn.disabled = true
+
+      try {
+        const res = await fetch('/api/videos/refresh', { method: 'POST' })
+        if (res.ok) {
+          const videos = await res.json()
+          updateState({ availableVideos: videos })
+        }
+      } catch (e) {
+        console.error('Failed to refresh videos', e)
+      } finally {
+        setTimeout(() => {
+          if (refreshBtn) {
+            refreshBtn.style.opacity = '1'
+            refreshBtn.disabled = false
+          }
+        }, 500) // Small delay for visual feedback
+      }
+    })
+  }
 
   // Zoom Listeners
   const zoomIn = document.getElementById('zoom-in-btn')

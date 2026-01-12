@@ -366,12 +366,12 @@ function initMonitorResizer(): void {
     // H = W*(9/16) + W*(3/4) + W*(9/16) = W*(1.875)
     // H_vp > H + Fixed (approx 200px for headers/padding)
     // W < (H_vp - 200) / 1.875
-    const FIXED_V_SPACE = 120
+    const FIXED_V_SPACE = 90
     const availHeight = window.innerHeight - FIXED_V_SPACE
     const calcMaxWidth = Math.floor(Math.max(200, availHeight / 1.875))
 
-    // Also limit by window width (allow up to 50% of screen)
-    const maxWidth = Math.min(calcMaxWidth, window.innerWidth * 0.5)
+    // Also limit by window width (allow up to 70% of screen)
+    const maxWidth = Math.min(calcMaxWidth, window.innerWidth * 0.7)
 
     const newWidth = Math.max(200, Math.min(maxWidth, window.innerWidth - e.clientX))
 

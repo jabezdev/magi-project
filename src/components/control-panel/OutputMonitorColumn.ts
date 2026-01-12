@@ -1,4 +1,7 @@
 import { ICONS } from '../../constants/icons'
+import { renderStatusIndicator, initStatusIndicatorListener } from './StatusIndicator'
+import { openSettings } from '../settings'
+import { renderControlPanel } from '../../screens/ControlPanel'
 
 // Base resolutions for scaling
 // We use a decent desktop resolution so the layout isn't mobile-optimized
@@ -12,6 +15,10 @@ export function renderOutputMonitorColumn(): string {
         <div class="header-left">
           <span class="header-icon">${ICONS.monitor}</span>
           <span>OUTPUTS</span>
+        </div>
+        <div class="header-right" style="display: flex; gap: 8px; align-items: center;">
+          ${renderStatusIndicator()}
+          <button class="icon-btn settings-header-btn" id="settings-btn" title="Settings" style="width: 24px; height: 24px; padding: 0;">${ICONS.settings}</button>
         </div>
       </div>
       <div class="cp-column-body monitor-list">
@@ -70,4 +77,12 @@ export function initOutputMonitorListeners(): void {
   })
 
   wrappers.forEach(wrapper => ro.observe(wrapper))
+
+  // Init Status Indicator
+  initStatusIndicatorListener()
+
+  // Init Settings Button
+  document.getElementById('settings-btn')?.addEventListener('click', () => {
+    openSettings(() => renderControlPanel())
+  })
 }
