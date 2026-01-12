@@ -98,6 +98,7 @@ export interface ConfidenceMonitorSettings {
   marginLeft: number
   marginRight: number
   partGap: number
+  slideGap: number
 }
 
 export interface LayoutSettings {

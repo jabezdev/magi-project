@@ -60,6 +60,13 @@ export function renderConfidenceMonitorTab(): string {
             </div>
           </div>
           <div class="setting-item">
+            <label>Slide Gap</label>
+            <div class="setting-control">
+              <input type="range" id="cm-slide-gap" min="0" max="5" step="0.5" value="${cms.slideGap ?? 0}">
+              <span class="setting-value" id="cm-slide-gap-value">${cms.slideGap ?? 0}rem</span>
+            </div>
+          </div>
+          <div class="setting-item">
             <label>Prev/Next Opacity</label>
             <div class="setting-control">
               <input type="range" id="cm-opacity" min="0.1" max="0.8" step="0.05" value="${cms.prevNextOpacity}">
@@ -135,6 +142,7 @@ export function initConfidenceMonitorTabListeners(): void {
   setupRangeInput('cm-font-size', 'cm-font-size-value', 'rem')
   setupRangeInput('cm-line-height', 'cm-line-height-value')
   setupRangeInput('cm-part-gap', 'cm-part-gap-value', 'rem')
+  setupRangeInput('cm-slide-gap', 'cm-slide-gap-value', 'rem')
   setupRangeInput('cm-opacity', 'cm-opacity-value')
   setupRangeInput('cm-clock-size', 'cm-clock-size-value', 'rem')
   setupRangeInput('cm-margin-top', 'cm-margin-top-value', 'rem')

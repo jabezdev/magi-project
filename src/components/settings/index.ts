@@ -235,6 +235,7 @@ function applySettings(): void {
     fontFamily: (document.getElementById('cm-font-family') as HTMLSelectElement).value,
     lineHeight: parseFloat((document.getElementById('cm-line-height') as HTMLInputElement).value),
     partGap: parseFloat((document.getElementById('cm-part-gap') as HTMLInputElement).value),
+    slideGap: parseFloat((document.getElementById('cm-slide-gap') as HTMLInputElement).value),
     prevNextOpacity: parseFloat((document.getElementById('cm-opacity') as HTMLInputElement).value),
     clockSize: parseFloat((document.getElementById('cm-clock-size') as HTMLInputElement).value),
     marginTop: parseFloat((document.getElementById('cm-margin-top') as HTMLInputElement).value),

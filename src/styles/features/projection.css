@@ -237,6 +237,7 @@
     width: 100%;
     transition: opacity 0.5s ease, transform 0.5s ease;
     padding: 1.5rem 0;
+    margin-bottom: var(--cm-slide-gap, 0);
     content-visibility: auto;
     /* Optimization */
     contain-intrinsic-size: 200px;

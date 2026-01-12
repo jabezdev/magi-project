@@ -50,6 +50,7 @@ export const DEFAULT_CONFIDENCE_MONITOR_SETTINGS: ConfidenceMonitorSettings = {
   marginLeft: 0.5,
   marginRight: 0.5,
   partGap: 2.0,
+  slideGap: 0,
   transitions: {
     type: 'crossfade',
     duration: 0.5

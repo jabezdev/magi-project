@@ -14,6 +14,7 @@ export function buildConfidenceMonitorHTML(): string {
     --cm-font-family: ${confidenceMonitorSettings.fontFamily ?? 'system-ui'};
     --cm-line-height: ${confidenceMonitorSettings.lineHeight ?? 1.4};
     --cm-part-gap: ${confidenceMonitorSettings.partGap ?? 2.0}rem;
+    --cm-slide-gap: ${confidenceMonitorSettings.slideGap ?? 0}rem;
     --cm-prev-next-opacity: ${confidenceMonitorSettings.prevNextOpacity ?? 0.35};
     --cm-clock-size: ${confidenceMonitorSettings.clockSize ?? 1.25}rem;
     --cm-margin-top: ${confidenceMonitorSettings.marginTop ?? 0.5}rem;
@@ -266,6 +267,7 @@ export function updateConfidenceMonitorStyles(): void {
         screen.style.setProperty('--cm-font-family', confidenceMonitorSettings.fontFamily)
         screen.style.setProperty('--cm-line-height', String(confidenceMonitorSettings.lineHeight))
         screen.style.setProperty('--cm-part-gap', `${confidenceMonitorSettings.partGap}rem`)
+        screen.style.setProperty('--cm-slide-gap', `${confidenceMonitorSettings.slideGap ?? 0}rem`)
         screen.style.setProperty('--cm-prev-next-opacity', String(confidenceMonitorSettings.prevNextOpacity))
         screen.style.setProperty('--cm-clock-size', `${confidenceMonitorSettings.clockSize}rem`)
         screen.style.setProperty('--cm-margin-top', `${confidenceMonitorSettings.marginTop}rem`)
