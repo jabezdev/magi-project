@@ -2,10 +2,31 @@ import { state } from '../../state'
 import { setupRangeInput, setupRangeInputWithPreview } from './utils'
 
 export function renderMainScreenTab(): string {
-    const ds = state.displaySettings
+  const ds = state.displaySettings
+  const transitions = ds.transitions || { type: 'crossfade', duration: 0.5 }
 
-    return `
+  return `
     <div class="settings-tab active" id="tab-main">
+      <div class="settings-group">
+        <h3>Transitions</h3>
+        <div class="settings-grid">
+          <div class="setting-item">
+            <label>Type</label>
+            <select id="main-transition-type" class="setting-select">
+              <option value="none" ${transitions.type === 'none' ? 'selected' : ''}>None</option>
+              <option value="crossfade" ${transitions.type === 'crossfade' ? 'selected' : ''}>Crossfade</option>
+            </select>
+          </div>
+          <div class="setting-item">
+            <label>Duration / Speed</label>
+            <div class="setting-control">
+              <input type="range" id="main-transition-duration" min="0.1" max="2.0" step="0.1" value="${transitions.duration}">
+              <span class="setting-value" id="main-transition-duration-value">${transitions.duration}s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="settings-group">
         <h3>Typography</h3>
         <div class="settings-grid">
@@ -158,14 +179,26 @@ export function renderMainScreenTab(): string {
 }
 
 export function initMainScreenTabListeners(): void {
-    setupRangeInput('main-font-size', 'main-font-size-value', 'rem')
-    setupRangeInput('main-line-height', 'main-line-height-value')
-    setupRangeInput('main-shadow-blur', 'main-shadow-blur-value', 'px')
-    setupRangeInput('main-shadow-x', 'main-shadow-x-value', 'px')
-    setupRangeInput('main-shadow-y', 'main-shadow-y-value', 'px')
-    setupRangeInput('main-outline-width', 'main-outline-width-value', 'px')
-    setupRangeInputWithPreview('main-margin-top', 'main-margin-top-value', 'margin-top-display', '%')
-    setupRangeInputWithPreview('main-margin-bottom', 'main-margin-bottom-value', 'margin-bottom-display', '%')
-    setupRangeInputWithPreview('main-margin-left', 'main-margin-left-value', 'margin-left-display', '%')
-    setupRangeInputWithPreview('main-margin-right', 'main-margin-right-value', 'margin-right-display', '%')
+  const typeSelect = document.getElementById('main-transition-type') as HTMLSelectElement
+  const durationInput = document.getElementById('main-transition-duration') as HTMLInputElement
+
+  if (typeSelect && durationInput) {
+    typeSelect.addEventListener('change', () => {
+      durationInput.disabled = typeSelect.value === 'none'
+    })
+    // Initial state
+    durationInput.disabled = typeSelect.value === 'none'
+  }
+
+  setupRangeInput('main-transition-duration', 'main-transition-duration-value', 's')
+  setupRangeInput('main-font-size', 'main-font-size-value', 'rem')
+  setupRangeInput('main-line-height', 'main-line-height-value')
+  setupRangeInput('main-shadow-blur', 'main-shadow-blur-value', 'px')
+  setupRangeInput('main-shadow-x', 'main-shadow-x-value', 'px')
+  setupRangeInput('main-shadow-y', 'main-shadow-y-value', 'px')
+  setupRangeInput('main-outline-width', 'main-outline-width-value', 'px')
+  setupRangeInputWithPreview('main-margin-top', 'main-margin-top-value', 'margin-top-display', '%')
+  setupRangeInputWithPreview('main-margin-bottom', 'main-margin-bottom-value', 'margin-bottom-display', '%')
+  setupRangeInputWithPreview('main-margin-left', 'main-margin-left-value', 'margin-left-display', '%')
+  setupRangeInputWithPreview('main-margin-right', 'main-margin-right-value', 'margin-right-display', '%')
 }

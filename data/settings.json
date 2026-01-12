@@ -16,22 +16,31 @@
     "marginTop": 10,
     "marginBottom": 20,
     "marginLeft": 5,
-    "marginRight": 5
+    "marginRight": 5,
+    "transitions": {
+      "type": "crossfade",
+      "duration": 0.5
+    }
   },
   "confidenceMonitorSettings": {
     "fontSize": 8.5,
     "fontFamily": "system-ui",
     "lineHeight": 1,
-    "prevNextOpacity": 0.75,
+    "partGap": 5,
+    "prevNextOpacity": 0.4,
     "clockSize": 3,
     "marginTop": 2,
     "marginBottom": 2,
-    "marginLeft": 0,
-    "marginRight": 0
+    "marginLeft": 1,
+    "marginRight": 1,
+    "transitions": {
+      "type": "none",
+      "duration": 0.3
+    }
   },
   "currentSchedule": "2026-01-11",
   "layoutSettings": {
-    "songsColumnWidth": 410,
+    "songsColumnWidth": 363,
     "scheduleSectionHeight": 433,
     "librarySectionHeight": null,
     "backgroundsSectionHeight": 308,

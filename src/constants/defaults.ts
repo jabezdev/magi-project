@@ -32,7 +32,11 @@ export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
   marginTop: 10,
   marginBottom: 10,
   marginLeft: 5,
-  marginRight: 5
+  marginRight: 5,
+  transitions: {
+    type: 'crossfade',
+    duration: 0.5
+  }
 }
 
 export const DEFAULT_CONFIDENCE_MONITOR_SETTINGS: ConfidenceMonitorSettings = {
@@ -44,7 +48,12 @@ export const DEFAULT_CONFIDENCE_MONITOR_SETTINGS: ConfidenceMonitorSettings = {
   marginTop: 0.5,
   marginBottom: 0.5,
   marginLeft: 0.5,
-  marginRight: 0.5
+  marginRight: 0.5,
+  partGap: 2.0,
+  transitions: {
+    type: 'crossfade',
+    duration: 0.5
+  }
 }
 
 export const DEFAULT_LOWER_THIRDS_SETTINGS: LowerThirdsSettings = {

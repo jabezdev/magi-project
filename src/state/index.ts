@@ -19,7 +19,7 @@ function loadSavedDisplaySettings(): DisplaySettings {
   const saved = localStorage.getItem(STORAGE_KEYS.DISPLAY_SETTINGS)
   if (saved) {
     try {
-      return JSON.parse(saved)
+      return { ...DEFAULT_DISPLAY_SETTINGS, ...JSON.parse(saved) }
     } catch {
       return DEFAULT_DISPLAY_SETTINGS
     }
@@ -31,7 +31,7 @@ function loadSavedConfidenceMonitorSettings(): ConfidenceMonitorSettings {
   const saved = localStorage.getItem(STORAGE_KEYS.CONFIDENCE_MONITOR_SETTINGS)
   if (saved) {
     try {
-      return JSON.parse(saved)
+      return { ...DEFAULT_CONFIDENCE_MONITOR_SETTINGS, ...JSON.parse(saved) }
     } catch {
       return DEFAULT_CONFIDENCE_MONITOR_SETTINGS
     }

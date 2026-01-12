@@ -7,6 +7,12 @@
     background: #000;
     contain: strict;
     /* Optimization */
+    /* View Transitions */
+    --view-transition-duration: 0.5s;
+}
+
+::view-transition-group(root) {
+    animation-duration: var(--view-transition-duration);
 }
 
 .background-video {

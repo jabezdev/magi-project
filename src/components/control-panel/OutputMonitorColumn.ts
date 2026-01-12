@@ -3,7 +3,7 @@ import { ICONS } from '../../constants/icons'
 // Base resolutions for scaling
 // We use a decent desktop resolution so the layout isn't mobile-optimized
 const RES_16_9 = { width: 1920, height: 1080 }
-const RES_4_3 = { width: 1440, height: 1080 }
+const RES_4_3 = { width: 1920, height: 1440 }
 
 export function renderOutputMonitorColumn(): string {
   return `

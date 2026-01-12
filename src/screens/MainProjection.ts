@@ -90,8 +90,15 @@ export function updateDisplayMode(): void {
             break
     }
 
-    // Use View Transition API if available
-    if (document.startViewTransition) {
+    // Determine transition settings
+    const { type, duration } = displaySettings.transitions || { type: 'crossfade', duration: 0.5 }
+    const useTransition = type !== 'none'
+
+    // Use View Transition API if available and enabled
+    if (useTransition && document.startViewTransition) {
+        // Set duration
+        document.documentElement.style.setProperty('--view-transition-duration', `${duration}s`)
+
         document.startViewTransition(() => {
             updateHTML(overlay, contentHTML)
         })
@@ -132,10 +139,16 @@ export function updateBackgroundVideo(): void {
     next.setAttribute('src', state.backgroundVideo)
     next.load()
 
+    const { type, duration } = state.displaySettings.transitions || { type: 'crossfade', duration: 0.5 }
+    const fadeDuration = type === 'none' ? 0 : duration
+
     const playAndFade = () => {
         next.play().then(() => {
             // Apply fade
             next.classList.add('active')
+            // Respect duration for CSS transition too (we need to update the style inline or class)
+            next.style.transition = type === 'none' ? 'none' : `opacity ${fadeDuration}s ease`
+
             active.classList.remove('active')
         }).catch(err => {
             console.error("BG Video play failed", err)
@@ -155,22 +168,41 @@ export function updateLyricsDisplay(): void {
 
     if (lyricsEl && displayMode === 'lyrics' && liveSong) {
         const lyricsText = getSlideText(liveSong, liveVariation, livePosition) || ''
-        const lines = lyricsText ? lyricsText.split('\n') : []
 
-        // Optimization: Recycle DOM nodes if line count matches
-        // This prevents layout thrashing
-        const existingLines = lyricsEl.querySelectorAll('.lyric-line')
+        const updateDOM = () => {
+            const lines = lyricsText ? lyricsText.split('\n') : []
 
-        if (existingLines.length === lines.length && lines.length > 0) {
-            // Smart update: just change text
-            existingLines.forEach((el, i) => {
-                if (el.textContent !== lines[i]) {
-                    el.textContent = lines[i]
-                }
+            // Optimization: Recycle DOM nodes if line count matches
+            // This prevents layout thrashing
+            const existingLines = lyricsEl.querySelectorAll('.lyric-line')
+
+            if (existingLines.length === lines.length && lines.length > 0) {
+                // Smart update: just change text
+                existingLines.forEach((el, i) => {
+                    if (el.textContent !== lines[i]) {
+                        el.textContent = lines[i]
+                    }
+                })
+            } else {
+                // Full rebuild if structure changes
+                lyricsEl.innerHTML = formatLyricsText(lyricsText)
+            }
+        }
+
+        // Determine transition settings
+        const { displaySettings } = state
+        const { type, duration } = displaySettings.transitions || { type: 'crossfade', duration: 0.5 }
+        const useTransition = type !== 'none'
+
+        if (useTransition && document.startViewTransition) {
+            // Set duration
+            document.documentElement.style.setProperty('--view-transition-duration', `${duration}s`)
+
+            document.startViewTransition(() => {
+                updateDOM()
             })
         } else {
-            // Full rebuild if structure changes
-            lyricsEl.innerHTML = formatLyricsText(lyricsText)
+            updateDOM()
         }
     }
 }

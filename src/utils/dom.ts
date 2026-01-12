@@ -58,7 +58,7 @@ export function updateDisabled(element: HTMLButtonElement | null, disabled: bool
  */
 let transitionTimeoutId: number | null = null
 
-export function updateVideoSource(video: HTMLVideoElement | null, src: string): void {
+export function updateVideoSource(video: HTMLVideoElement | null, src: string, duration = 1.0): void {
   if (!video) return
 
   const currentSrc = video.src || video.getAttribute('src') || ''
@@ -113,7 +113,7 @@ export function updateVideoSource(video: HTMLVideoElement | null, src: string): 
     container.appendChild(incomingVideo)
 
     // Prepare base video for fade out
-    baseVideo.style.transition = 'opacity 1s ease-in-out'
+    baseVideo.style.transition = `opacity ${duration}s ease-in-out`
     baseVideo.style.position = 'absolute'
     baseVideo.style.inset = '0'
     baseVideo.style.zIndex = '0'
@@ -127,7 +127,7 @@ export function updateVideoSource(video: HTMLVideoElement | null, src: string): 
   void incomingVideo.offsetHeight
 
   // Restore transition
-  incomingVideo.style.transition = 'opacity 1s ease-in-out'
+  incomingVideo.style.transition = `opacity ${duration}s ease-in-out`
 
   // Ensure base video is visible (fades back in if we interrupted a fade-out)
   requestAnimationFrame(() => {
@@ -164,7 +164,7 @@ export function updateVideoSource(video: HTMLVideoElement | null, src: string): 
         incomingVideo.style.zIndex = ''
       }
       transitionTimeoutId = null
-    }, 1100)
+    }, duration * 1000 + 100)
   }
 
   if (incomingVideo.readyState >= 3) {

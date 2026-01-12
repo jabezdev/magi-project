@@ -1,5 +1,12 @@
 // Core data types for the projection system
 
+export type TransitionType = 'none' | 'crossfade'
+
+export interface TransitionSettings {
+  type: TransitionType
+  duration: number // seconds
+}
+
 // Song part types
 export type PartType = string // 'v1' | 'v2' | 'v3' | 'v4' | 'ch' | 'pch' | 'br' | 'tag' | 'intro' | 'outro' | 'inst'
 
@@ -58,6 +65,8 @@ export interface DisplaySettings {
   fontSize: number
   fontFamily: string
   lineHeight: number
+  // Transitions
+  transitions: TransitionSettings
   // Text styling
   textColor: string
   allCaps: boolean
@@ -81,12 +90,14 @@ export interface ConfidenceMonitorSettings {
   fontSize: number
   fontFamily: string
   lineHeight: number
+  transitions: TransitionSettings
   prevNextOpacity: number
   clockSize: number
   marginTop: number
   marginBottom: number
   marginLeft: number
   marginRight: number
+  partGap: number
 }
 
 export interface LayoutSettings {

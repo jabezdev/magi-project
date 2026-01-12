@@ -10,30 +10,31 @@ export function buildConfidenceMonitorHTML(): string {
 
     // Build inline styles from settings
     const cmStyles = `
-    --cm-font-size: ${confidenceMonitorSettings.fontSize}rem;
-    --cm-font-family: ${confidenceMonitorSettings.fontFamily};
-    --cm-line-height: ${confidenceMonitorSettings.lineHeight};
-    --cm-prev-next-opacity: ${confidenceMonitorSettings.prevNextOpacity};
-    --cm-clock-size: ${confidenceMonitorSettings.clockSize}rem;
-    --cm-margin-top: ${confidenceMonitorSettings.marginTop}rem;
-    --cm-margin-bottom: ${confidenceMonitorSettings.marginBottom}rem;
-    --cm-margin-left: ${confidenceMonitorSettings.marginLeft}rem;
-    --cm-margin-right: ${confidenceMonitorSettings.marginRight}rem;
-  `
+    --cm-font-size: ${confidenceMonitorSettings.fontSize ?? 2.5}rem;
+    --cm-font-family: ${confidenceMonitorSettings.fontFamily ?? 'system-ui'};
+    --cm-line-height: ${confidenceMonitorSettings.lineHeight ?? 1.4};
+    --cm-part-gap: ${confidenceMonitorSettings.partGap ?? 2.0}rem;
+    --cm-prev-next-opacity: ${confidenceMonitorSettings.prevNextOpacity ?? 0.35};
+    --cm-clock-size: ${confidenceMonitorSettings.clockSize ?? 1.25}rem;
+    --cm-margin-top: ${confidenceMonitorSettings.marginTop ?? 0.5}rem;
+    --cm-margin-bottom: ${confidenceMonitorSettings.marginBottom ?? 0.5}rem;
+    --cm-margin-left: ${confidenceMonitorSettings.marginLeft ?? 0.5}rem;
+    --cm-margin-right: ${confidenceMonitorSettings.marginRight ?? 0.5}rem;
+    `
 
     return `
-    <div class="confidence-screen" style="${cmStyles}">
-      <nav class="cm-navbar">
-        <div class="cm-clock" id="cm-clock"></div>
-      </nav>
-      <div class="cm-teleprompter">
-        ${buildTeleprompterContent(liveSong, liveVariation, livePosition, displayMode)}
-      </div>
-      <button class="fullscreen-btn" title="Toggle Fullscreen">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-      </button>
-    </div>
-  `
+        <div class="confidence-screen" style="${cmStyles}">
+            <nav class="cm-navbar">
+                <div class="cm-clock" id="cm-clock"></div>
+            </nav>
+            <div class="cm-teleprompter">
+                ${buildTeleprompterContent(liveSong, liveVariation, livePosition, displayMode)}
+            </div>
+            <button class="fullscreen-btn" title="Toggle Fullscreen">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+            </button>
+        </div>
+    `
 }
 
 function buildTeleprompterContent(song: Song | null, variation: number, position: SlidePosition, displayMode: string): string {
@@ -75,24 +76,33 @@ function buildTeleprompterContent(song: Song | null, variation: number, position
             slideClass += ' tp-future'
         }
 
+        // Check if this slide starts a new part (and isn't the first slide)
+        let style = ''
+        if (index > 0) {
+            const prevSlide = allSlides[index - 1]
+            if (prevSlide.partLabel !== slide.partLabel) {
+                style = `margin-top: var(--cm-part-gap, 2rem);`
+            }
+        }
+
         return `
-      <div class="${slideClass}" data-index="${index}" id="tp-slide-${index}">
-        <div class="tp-part-indicator"><span>${slide.partLabel}</span></div>
-        <div class="tp-content">
-          <div class="tp-text">${slide.text.replace(/\n/g, '<br>')}</div>
-        </div>
-      </div>
-    `
+            <div class="${slideClass}" data-index="${index}" id="tp-slide-${index}" style="${style}">
+                <div class="tp-part-indicator"><span>${slide.partLabel}</span></div>
+                <div class="tp-content">
+                    <div class="tp-text">${slide.text.replace(/\n/g, '<br>')}</div>
+                </div>
+            </div>
+        `
     }).join('')
 
     return `
-    ${modeOverlay}
-    <div class="teleprompter-scroll" data-current-index="${currentFlatIndex}" data-song-id="${song.id}">
-      <div class="tp-spacer-top"></div>
-      ${slidesHTML}
-      <div class="tp-spacer-bottom"></div>
-    </div>
-  `
+        ${modeOverlay}
+        <div class="teleprompter-scroll" data-current-index="${currentFlatIndex}" data-song-id="${song.id}">
+            <div class="tp-spacer-top"></div>
+            ${slidesHTML}
+            <div class="tp-spacer-bottom"></div>
+        </div>
+    `
 }
 
 export function startClock(): void {
@@ -135,16 +145,29 @@ export function updateTeleprompterContent(): void {
     const songChanged = !existingScroll || currentSongId !== newSongId
 
     // Always update mode overlay
-    updateModeOverlay(teleprompter, displayMode)
+    const doUpdate = () => {
+        updateModeOverlay(teleprompter, displayMode)
+        if (songChanged) {
+            updateHTML(teleprompter, buildTeleprompterContent(liveSong, liveVariation, livePosition, displayMode))
+            scrollToCurrentSlide()
+        } else {
+            updateSlideClasses(livePosition)
+            scrollToCurrentSlide()
+        }
+    }
 
-    if (songChanged) {
-        updateHTML(teleprompter, buildTeleprompterContent(liveSong, liveVariation, livePosition, displayMode))
-        // After rebuild, scroll to current slide
-        scrollToCurrentSlide()
+    // Determine transition settings
+    const { type, duration } = state.confidenceMonitorSettings.transitions || { type: 'crossfade', duration: 0.5 }
+    const useTransition = type !== 'none' && (songChanged || displayMode !== (teleprompter.getAttribute('data-prev-mode') || ''))
+
+    // Update previous mode tracker
+    teleprompter.setAttribute('data-prev-mode', displayMode)
+
+    if (useTransition && document.startViewTransition) {
+        document.documentElement.style.setProperty('--view-transition-duration', `${duration}s`)
+        document.startViewTransition(doUpdate)
     } else {
-        // Just update slide classes and scroll
-        updateSlideClasses(livePosition)
-        scrollToCurrentSlide()
+        doUpdate()
     }
 }
 
@@ -242,6 +265,7 @@ export function updateConfidenceMonitorStyles(): void {
         screen.style.setProperty('--cm-font-size', `${confidenceMonitorSettings.fontSize}rem`)
         screen.style.setProperty('--cm-font-family', confidenceMonitorSettings.fontFamily)
         screen.style.setProperty('--cm-line-height', String(confidenceMonitorSettings.lineHeight))
+        screen.style.setProperty('--cm-part-gap', `${confidenceMonitorSettings.partGap}rem`)
         screen.style.setProperty('--cm-prev-next-opacity', String(confidenceMonitorSettings.prevNextOpacity))
         screen.style.setProperty('--cm-clock-size', `${confidenceMonitorSettings.clockSize}rem`)
         screen.style.setProperty('--cm-margin-top', `${confidenceMonitorSettings.marginTop}rem`)
