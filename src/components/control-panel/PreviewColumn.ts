@@ -42,8 +42,10 @@ export function renderPreviewColumn(): string {
       <div class="cp-column-body lyrics-scroll">
         ${song ? `
           <div class="song-info">
-            <h2 class="song-name">${song.title}</h2>
-            ${song.artist ? `<span class="song-artist">${song.artist}</span>` : ''}
+            <h2 class="song-name">
+              ${song.title}
+              ${song.artist ? `<span class="song-artist">${song.artist}</span>` : ''}
+            </h2>
           </div>
           <div class="lyrics-arrangement">
             ${arrangementParts.map(({ part, partIndex, partId }) => `

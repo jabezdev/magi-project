@@ -41,7 +41,10 @@ export function renderLiveColumn(): string {
         ${song ? `
           <div class="song-info live-song-info">
             <span class="live-dot"></span>
-            <h2 class="song-name">${song.title}</h2>
+            <h2 class="song-name">
+              ${song.title}
+              ${song.artist ? `<span class="song-artist">${song.artist}</span>` : ''}
+            </h2>
           </div>
           <div class="lyrics-arrangement">
             ${arrangementParts.map(({ part, partIndex, partId }) => `

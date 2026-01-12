@@ -18,10 +18,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(220, 38, 38, 0.1);
+    background-color: var(--bg-primary);
+    /* Base opaque layer */
+    background-image: linear-gradient(rgba(220, 38, 38, 0.1), rgba(220, 38, 38, 0.1));
+    /* Tint */
     padding: 0.5rem 0.75rem;
     border-radius: var(--radius-sm);
     margin-bottom: 0.75rem;
+    /* Sticky needed here? No, parent container handles sticky but this is the content block. 
+       Actually, `LiveColumn.ts` uses `.live-song-info` combined with `.song-info`? 
+       No, LiveColumn.ts has: <div class="song-info live-song-info">
+       So it inherits .song-info styles (sticky, etc) and overrides with .live-song-info.
+       We need to ensure it stays opaque and has correct padding. 
+    */
+    /* position: sticky; - Removed as per scrolling refactor */
+    /* top: 0; */
+    z-index: 10;
 }
 
 .live-song-info .live-dot {

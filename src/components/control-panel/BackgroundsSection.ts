@@ -12,11 +12,12 @@ export function renderBackgroundsSection(): string {
           <span>BACKGROUNDS</span>
         </div>
         <div class="header-right" style="display: flex; gap: 4px;">
+          <!-- Zoom controls -->
           <button class="icon-btn" id="zoom-out-btn" title="Zoom Out" style="width: 24px; height: 24px; padding: 0;">${ICONS.minus || '-'}</button>
           <button class="icon-btn" id="zoom-in-btn" title="Zoom In" style="width: 24px; height: 24px; padding: 0;">${ICONS.plus || '+'}</button>
         </div>
       </div>
-      <div class="video-grid" style="--video-thumb-size: ${state.layoutSettings.thumbnailSize || 80}px;">
+      <div class="video-grid" id="video-grid">
         ${state.availableVideos.map(video => {
     const isImage = /\.(jpg|jpeg|png|webp)$/i.test(video.thumbnail || '')
     // If optimized thumbnail exists, use it. Otherwise use video as source (will be lazy loaded)
@@ -107,25 +108,76 @@ export function initBackgroundsListeners(): void {
   const videoGrid = document.querySelector('.video-grid') as HTMLElement
 
   if (zoomIn && zoomOut && videoGrid) {
+    // Initial calculation
+    if (!state.layoutSettings.thumbnailSize) {
+      // Set default if missing
+      saveLayoutSettings({ ...state.layoutSettings, thumbnailSize: 120 })
+    }
+    updateGridColumns(videoGrid)
+
+    // Resize Observer
+    const resizeObserver = new ResizeObserver(() => {
+      updateGridColumns(videoGrid)
+    })
+    resizeObserver.observe(videoGrid)
+
     zoomIn.addEventListener('click', () => {
-      let current = state.layoutSettings.thumbnailSize || 80
-      if (current < 200) {
-        current += 10
-        videoGrid.style.setProperty('--video-thumb-size', `${current}px`)
-        saveLayoutSettings({ ...state.layoutSettings, thumbnailSize: current })
+      // Zoom In -> Fewer columns -> Bigger thumbnails
+      let currentCols = parseInt(getComputedStyle(videoGrid).getPropertyValue('--col-count')) || 3
+      const width = getGridWidth(videoGrid)
+
+      let newCols = currentCols - 1
+      if (newCols < 1) newCols = 1
+
+      if (newCols === currentCols && currentCols === 1) {
+        // Hardening single column
+        const currentTarget = state.layoutSettings.thumbnailSize || 120
+        saveLayoutSettings({ ...state.layoutSettings, thumbnailSize: currentTarget + 50 })
+        updateGridColumns(videoGrid)
+      } else {
+        // Calculate new target size using the consistent width
+        const newTarget = width / newCols
+        saveLayoutSettings({ ...state.layoutSettings, thumbnailSize: newTarget })
+        updateGridColumns(videoGrid)
       }
     })
 
     zoomOut.addEventListener('click', () => {
-      let current = state.layoutSettings.thumbnailSize || 80
-      if (current > 40) {
-        current -= 10
-        videoGrid.style.setProperty('--video-thumb-size', `${current}px`)
-        saveLayoutSettings({ ...state.layoutSettings, thumbnailSize: current })
+      // Zoom Out -> More columns -> Smaller thumbnails
+      let currentCols = parseInt(getComputedStyle(videoGrid).getPropertyValue('--col-count')) || 3
+      const width = getGridWidth(videoGrid)
+      const newCols = currentCols + 1
+
+      // Relaxed limit check
+      if (width / newCols > 20) {
+        const newTarget = width / newCols
+        saveLayoutSettings({ ...state.layoutSettings, thumbnailSize: newTarget })
+        updateGridColumns(videoGrid)
       }
     })
   }
 }
+
+function getGridWidth(grid: HTMLElement): number {
+  // Padding is 1rem = 16px on each side -> 32px total.
+  return Math.max(0, grid.clientWidth - 32)
+}
+
+function updateGridColumns(grid: HTMLElement): void {
+  const width = getGridWidth(grid)
+  const targetSize = state.layoutSettings.thumbnailSize || 120
+
+  // Calculate how many columns fit at this target size
+  let cols = Math.floor(width / targetSize)
+  if (cols < 1) cols = 1
+
+  // Minimal safety check (15px limits)
+  if (width / cols < 15 && cols > 1) cols--
+
+  grid.style.setProperty('--col-count', cols.toString())
+}
+
+
 
 export function updateVideoSelection(): void {
   const { backgroundVideo, previewBackground } = state

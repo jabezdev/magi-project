@@ -5,7 +5,7 @@ import { fetchSongById } from '../../services/api'
 import { openSongEditor } from '../SongEditorModal'
 import { addToSchedule } from '../../actions/schedule'
 import { fuzzySearch, highlightMatches } from '../../utils/fuzzySearch'
-import type { SongSummary } from '../../types'
+import type { SongSummary, Song } from '../../types'
 
 // Store last search term for re-rendering
 let lastSearchTerm = ''
@@ -51,9 +51,13 @@ function renderSongItems(songs: SongSummary[], searchTerm: string): string {
             ? highlightMatches(song.title, song._fuzzyMatches)
             : escapeHtml(song.title)
 
+        const artistHtml = song.artist
+            ? `<span class="song-artist-inline">${escapeHtml(song.artist)}</span>`
+            : ''
+
         return `
           <div class="song-item compact ${state.previewSong?.id === song.id ? 'selected' : ''}" data-song-id="${song.id}">
-            <span class="song-title">${titleHtml}</span>
+            <span class="song-title">${titleHtml}${artistHtml}</span>
             <div class="song-actions">
                 <button class="icon-btn-sm add-schedule-btn" data-id="${song.id}" title="Add to Schedule">${ICONS.plus}</button>
                 <button class="icon-btn-sm edit-song-btn" data-id="${song.id}" title="Edit Song">${ICONS.edit}</button>
@@ -110,10 +114,23 @@ export function initLibraryListListeners(): void {
 
     // Add to Schedule button
     section.querySelectorAll('.add-schedule-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
             e.stopPropagation()
+            const triggerBtn = e.target as HTMLElement
             const songId = parseInt(btn.getAttribute('data-id') || '0')
-            addToSchedule(songId)
+
+            // Fetch song to check variations
+            const song = await fetchSongById(songId)
+            if (!song) return
+
+            if (song.variations && song.variations.length > 1) {
+                // Show popover
+                showVariationDataPopover(triggerBtn, song)
+            } else {
+                // Single variation (default) or legacy
+                const variationId = (song.variations && song.variations[0]) ? song.variations[0].id : 'default'
+                addToSchedule(songId, variationId)
+            }
         })
     })
 
@@ -175,10 +192,71 @@ function updateLibraryResults(searchTerm: string): void {
     })
 
     section.querySelectorAll('.add-schedule-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
             e.stopPropagation()
+            const triggerBtn = e.target as HTMLElement
             const songId = parseInt(btn.getAttribute('data-id') || '0')
-            addToSchedule(songId)
+
+            const song = await fetchSongById(songId)
+            if (!song) return
+
+            if (song.variations && song.variations.length > 1) {
+                showVariationDataPopover(triggerBtn, song)
+            } else {
+                const variationId = (song.variations && song.variations[0]) ? song.variations[0].id : 'default'
+                addToSchedule(songId, variationId)
+            }
         })
     })
+}
+
+function showVariationDataPopover(trigger: HTMLElement, song: Song): void {
+    // Remove existing popover if any
+    document.querySelector('.variation-picker-overlay')?.remove()
+
+    const overlay = document.createElement('div')
+    overlay.className = 'variation-picker-overlay'
+
+    // Close on background click
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove()
+    })
+
+    const popover = document.createElement('div')
+    popover.className = 'variation-picker-popover'
+
+    // Header
+    const header = document.createElement('div')
+    header.className = 'variation-picker-header'
+    header.textContent = 'Select Arrangement'
+    popover.appendChild(header)
+
+    // Options
+    song.variations.forEach(variation => {
+        const option = document.createElement('div')
+        option.className = 'variation-option'
+        option.textContent = variation.name
+        option.addEventListener('click', () => {
+            addToSchedule(song.id, variation.id)
+            overlay.remove()
+        })
+        popover.appendChild(option)
+    })
+
+    overlay.appendChild(popover)
+    document.body.appendChild(overlay)
+
+    // Position the popover
+    const rect = trigger.getBoundingClientRect()
+    // Default to right of the button, flip if no space
+    let left = rect.right + 10
+    let top = rect.top
+
+    // Basic bounds checking (simplified)
+    if (left + 150 > window.innerWidth) {
+        left = rect.left - 160
+    }
+
+    popover.style.left = `${left}px`
+    popover.style.top = `${top}px`
 }
