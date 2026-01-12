@@ -1,7 +1,7 @@
 import { ICONS } from '../../constants/icons'
 import { renderStatusIndicator, initStatusIndicatorListener } from './StatusIndicator'
 import { openSettings } from '../settings'
-import { renderControlPanel } from '../../screens/ControlPanel'
+
 
 // Base resolutions for scaling
 // We use a decent desktop resolution so the layout isn't mobile-optimized
@@ -84,6 +84,6 @@ export function initOutputMonitorListeners(): void {
 
   // Init Settings Button
   document.getElementById('settings-btn')?.addEventListener('click', () => {
-    openSettings(() => renderControlPanel())
+    openSettings()
   })
 }

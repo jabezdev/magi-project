@@ -19,21 +19,21 @@
     "marginRight": 5,
     "transitions": {
       "type": "crossfade",
-      "duration": 0.3
+      "duration": 0.1
     }
   },
   "confidenceMonitorSettings": {
     "fontSize": 8.5,
     "fontFamily": "system-ui",
     "lineHeight": 1,
-    "partGap": 5,
-    "slideGap": 1.5,
     "prevNextOpacity": 0.4,
     "clockSize": 3,
     "marginTop": 2,
     "marginBottom": 2,
     "marginLeft": 1,
     "marginRight": 1,
+    "partGap": 5,
+    "slideGap": 1.5,
     "transitions": {
       "type": "none",
       "duration": 0.3

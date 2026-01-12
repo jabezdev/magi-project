@@ -35,7 +35,7 @@ function loadMobileFontSize(): number {
       return parsed
     }
   }
-  return state.confidenceMonitorSettings.fontSize
+  return 1.5
 }
 
 // Save font size to localStorage
@@ -93,9 +93,9 @@ function buildMobileNavbar(currentSong: Song | null, schedule: Schedule, songs: 
   const currentId = currentSong?.id || 0
 
   const options = scheduledSongs.length > 0
-    ? scheduledSongs.map(s => 
-        `<option value="${s.id}" ${s.id === currentId ? 'selected' : ''}>${s.title}</option>`
-      ).join('')
+    ? scheduledSongs.map(s =>
+      `<option value="${s.id}" ${s.id === currentId ? 'selected' : ''}>${s.title}</option>`
+    ).join('')
     : '<option value="">No songs scheduled</option>'
 
   return `
@@ -119,7 +119,7 @@ function buildArrangementBar(song: Song | null, variation: number, position: Sli
     const part = song.parts.find(p => p.id === partId)
     const label = part?.label || partId
     const isActive = index === currentPartIndex
-    
+
     return `
       <button class="mobile-arrangement-item ${isActive ? 'active' : ''}" 
               data-part-index="${index}"
@@ -161,7 +161,7 @@ function buildTeleprompterContent(song: Song | null, variation: number, position
   if (isViewingLiveSong) {
     for (let i = 0; i < allSlides.length; i++) {
       if (allSlides[i].position.partIndex === position.partIndex &&
-          allSlides[i].position.slideIndex === position.slideIndex) {
+        allSlides[i].position.slideIndex === position.slideIndex) {
         currentFlatIndex = i
         break
       }
@@ -271,7 +271,7 @@ function setupMobileEventListeners(): void {
 async function handleSongChange(e: Event): Promise<void> {
   const select = e.target as HTMLSelectElement
   const songId = parseInt(select.value, 10)
-  
+
   if (isNaN(songId)) return
 
   // Fetch the full song data
@@ -280,8 +280,8 @@ async function handleSongChange(e: Event): Promise<void> {
     // Find the variation from schedule
     const scheduleItem = state.schedule.items.find(item => item.songId === songId)
     const variationId = scheduleItem?.variationId || 0
-    const variationIndex = typeof variationId === 'number' 
-      ? variationId 
+    const variationIndex = typeof variationId === 'number'
+      ? variationId
       : song.variations.findIndex(v => v.name === variationId) || 0
 
     viewedSong = song
@@ -315,7 +315,7 @@ async function handleSongChange(e: Event): Promise<void> {
         `
       }).join('')
       arrangementContainer.innerHTML = partsHTML
-      
+
       // Re-attach event listeners for arrangement items
       document.querySelectorAll('.mobile-arrangement-item').forEach(item => {
         item.addEventListener('click', handleArrangementClick)
@@ -330,12 +330,12 @@ async function handleSongChange(e: Event): Promise<void> {
 function handleArrangementClick(e: Event): void {
   const btn = e.currentTarget as HTMLElement
   const partIndex = parseInt(btn.dataset.partIndex || '0', 10)
-  
+
   const currentSong = viewedSong || state.liveSong
   if (!currentSong) return
 
   const allSlides = getAllSlides(currentSong, viewedSong ? viewedVariation : state.liveVariation)
-  
+
   // Find the first slide with this part index
   const slideIndex = allSlides.findIndex(s => s.position.partIndex === partIndex)
   if (slideIndex >= 0) {
@@ -377,12 +377,12 @@ function closeSettingsPanel(): void {
 function handleFontSizeChange(e: Event): void {
   const btn = e.currentTarget as HTMLElement
   const delta = parseFloat(btn.dataset.delta || '0')
-  
+
   let currentSize = loadMobileFontSize()
   currentSize = Math.max(0.5, Math.min(8, currentSize + delta))
-  
+
   saveMobileFontSize(currentSize)
-  
+
   // Update the display
   const valueEl = document.getElementById('mobile-font-size-value')
   if (valueEl) {
@@ -427,7 +427,7 @@ function updateTeleprompterContent(): void {
 function updateArrangementBar(): void {
   const { livePosition, liveSong, liveVariation } = state
   const arrangementContainer = document.querySelector('.mobile-arrangement')
-  
+
   if (!arrangementContainer) return
 
   // Only update if viewing live song
@@ -445,7 +445,7 @@ function updateArrangementBar(): void {
     const part = liveSong.parts.find(p => p.id === partId)
     const label = part?.label || partId
     const isActive = index === livePosition.partIndex
-    
+
     return `
       <button class="mobile-arrangement-item ${isActive ? 'active' : ''}" 
               data-part-index="${index}"
@@ -468,12 +468,12 @@ function updateSlideClasses(position: SlidePosition): void {
   if (!liveSong) return
 
   const allSlides = getAllSlides(liveSong, liveVariation)
-  
+
   // Find current slide index
   let currentFlatIndex = 0
   for (let i = 0; i < allSlides.length; i++) {
     if (allSlides[i].position.partIndex === position.partIndex &&
-        allSlides[i].position.slideIndex === position.slideIndex) {
+      allSlides[i].position.slideIndex === position.slideIndex) {
       currentFlatIndex = i
       break
     }
@@ -502,7 +502,7 @@ function scrollToCurrentSlide(): void {
   requestAnimationFrame(() => {
     const currentSlide = document.querySelector('.mobile-teleprompter .tp-slide.tp-current')
     const teleprompter = document.querySelector('.mobile-teleprompter')
-    
+
     if (currentSlide && teleprompter) {
       currentSlide.scrollIntoView({
         behavior: 'smooth',
@@ -544,7 +544,7 @@ function updateMobileScreenStyles(): void {
 function updateSongSelector(): void {
   const { schedule, songs, liveSong } = state
   const songSelect = document.getElementById('mobile-song-select') as HTMLSelectElement
-  
+
   if (!songSelect) return
 
   const currentSong = viewedSong || liveSong
@@ -556,9 +556,9 @@ function updateSongSelector(): void {
   }).filter(Boolean) as { id: number; title: string }[]
 
   const options = scheduledSongs.length > 0
-    ? scheduledSongs.map(s => 
-        `<option value="${s.id}" ${s.id === currentId ? 'selected' : ''}>${s.title}</option>`
-      ).join('')
+    ? scheduledSongs.map(s =>
+      `<option value="${s.id}" ${s.id === currentId ? 'selected' : ''}>${s.title}</option>`
+    ).join('')
     : '<option value="">No songs scheduled</option>'
 
   songSelect.innerHTML = options
@@ -581,7 +581,7 @@ export function renderMobileScreen(): void {
 
   // Initial render
   app.innerHTML = buildMobileScreenHTML()
-  
+
   // Setup event listeners
   setupMobileEventListeners()
 

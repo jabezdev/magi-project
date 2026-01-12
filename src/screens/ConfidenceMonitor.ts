@@ -211,10 +211,14 @@ export function startClock(): void {
         const clockEl = document.getElementById('cm-clock')
         if (clockEl) {
             const now = new Date()
-            const hours = now.getHours().toString().padStart(2, '0')
+            let hours = now.getHours()
+            const ampm = hours >= 12 ? 'PM' : 'AM'
+            hours = hours % 12
+            hours = hours ? hours : 12 // the hour '0' should be '12'
+            const hoursStr = hours.toString()
             const minutes = now.getMinutes().toString().padStart(2, '0')
-            const seconds = now.getSeconds().toString().padStart(2, '0')
-            clockEl.textContent = `${hours}:${minutes}:${seconds}`
+            // const seconds = now.getSeconds().toString().padStart(2, '0')
+            clockEl.textContent = `${hoursStr}:${minutes} ${ampm}`
         }
     }
 
