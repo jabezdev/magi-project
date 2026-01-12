@@ -44,13 +44,14 @@ function buildTeleprompterContent(): string {
     const { displayMode, liveSong, liveVariation, livePosition, previousLiveSong, previousLiveVariation, previousLivePosition, previewSong, previewVariation, previewPosition } = state
 
     // Build mode overlay for non-lyrics modes
+    // Build mode overlay for non-lyrics modes
     let modeOverlay = ''
     if (displayMode === 'black') {
-        modeOverlay = '<div class="mode-overlay black"><span>BLACK</span></div>'
+        modeOverlay = '<div class="mode-overlay black"></div>'
     } else if (displayMode === 'clear') {
-        modeOverlay = '<div class="mode-overlay clear"><span>CLEAR</span></div>'
+        modeOverlay = '<div class="mode-overlay clear"></div>'
     } else if (displayMode === 'logo') {
-        modeOverlay = '<div class="mode-overlay logo"><span>LOGO</span></div>'
+        modeOverlay = '<div class="mode-overlay logo"></div>'
     }
 
     if (!liveSong && !previousLiveSong) {
@@ -319,11 +320,11 @@ function updateModeOverlay(teleprompter: Element, displayMode: string): void {
 
     // Add new overlay if not in lyrics mode
     if (displayMode === 'black') {
-        teleprompter.insertAdjacentHTML('afterbegin', '<div class="mode-overlay black"><span>BLACK</span></div>')
+        teleprompter.insertAdjacentHTML('afterbegin', '<div class="mode-overlay black"></div>')
     } else if (displayMode === 'clear') {
-        teleprompter.insertAdjacentHTML('afterbegin', '<div class="mode-overlay clear"><span>CLEAR</span></div>')
+        teleprompter.insertAdjacentHTML('afterbegin', '<div class="mode-overlay clear"></div>')
     } else if (displayMode === 'logo') {
-        teleprompter.insertAdjacentHTML('afterbegin', '<div class="mode-overlay logo"><span>LOGO</span></div>')
+        teleprompter.insertAdjacentHTML('afterbegin', '<div class="mode-overlay logo"></div>')
     }
 }
 
