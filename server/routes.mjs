@@ -108,6 +108,11 @@ export function setupRoutes(app, __dirname, videoDir = null) {
                             title: content.title,
                             artist: content.artist,
                             variations: content.variations || [],
+                            // Flatten lyrics for search
+                            searchContent: [
+                                content.artist || '',
+                                ...(content.parts || []).map(p => p.slides.join(' '))
+                            ].join(' '),
                             _filename: file // Internal use
                         }
                     } catch {

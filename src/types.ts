@@ -46,6 +46,7 @@ export interface SongSummary {
   title: string
   artist?: string
   variations?: SongVariation[]
+  searchContent?: string
 }
 
 export interface SongSet {

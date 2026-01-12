@@ -4,7 +4,7 @@ import { selectSongForPreview } from '../../actions/controlPanel'
 import { fetchSongById } from '../../services/api'
 import { openSongEditor } from '../SongEditorModal'
 import { addToSchedule } from '../../actions/schedule'
-import { fuzzySearch, highlightMatches } from '../../utils/fuzzySearch'
+import { fuzzySearch, fuzzyMatch, highlightMatches } from '../../utils/fuzzySearch'
 import type { SongSummary, Song } from '../../types'
 
 // Store last search term for re-rendering
@@ -36,28 +36,76 @@ export function renderLibraryList(): string {
 function renderSongItems(songs: SongSummary[], searchTerm: string): string {
     let displaySongs: Array<SongSummary & { _fuzzyScore?: number; _fuzzyMatches?: Array<[number, number]> }>
 
-    if (searchTerm.trim()) {
-        displaySongs = fuzzySearch(songs, searchTerm, s => s.title + ' ' + (s.artist || ''))
+    // Explicit trim
+    const term = searchTerm.trim()
+
+    if (term) {
+        // Search against potential matches in title, artist, and lyrics/content
+        displaySongs = fuzzySearch(songs, term, s => `${s.title} ${s.artist || ''} ${s.searchContent || ''}`)
     } else {
         displaySongs = songs.map(s => ({ ...s, _fuzzyScore: 100, _fuzzyMatches: [] }))
     }
 
-    if (displaySongs.length === 0 && searchTerm.trim()) {
-        return `<div class="no-results">No songs match "${escapeHtml(searchTerm)}"</div>`
+    if (displaySongs.length === 0 && term) {
+        return `<div class="no-results">No songs match "${escapeHtml(term)}"</div>`
     }
 
     return displaySongs.map(song => {
-        const titleHtml = song._fuzzyMatches?.length
-            ? highlightMatches(song.title, song._fuzzyMatches)
-            : escapeHtml(song.title)
+        let titleHtml = escapeHtml(song.title)
+        let artistHtml = song.artist ? `<span class="song-artist-inline">${escapeHtml(song.artist)}</span>` : ''
+        let snippetHtml = ''
 
-        const artistHtml = song.artist
-            ? `<span class="song-artist-inline">${escapeHtml(song.artist)}</span>`
-            : ''
+        if (term) {
+            // Priority 1: Check Title Match
+            const { matches: titleMatches, score: titleScore } = fuzzyMatch(term, song.title)
+            if (titleScore > 0 && titleMatches.length > 0) {
+                titleHtml = highlightMatches(song.title, titleMatches)
+            }
+
+            // Priority 2: Check Artist Match
+            if (song.artist) {
+                const { matches: artistMatches, score: artistScore } = fuzzyMatch(term, song.artist)
+                if (artistScore > 0 && artistMatches.length > 0) {
+                    artistHtml = `<span class="song-artist-inline">${highlightMatches(song.artist, artistMatches)}</span>`
+                }
+            }
+
+            // Priority 3: If match is NOT obvious in title or artist, check Content
+            const titleMatchIsStrong = titleScore >= 500 // 500 contains/perfect match base
+
+            if (!titleMatchIsStrong && song.searchContent) {
+                const { matches: contentMatches, score: contentScore } = fuzzyMatch(term, song.searchContent)
+
+                if (contentScore > 0 && contentMatches.length > 0) {
+                    // Find the window around the first match
+                    const matchStart = contentMatches[0][0]
+                    const matchEnd = contentMatches[0][1]
+
+                    const windowSize = 30
+                    const start = Math.max(0, matchStart - windowSize)
+                    const end = Math.min(song.searchContent.length, matchEnd + windowSize)
+
+                    let text = song.searchContent.slice(start, end)
+                    const prefix = start > 0 ? '...' : ''
+                    const suffix = end < song.searchContent.length ? '...' : ''
+
+                    // We need to adjust matches relative to our slice
+                    const relativeMatches = contentMatches
+                        .map(([s, e]) => [s - start, e - start] as [number, number])
+                        .filter(([s, e]) => s >= 0 && e < text.length)
+
+                    const highlightedText = highlightMatches(text, relativeMatches)
+                    snippetHtml = `<div class="search-snippet">${prefix}${highlightHighlightedText(highlightedText)}${suffix}</div>`
+                }
+            }
+        }
 
         return `
           <div class="song-item compact ${state.previewSong?.id === song.id ? 'selected' : ''}" data-song-id="${song.id}">
-            <span class="song-title">${titleHtml}${artistHtml}</span>
+            <div class="song-info-col">
+                 <span class="song-title">${titleHtml}${artistHtml}</span>
+                 ${snippetHtml}
+            </div>
             <div class="song-actions">
                 <button class="icon-btn-sm add-schedule-btn" data-id="${song.id}" title="Add to Schedule">${ICONS.plus}</button>
                 <button class="icon-btn-sm edit-song-btn" data-id="${song.id}" title="Edit Song">${ICONS.edit}</button>
@@ -65,6 +113,10 @@ function renderSongItems(songs: SongSummary[], searchTerm: string): string {
           </div>
         `
     }).join('')
+}
+
+function highlightHighlightedText(html: string): string {
+    return html
 }
 
 function escapeHtml(text: string): string {

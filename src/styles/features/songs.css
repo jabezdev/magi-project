@@ -812,3 +812,31 @@
     background: var(--bg-hover);
     color: var(--accent-primary);
 }
+
+/* Search Match Badge */
+.search-match-badge {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-top: -2px;
+}
+
+.song-info-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.search-snippet {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: -1px;
+    opacity: 0.8;
+}
