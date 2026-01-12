@@ -150,7 +150,7 @@ export function updateLiveSlideSelection(scrollToActive = false): void {
     requestAnimationFrame(() => {
       (activeBtn as HTMLElement).scrollIntoView({
         behavior: 'smooth',
-        block: 'start'
+        block: 'center'
       })
     })
   }
