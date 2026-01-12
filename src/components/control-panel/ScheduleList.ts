@@ -3,7 +3,7 @@ import { ICONS } from '../../constants/icons'
 import { selectSongForPreview } from '../../actions/controlPanel'
 import { fetchSongById, saveSchedule, fetchScheduleList, fetchScheduleByName, createSchedule } from '../../services/api'
 import { removeFromSchedule, updateScheduleItem, moveScheduleItem } from '../../actions/schedule'
-
+import { openScheduleNameModal } from '../ScheduleNameModal'
 // Track current schedule name - initialize from saved value
 let currentScheduleName = getSavedCurrentSchedule()
 
@@ -15,19 +15,18 @@ export function renderScheduleList(): string {
   if (!schedule || schedule.items.length === 0) {
     return `
       <div class="cp-section schedule-section">
-        <div class="cp-column-header">
-            <div class="header-left">
+        <div class="cp-column-header schedule-header-redesign horizontal-layout">
+            <div class="header-section-left">
                 <span class="header-icon">${ICONS.calendar || '📅'}</span>
                 <span class="header-title">SCHEDULE</span>
+            </div>
+            <div class="header-section-center">
                 <button class="schedule-selector-btn" title="Select Schedule">
                   <span class="current-schedule-name">${currentScheduleName}</span>
                   ${ICONS.chevronDown}
                 </button>
             </div>
-            <div class="header-right">
-                <button class="icon-btn-sm new-schedule-btn" title="New Schedule">${ICONS.plus}</button>
-                <button class="icon-btn-sm save-schedule-btn" title="Save Schedule">${ICONS.save}</button>
-            </div>
+            <!-- Right section removed as requested -->
         </div>
         <div class="cp-section-body empty-state">
             <span class="empty-msg">No songs scheduled</span>
@@ -112,7 +111,10 @@ export function initScheduleListListeners(): void {
       const dropdown = document.getElementById('schedule-dropdown')
       if (dropdown && dropdown.style.display === 'block') {
         const selectorBtn = document.querySelector('.schedule-selector-btn')
-        if (!dropdown.contains(e.target as Node) && !selectorBtn?.contains(e.target as Node)) {
+        const popover = document.querySelector('.schedule-popover')
+        if (!dropdown.contains(e.target as Node) &&
+          !selectorBtn?.contains(e.target as Node) &&
+          !popover?.contains(e.target as Node)) {
           dropdown.style.display = 'none'
         }
       }
@@ -140,15 +142,14 @@ export function initScheduleListListeners(): void {
   if (newScheduleBtn) {
     newScheduleBtn.addEventListener('click', async (e) => {
       e.stopPropagation()
-      // Auto-generate name based on today's date
-      const today = new Date().toISOString().split('T')[0]
-      const result = await createSchedule(today)
-      if (result?.success) {
-        await loadSchedule(result.name)
-      } else {
-        // If schedule with today's date exists, just switch to it
-        await loadSchedule(today)
-      }
+      openScheduleNameModal(e.currentTarget as HTMLElement, async (name) => {
+        const result = await createSchedule(name)
+        if (result?.success) {
+          await loadSchedule(result.name)
+        } else {
+          alert('Failed to create schedule. It may already exist.')
+        }
+      })
     })
   }
 
@@ -351,17 +352,17 @@ async function toggleScheduleDropdown(): Promise<void> {
   })
 
   // New schedule button
-  dropdown.querySelector('.btn-new-schedule')?.addEventListener('click', async () => {
-    const name = prompt('Enter new schedule name:')
-    if (name && name.trim()) {
-      const result = await createSchedule(name.trim())
+  dropdown.querySelector('.btn-new-schedule')?.addEventListener('click', async (e) => {
+    const target = e.currentTarget as HTMLElement
+    openScheduleNameModal(target, async (name) => {
+      const result = await createSchedule(name)
       if (result?.success) {
         await loadSchedule(result.name)
         dropdown.style.display = 'none'
       } else {
         alert('Failed to create schedule. It may already exist.')
       }
-    }
+    })
   })
 }
 
