@@ -45,10 +45,10 @@
     "scheduleSectionHeight": 433,
     "librarySectionHeight": null,
     "backgroundsSectionHeight": 308,
-    "thumbnailSize": 205.4,
+    "thumbnailSize": 254.25,
     "monitorColumnWidth": 444
   },
-  "backgroundVideo": "/media/background.mp4",
-  "previewBackground": "/media/background.mp4",
+  "backgroundVideo": "/media/red_bokeh.mp4",
+  "previewBackground": "/media/red_bokeh.mp4",
   "logoMedia": "/media/logo.mp4"
 }

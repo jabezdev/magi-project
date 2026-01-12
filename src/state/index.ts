@@ -72,7 +72,7 @@ export const state: AppState = {
   previewBackground: loadSavedPreviewBackground(),
   availableVideos: [],
   logoMedia: DEFAULT_LOGO_MEDIA,
-  displayMode: 'clear',
+  displayMode: 'logo',
 
   songs: [],
   schedule: { date: new Date().toISOString(), items: [] },

@@ -64,9 +64,55 @@ export const sharedState = {
     logoMedia: savedSettings.logoMedia || '/public/videos/logo.mp4',
     displayMode: 'clear', // 'lyrics' | 'logo' | 'black' | 'clear'
     displaySettings: { ...DEFAULT_DISPLAY_SETTINGS, ...savedSettings.displaySettings },
-    confidenceMonitorSettings: { ...DEFAULT_CONFIDENCE_MONITOR_SETTINGS, ...savedSettings.confidenceMonitorSettings }
+    confidenceMonitorSettings: { ...DEFAULT_CONFIDENCE_MONITOR_SETTINGS, ...savedSettings.confidenceMonitorSettings },
+    availableVideos: []
 }
 
 // Track connected clients
 export const connectedClients = new Map()
+
+export function updateAvailableVideos(videoDir) {
+    try {
+        if (!fs.existsSync(videoDir)) return
+
+        const files = fs.readdirSync(videoDir)
+        const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv']
+
+        const videos = files
+            .filter(file => videoExtensions.some(ext => file.toLowerCase().endsWith(ext)))
+            .map(file => {
+                const videoPath = `/media/${file}`
+                const thumbFileName = `${file}.jpg`
+                const thumbFilePath = join(videoDir, 'thumbnails', thumbFileName)
+                const thumbUrl = `/media/thumbnails/${thumbFileName}`
+
+                let thumbnail = videoPath // Default to video itself
+
+                // Check if generated thumbnail exists
+                if (fs.existsSync(thumbFilePath)) {
+                    thumbnail = thumbUrl
+                } else {
+                    // Check for manual sidecars
+                    const extensions = ['.jpg', '.jpeg', '.png', '.webp']
+                    const basePath = join(videoDir, file)
+                    for (const ext of extensions) {
+                        if (fs.existsSync(basePath + ext)) {
+                            thumbnail = `/media/${file}${ext}` // manual override
+                            break
+                        }
+                    }
+                }
+
+                return {
+                    name: file,
+                    path: videoPath,
+                    thumbnail: thumbnail
+                }
+            })
+
+        sharedState.availableVideos = videos
+    } catch (e) {
+        console.error('[STATE] Failed to update available videos:', e)
+    }
+}
 

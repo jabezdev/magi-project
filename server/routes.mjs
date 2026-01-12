@@ -83,7 +83,8 @@ function checkAndMigrate(__dirname) {
     }
 }
 
-export function setupRoutes(app, __dirname) {
+export function setupRoutes(app, __dirname, videoDir = null) {
+    if (!videoDir) videoDir = join(__dirname, 'data', 'videos')
     ensureDirs(__dirname)
     checkAndMigrate(__dirname)
 
@@ -327,11 +328,11 @@ export function setupRoutes(app, __dirname) {
         })
     })
 
-    // List available videos in the data/videos folder
     app.get('/api/videos', (req, res) => {
         try {
-            const videosPath = join(__dirname, 'data', 'videos')
-            const thumbsPath = join(__dirname, 'data', 'videos', 'thumbnails')
+            const videosPath = videoDir
+
+            const thumbsPath = join(videosPath, 'thumbnails')
 
             // Ensure thumbnails dir exists
             if (!fs.existsSync(thumbsPath)) {
@@ -339,9 +340,12 @@ export function setupRoutes(app, __dirname) {
             }
 
             if (!fs.existsSync(videosPath)) {
+                console.warn('[DEBUG] Videos path does not exist:', videosPath)
                 return res.json([])
             }
             const files = fs.readdirSync(videosPath)
+            console.log('[DEBUG] Found video files:', files.length)
+
             const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv']
 
             const videos = files

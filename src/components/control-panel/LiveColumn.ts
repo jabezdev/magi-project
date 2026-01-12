@@ -88,7 +88,12 @@ export function initLiveListeners(): void {
   document.querySelectorAll('.display-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const mode = btn.getAttribute('data-mode') as DisplayMode
-      setDisplayMode(mode)
+      // Toggle back to lyrics if clicking the active mode (for Logo/Black/Clear)
+      if (state.displayMode === mode && ['logo', 'black', 'clear'].includes(mode)) {
+        setDisplayMode('lyrics')
+      } else {
+        setDisplayMode(mode)
+      }
     })
   })
 

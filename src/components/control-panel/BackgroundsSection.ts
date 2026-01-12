@@ -1,24 +1,10 @@
-import { state, saveLayoutSettings } from '../../state'
+import { state, saveLayoutSettings, subscribeToState } from '../../state'
 import { ICONS } from '../../constants/icons'
 import { selectLiveVideo, selectPreviewVideo } from '../../actions/controlPanel'
 import { toggleClass } from '../../utils/dom'
 
-export function renderBackgroundsSection(): string {
-  return `
-    <div class="video-section">
-      <div class="cp-column-header">
-        <div class="header-left">
-          <span class="header-icon">${ICONS.video}</span>
-          <span>BACKGROUNDS</span>
-        </div>
-        <div class="header-right" style="display: flex; gap: 4px;">
-          <!-- Zoom controls -->
-          <button class="icon-btn" id="zoom-out-btn" title="Zoom Out" style="width: 24px; height: 24px; padding: 0;">${ICONS.minus || '-'}</button>
-          <button class="icon-btn" id="zoom-in-btn" title="Zoom In" style="width: 24px; height: 24px; padding: 0;">${ICONS.plus || '+'}</button>
-        </div>
-      </div>
-      <div class="video-grid" id="video-grid">
-        ${state.availableVideos.map(video => {
+function renderVideoGridItems(): string {
+  const items = state.availableVideos.map(video => {
     const isImage = /\.(jpg|jpeg|png|webp)$/i.test(video.thumbnail || '')
     // If optimized thumbnail exists, use it. Otherwise use video as source (will be lazy loaded)
     const thumbSrc = video.thumbnail || video.path
@@ -38,14 +24,37 @@ export function renderBackgroundsSection(): string {
       }
             <span class="video-name">${video.name.replace(/\.[^.]+$/, '')}</span>
           </button>
-        `}).join('')}
-        ${state.availableVideos.length === 0 ? '<div class="empty-msg">No videos in folder</div>' : ''}
+        `}).join('')
+
+  if (state.availableVideos.length === 0) {
+    return '<div class="empty-msg">No videos in folder</div>'
+  }
+
+  return items
+}
+
+export function renderBackgroundsSection(): string {
+  return `
+    <div class="video-section">
+      <div class="cp-column-header">
+        <div class="header-left">
+          <span class="header-icon">${ICONS.video}</span>
+          <span>BACKGROUNDS</span>
+        </div>
+        <div class="header-right" style="display: flex; gap: 4px;">
+          <!-- Zoom controls -->
+          <button class="icon-btn" id="zoom-out-btn" title="Zoom Out" style="width: 24px; height: 24px; padding: 0;">${ICONS.minus || '-'}</button>
+          <button class="icon-btn" id="zoom-in-btn" title="Zoom In" style="width: 24px; height: 24px; padding: 0;">${ICONS.plus || '+'}</button>
+        </div>
+      </div>
+      <div class="video-grid" id="video-grid">
+        ${renderVideoGridItems()}
       </div>
     </div>
   `
 }
 
-export function initBackgroundsListeners(): void {
+function initVideoListeners() {
   // Video selection
   document.querySelectorAll('.video-thumb').forEach(btn => {
     // Single click -> Preview (Blue)
@@ -63,9 +72,17 @@ export function initBackgroundsListeners(): void {
       selectLiveVideo(path)
     })
   })
+}
 
-  // Lazy load videos/images using IntersectionObserver
-  const observer = new IntersectionObserver((entries) => {
+// Keep track of observer to disconnect/reconnect
+let observer: IntersectionObserver | null = null
+
+function initObserver() {
+  if (observer) {
+    observer.disconnect()
+  }
+
+  observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         const media = entry.target as HTMLElement
@@ -75,7 +92,7 @@ export function initBackgroundsListeners(): void {
           if (img.dataset.src) {
             img.src = img.dataset.src
             img.removeAttribute('data-src')
-            observer.unobserve(img)
+            observer?.unobserve(img)
           }
         } else if (media.tagName === 'VIDEO') {
           const video = media as HTMLVideoElement
@@ -88,18 +105,39 @@ export function initBackgroundsListeners(): void {
             video.load()
             // Cleanup
             video.removeAttribute('data-src')
-            observer.unobserve(video)
+            observer?.unobserve(video)
           }
         }
       }
     })
   }, {
-    root: document.querySelector('.backgrounds-row'), // Use the correct scrolling container
+    root: document.querySelector('#video-grid'), // Use the correct scrolling container
     rootMargin: '100px' // Preload slightly before appearing
   })
 
   document.querySelectorAll('.thumb-media').forEach(media => {
-    observer.observe(media)
+    observer?.observe(media)
+  })
+}
+
+function updateBackgroundsGrid() {
+  const grid = document.getElementById('video-grid')
+  if (!grid) return
+
+  grid.innerHTML = renderVideoGridItems()
+  initVideoListeners()
+  initObserver()
+}
+
+export function initBackgroundsListeners(): void {
+  initVideoListeners()
+  initObserver()
+
+  // Subscribe to state changes
+  subscribeToState((changes) => {
+    if (changes.includes('availableVideos')) {
+      updateBackgroundsGrid()
+    }
   })
 
   // Zoom Listeners

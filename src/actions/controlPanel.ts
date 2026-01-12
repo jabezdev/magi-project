@@ -8,6 +8,7 @@
 import type { Song, SlidePosition, DisplayMode } from '../types'
 import { state, updateState } from '../state'
 import { socketService } from '../services/socket'
+import { fetchSongById } from '../services/api'
 import { getNextPosition, getPrevPosition } from '../utils/slides'
 import { saveSettings } from '../services/api'
 
@@ -46,7 +47,7 @@ export function selectPreviewVariation(index: number): void {
  * Send the current preview to live
  * Requires full re-render to update live column
  */
-export function goLive(): void {
+export async function goLive(): Promise<void> {
   if (!state.previewSong) return
 
   // Transition background video if they differ
@@ -58,7 +59,6 @@ export function goLive(): void {
     liveSong: state.previewSong,
     liveVariation: state.previewVariation,
     livePosition: { ...state.previewPosition },
-    displayMode: 'lyrics' as DisplayMode
   }
 
   socketService.updateSlide({
@@ -66,9 +66,54 @@ export function goLive(): void {
     variation: newLiveState.liveVariation,
     position: newLiveState.livePosition
   })
-  socketService.updateDisplayMode('lyrics')
+
+  // Note: We do NOT force displayMode to 'lyrics' here anymore.
+  // This allows Logo/Mode persistence as requested.
 
   updateState(newLiveState, true) // Skip full re-render
+
+  // SCHEDULE PROGRESSION
+  if (state.schedule && state.schedule.items) {
+    // FIX: Get the actual variation ID from the current song and variation index
+    const currentVariation = state.previewSong?.variations[state.previewVariation]
+    const currentVariationId = currentVariation?.id
+
+    console.log('[DEBUG] Autopilot - Song:', state.previewSong?.id, 'VarIndex:', state.previewVariation, 'VarID:', currentVariationId)
+    console.log('[DEBUG] Schedule Items:', state.schedule.items)
+
+    const currentIndex = state.schedule.items.findIndex(item => {
+      const songMatch = item.songId === state.previewSong!.id
+
+      let varMatch = false
+      // 1. Direct ID match (loose equality for string/number)
+      if (currentVariationId !== undefined && String(item.variationId) === String(currentVariationId)) {
+        varMatch = true
+      }
+      // 2. Default fallback: If schedule says 'default' (or 0) and we are on the first variation (index 0)
+      else if ((item.variationId === 'default' || item.variationId === 0) && state.previewVariation === 0) {
+        varMatch = true
+      }
+
+      return songMatch && varMatch
+    })
+
+    if (currentIndex !== -1 && currentIndex < state.schedule.items.length - 1) {
+      const nextItem = state.schedule.items[currentIndex + 1]
+      try {
+        const nextSong = await fetchSongById(nextItem.songId)
+        if (nextSong) {
+          let varIndex = 0
+          if (nextItem.variationId) {
+            const idx = nextSong.variations.findIndex(v => String(v.id) === String(nextItem.variationId))
+            if (idx >= 0) varIndex = idx
+          }
+          selectSongForPreview(nextSong, varIndex)
+        }
+      } catch (e) {
+        console.error("Failed to autopilot schedule", e)
+      }
+    }
+  }
 }
 
 /**

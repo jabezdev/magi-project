@@ -15,7 +15,8 @@ export function setupSocket(io) {
             logoMedia: sharedState.logoMedia,
             displayMode: sharedState.displayMode,
             displaySettings: sharedState.displaySettings,
-            confidenceMonitorSettings: sharedState.confidenceMonitorSettings
+            confidenceMonitorSettings: sharedState.confidenceMonitorSettings,
+            availableVideos: sharedState.availableVideos
         })
 
         socket.on('disconnect', () => {
@@ -34,7 +35,8 @@ export function setupSocket(io) {
                 logoMedia: sharedState.logoMedia,
                 displayMode: sharedState.displayMode,
                 displaySettings: sharedState.displaySettings,
-                confidenceMonitorSettings: sharedState.confidenceMonitorSettings
+                confidenceMonitorSettings: sharedState.confidenceMonitorSettings,
+                availableVideos: sharedState.availableVideos
             })
         })
 

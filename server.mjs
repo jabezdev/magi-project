@@ -7,6 +7,7 @@ import { dirname, join } from 'path'
 
 import { setupRoutes } from './server/routes.mjs'
 import { setupSocket } from './server/socket.mjs'
+import { updateAvailableVideos } from './server/state.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -27,10 +28,17 @@ app.use(cors())
 app.use(express.json())
 app.use(express.static('dist'))
 app.use('/public', express.static('public'))
-app.use('/media', express.static('data/videos'))
+app.use('/public', express.static('public'))
+// Use absolute path for robustness
+const videoDir = process.env.VIDEO_DIR || join(__dirname, 'data', 'videos')
+
+app.use('/media', (req, res, next) => {
+  next()
+}, express.static(videoDir))
 
 // ============ SETUP MODULES ============
-setupRoutes(app, __dirname)
+setupRoutes(app, __dirname, videoDir)
+updateAvailableVideos(videoDir)
 setupSocket(io)
 
 // ============ CATCH-ALL (SPA) ============

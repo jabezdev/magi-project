@@ -8,6 +8,7 @@
 import './style.css'
 import { fetchSongs, fetchSchedule, fetchScheduleByName, fetchVideoAssets } from './services/api'
 import { state, updateState, setUpdateScreenCallback, loadSettingsFromServer, getSavedCurrentSchedule } from './state'
+import { socketService } from './services/socket'
 import { getScreenType } from './utils/screen'
 import { renderControlPanel } from './screens/ControlPanel'
 import { renderProjectionScreen } from './screens/ProjectionScreen'
@@ -110,8 +111,12 @@ async function init(): Promise<void> {
     updateState({
       songs,
       schedule,
-      availableVideos: videos
+      availableVideos: videos,
+      displayMode: 'logo' // Force Logo view on startup
     })
+
+    // Also sync to server so it sticks
+    socketService.updateDisplayMode('logo')
   } catch (error) {
     console.error('Failed to load initial data:', error)
     // Still render the screen even if data load fails
