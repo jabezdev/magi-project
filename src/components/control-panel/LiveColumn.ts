@@ -128,6 +128,7 @@ export function initLiveListeners(): void {
 export function updateLiveSlideSelection(): void {
   const liveButtons = document.querySelectorAll('.cp-live .slide-btn')
   const { livePosition } = state
+  let activeBtn: Element | null = null
 
   liveButtons.forEach(btn => {
     const partIndex = parseInt(btn.getAttribute('data-part') || '0')
@@ -138,7 +139,21 @@ export function updateLiveSlideSelection(): void {
 
     toggleClass(btn, 'active', isActive)
     toggleClass(btn, 'live', isActive)
+
+    if (isActive) {
+      activeBtn = btn
+    }
   })
+
+  // Scroll active slide into view after DOM is ready
+  if (activeBtn) {
+    requestAnimationFrame(() => {
+      (activeBtn as HTMLElement).scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      })
+    })
+  }
 }
 
 export function updateLiveNavButtons(): void {
