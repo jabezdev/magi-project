@@ -166,7 +166,7 @@ function handleLiveChange(): void {
       liveContainer.replaceWith(newLive)
       initLiveListeners()
       // Restore proper slide selection
-      updateLiveSlideSelection()
+      updateLiveSlideSelection(true)
     }
   }
 }

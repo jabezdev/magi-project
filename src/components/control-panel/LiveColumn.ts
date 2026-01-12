@@ -125,7 +125,7 @@ export function initLiveListeners(): void {
   })
 }
 
-export function updateLiveSlideSelection(): void {
+export function updateLiveSlideSelection(scrollToActive = false): void {
   const liveButtons = document.querySelectorAll('.cp-live .slide-btn')
   const { livePosition } = state
   let activeBtn: Element | null = null
@@ -145,8 +145,8 @@ export function updateLiveSlideSelection(): void {
     }
   })
 
-  // Scroll active slide into view after DOM is ready
-  if (activeBtn) {
+  // Scroll active slide into view only on Go Live (song change)
+  if (scrollToActive && activeBtn) {
     requestAnimationFrame(() => {
       (activeBtn as HTMLElement).scrollIntoView({
         behavior: 'smooth',
