@@ -11,14 +11,15 @@ const RES_4_3 = { width: 1920, height: 1440 }
 export function renderOutputMonitorColumn(): string {
   return `
     <div class="cp-column cp-monitors">
-      <div class="cp-column-header">
-        <div class="header-left">
+      <div class="cp-column-header horizontal-layout compact-header">
+        <div class="header-section-left">
           <span class="header-icon">${ICONS.monitor}</span>
           <span>OUTPUTS</span>
         </div>
-        <div class="header-right" style="display: flex; gap: 8px; align-items: center;">
-          ${renderStatusIndicator()}
-          <button class="icon-btn settings-header-btn" id="settings-btn" title="Settings" style="width: 24px; height: 24px; padding: 0;">${ICONS.settings}</button>
+        <div class="header-section-center"></div>
+        <div class="header-section-right">
+          <div class="status-indicator-wrapper">${renderStatusIndicator()}</div>
+          <button class="icon-btn settings-header-btn flush-btn" id="settings-btn" title="Settings">${ICONS.settings}</button>
         </div>
       </div>
       <div class="cp-column-body monitor-list">

@@ -41,11 +41,11 @@
   },
   "currentSchedule": "2026-01-11",
   "layoutSettings": {
-    "songsColumnWidth": 385,
-    "scheduleSectionHeight": 433,
+    "songsColumnWidth": 277,
+    "scheduleSectionHeight": 446,
     "librarySectionHeight": null,
     "backgroundsSectionHeight": 308,
-    "thumbnailSize": 246,
+    "thumbnailSize": 221.8,
     "monitorColumnWidth": 460
   },
   "backgroundVideo": "/media/red_bokeh.mp4",

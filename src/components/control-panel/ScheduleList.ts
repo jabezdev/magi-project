@@ -10,7 +10,7 @@ let currentScheduleName = getSavedCurrentSchedule()
 export function renderScheduleList(): string {
   const schedule = state.schedule
   const songs = state.songs
-  const itemCount = schedule?.items?.length || 0
+
 
   if (!schedule || schedule.items.length === 0) {
     return `
@@ -39,20 +39,18 @@ export function renderScheduleList(): string {
 
   return `
     <div class="cp-section schedule-section">
-      <div class="cp-column-header">
-        <div class="header-left">
+      <div class="cp-column-header schedule-header-redesign horizontal-layout">
+        <div class="header-section-left">
             <span class="header-icon">${ICONS.calendar || '📅'}</span>
             <span class="header-title">SCHEDULE</span>
+        </div>
+        <div class="header-section-center">
             <button class="schedule-selector-btn" title="Select Schedule">
-              <span class="current-schedule-name">${currentScheduleName}</span>
-              ${ICONS.chevronDown}
-            </button>
-            <span class="song-count">${itemCount}</span>
+               <span class="current-schedule-name">${currentScheduleName}</span>
+               ${ICONS.chevronDown}
+             </button>
         </div>
-        <div class="header-right">
-            <button class="icon-btn-sm new-schedule-btn" title="New Schedule">${ICONS.plus}</button>
-            <button class="icon-btn-sm save-schedule-btn" title="Save Schedule">${ICONS.save}</button>
-        </div>
+        <!-- Right section removed as requested -->
       </div>
       <div class="cp-section-body">
         <div class="song-list" id="schedule-song-list">
@@ -204,7 +202,7 @@ export function initScheduleListListeners(): void {
       const nextVariation = song.variations[nextIdx]
 
       updateScheduleItem(index, { variationId: nextVariation.id })
-      
+
       // Also update preview if this song is currently being previewed
       if (state.previewSong?.id === songId) {
         selectSongForPreview(state.previewSong, nextIdx)
@@ -232,7 +230,7 @@ function initDragAndDrop(section: Element): void {
     item.addEventListener('dragstart', (e) => {
       const event = e as DragEvent
       draggedIndex = parseInt((item as HTMLElement).getAttribute('data-index') || '0')
-      ;(item as HTMLElement).classList.add('dragging')
+        ; (item as HTMLElement).classList.add('dragging')
       event.dataTransfer?.setData('text/plain', String(draggedIndex))
       event.dataTransfer!.effectAllowed = 'move'
     })

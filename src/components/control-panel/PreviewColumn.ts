@@ -27,26 +27,29 @@ export function renderPreviewColumn(): string {
 
   return `
     <div class="cp-column cp-preview">
-      <div class="cp-column-header">
-        <span class="header-icon">${ICONS.monitor}</span>
-        <span style="margin-right: 0.5rem">Preview</span>
-        ${song ? `
-          <select class="variation-select" id="preview-variation" style="max-width: 120px; padding: 2px;">
-            ${song.variations.map((v, i) => `
-              <option value="${i}" ${i === state.previewVariation ? 'selected' : ''}>${v.name}</option>
-            `).join('')}
-          </select>
-        ` : ''}
-        <button class="go-live-btn sm" id="go-live" style="margin-left: auto; font-size: 0.7rem; padding: 0.25rem 0.5rem;" ${!song ? 'disabled' : ''}>${ICONS.play} GO LIVE</button>
+      <div class="cp-column-header preview-header-redesign horizontal-layout">
+        <div class="header-section-left">
+            <span class="header-icon">${ICONS.monitor}</span>
+            <span class="header-title">PREVIEW</span>
+        </div>
+        <div class="header-section-center">
+             ${song ? `
+               <div class="preview-info-stack">
+                 <span class="preview-song-title">${song.title}</span>
+                 <select class="variation-select-compact" id="preview-variation">
+                    ${song.variations.map((v, i) => `
+                    <option value="${i}" ${i === state.previewVariation ? 'selected' : ''}>${v.name}</option>
+                    `).join('')}
+                 </select>
+               </div>
+            ` : '<span class="placeholder-text">Select a song</span>'}
+        </div>
+        <div class="header-section-right">
+             <button class="go-live-btn sm" id="go-live" ${!song ? 'disabled' : ''}>${ICONS.play} GO LIVE</button>
+        </div>
       </div>
       <div class="cp-column-body lyrics-scroll">
         ${song ? `
-          <div class="song-info">
-            <h2 class="song-name">
-              ${song.title}
-              ${song.artist ? `<span class="song-artist">${song.artist}</span>` : ''}
-            </h2>
-          </div>
           <div class="lyrics-arrangement">
             ${arrangementParts.map(({ part, partIndex, partId }) => `
               <div class="lyrics-part" data-part-index="${partIndex}">

@@ -26,26 +26,44 @@ export function renderLiveColumn(): string {
 
   return `
     <div class="cp-column cp-live">
-      <div class="cp-column-header live-header">
-        <div class="header-label">
-            <span class="live-indicator-text">LIVE</span>
+      <div class="cp-column-header live-header-redesign horizontal-layout">
+        <div class="header-section-left">
+            <div class="live-badge">
+                <span class="live-icon">${ICONS.live || '🔴'}</span>
+                <span class="live-indicator-text">LIVE</span>
+            </div>
         </div>
-        <div class="display-controls">
-          <button class="display-btn ${state.displayMode === 'logo' ? 'active' : ''}" data-mode="logo" title="Logo">${ICONS.logo}</button>
-          <button class="display-btn ${state.displayMode === 'black' ? 'active' : ''}" data-mode="black" title="Black">${ICONS.black}</button>
-          <button class="display-btn ${state.displayMode === 'clear' ? 'active' : ''}" data-mode="clear" title="Clear">${ICONS.clear}</button>
-          <button class="display-btn ${state.displayMode === 'lyrics' ? 'active' : ''}" data-mode="lyrics" title="Show Lyrics">${ICONS.play}</button>
+        
+        <div class="header-section-center">
+            ${song ? `
+                <span class="live-song-title">${song.title}</span>
+                <span class="live-arrangement-name">${song.variations[state.liveVariation]?.name || 'Default'}</span>
+            ` : ''}
+        </div>
+
+        <div class="header-section-right">
+             <div class="display-controls big-buttons">
+                <button class="display-btn square ${state.displayMode === 'logo' ? 'active' : ''}" data-mode="logo" title="Logo">
+                    ${ICONS.logo}
+                    <span>LOGO</span>
+                </button>
+                <button class="display-btn square ${state.displayMode === 'black' ? 'active' : ''}" data-mode="black" title="Black">
+                    ${ICONS.black}
+                    <span>BLACK</span>
+                </button>
+                <button class="display-btn square ${state.displayMode === 'clear' ? 'active' : ''}" data-mode="clear" title="Clear">
+                    ${ICONS.clear}
+                    <span>CLEAR</span>
+                </button>
+                <button class="display-btn square ${state.displayMode === 'lyrics' ? 'active' : ''}" data-mode="lyrics" title="Show Lyrics">
+                    ${ICONS.play}
+                    <span>LYRICS</span>
+                </button>
+             </div>
         </div>
       </div>
       <div class="cp-column-body lyrics-scroll">
         ${song ? `
-          <div class="song-info live-song-info">
-            <span class="live-dot"></span>
-            <h2 class="song-name">
-              ${song.title}
-              ${song.artist ? `<span class="song-artist">${song.artist}</span>` : ''}
-            </h2>
-          </div>
           <div class="lyrics-arrangement">
             ${arrangementParts.map(({ part, partIndex, partId }) => `
               <div class="lyrics-part" data-part-index="${partIndex}">

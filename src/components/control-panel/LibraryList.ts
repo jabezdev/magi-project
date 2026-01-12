@@ -15,13 +15,16 @@ export function renderLibraryList(): string {
 
     return `
     <div class="cp-section library-section">
-      <div class="cp-column-header">
-        <div class="header-left">
+      <div class="cp-column-header horizontal-layout compact-header">
+        <div class="header-section-left">
           <span class="header-icon">${ICONS.music || '🎵'}</span>
           <span>Library</span>
           <span class="song-count">${songs.length}</span>
         </div>
-        <button class="icon-btn-sm new-song-btn" title="New Song">${ICONS.plus}</button>
+        <div class="header-section-center"></div>
+        <div class="header-section-right">
+          <button class="icon-btn-sm new-song-btn flush-btn" title="New Song">${ICONS.plus}</button>
+        </div>
       </div>
       <div class="cp-section-body">
          <input type="text" id="library-search" placeholder="Search songs..." class="search-input" value="${escapeAttr(lastSearchTerm)}" />

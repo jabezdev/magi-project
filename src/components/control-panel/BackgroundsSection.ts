@@ -36,16 +36,16 @@ function renderVideoGridItems(): string {
 export function renderBackgroundsSection(): string {
   return `
     <div class="video-section">
-      <div class="cp-column-header">
-        <div class="header-left">
+      <div class="cp-column-header horizontal-layout compact-header backgrounds-header">
+        <div class="header-section-left">
           <span class="header-icon">${ICONS.video}</span>
           <span>BACKGROUNDS</span>
         </div>
-        <div class="header-right" style="display: flex; gap: 4px;">
-          <button class="icon-btn" id="refresh-videos-btn" title="Refresh Videos" style="width: 24px; height: 24px; padding: 0;">${ICONS.refresh}</button>
-          <!-- Zoom controls -->
-          <button class="icon-btn" id="zoom-out-btn" title="Zoom Out" style="width: 24px; height: 24px; padding: 0;">${ICONS.minus || '-'}</button>
-          <button class="icon-btn" id="zoom-in-btn" title="Zoom In" style="width: 24px; height: 24px; padding: 0;">${ICONS.plus || '+'}</button>
+        <div class="header-section-center"></div>
+        <div class="header-section-right with-separator">
+          <button class="icon-btn flush-btn" id="refresh-videos-btn" title="Refresh Videos">${ICONS.refresh}</button>
+          <button class="icon-btn flush-btn" id="zoom-out-btn" title="Zoom Out">${ICONS.minus || '-'}</button>
+          <button class="icon-btn flush-btn" id="zoom-in-btn" title="Zoom In">${ICONS.plus || '+'}</button>
         </div>
       </div>
       <div class="video-grid" id="video-grid">

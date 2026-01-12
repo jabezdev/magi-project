@@ -428,38 +428,7 @@
 
 /* ========== SCHEDULE SELECTOR ========== */
 
-.schedule-selector-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    padding: 0.25rem 0.5rem;
-    color: var(--text-primary);
-    font-size: 0.8rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.schedule-selector-btn:hover {
-    background: var(--bg-hover);
-    border-color: var(--accent-primary);
-}
-
-.schedule-selector-btn svg {
-    width: 14px;
-    height: 14px;
-    color: var(--text-muted);
-}
-
-.current-schedule-name {
-    max-width: 120px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
+/* .schedule-selector-btn and .current-schedule-name moved to control-panel.css */
 
 /* Schedule Dropdown - Centered Popup */
 .schedule-dropdown {
