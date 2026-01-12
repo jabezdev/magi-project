@@ -17,11 +17,19 @@ import { saveSettings } from '../services/api'
  * Requires full re-render since song content changes
  */
 export function selectSongForPreview(song: Song, variationIndex = 0): void {
+  const position = { partIndex: 0, slideIndex: 0 }
   updateState({
     previewSong: song,
     previewVariation: variationIndex,
-    previewPosition: { partIndex: 0, slideIndex: 0 }
+    previewPosition: position
   }, true) // Skip full re-render
+
+  // Sync preview to other screens (for Confidence Monitor look-ahead)
+  socketService.emit('update-preview', {
+    song,
+    variation: variationIndex,
+    position
+  })
 }
 
 /**
@@ -30,6 +38,13 @@ export function selectSongForPreview(song: Song, variationIndex = 0): void {
  */
 export function selectPreviewPosition(position: SlidePosition): void {
   updateState({ previewPosition: position }, true) // Skip full re-render
+
+  // Sync preview position to other screens (for Confidence Monitor look-ahead)
+  socketService.emit('update-preview', {
+    song: state.previewSong,
+    variation: state.previewVariation,
+    position
+  })
 }
 
 /**
@@ -55,7 +70,18 @@ export async function goLive(): Promise<void> {
     selectLiveVideo(state.previewBackground)
   }
 
+  // Capture previous live state for transitions
+  let previousState: Partial<typeof state> = {}
+  if (state.liveSong) {
+    previousState = {
+      previousLiveSong: state.liveSong,
+      previousLiveVariation: state.liveVariation,
+      previousLivePosition: { ...state.livePosition }
+    }
+  }
+
   const newLiveState = {
+    ...previousState,
     liveSong: state.previewSong,
     liveVariation: state.previewVariation,
     livePosition: { ...state.previewPosition },

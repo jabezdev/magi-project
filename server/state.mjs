@@ -60,6 +60,14 @@ export const sharedState = {
     liveSong: null,
     liveVariation: 0,
     livePosition: { partIndex: 0, slideIndex: 0 },
+    // Previous live state for teleprompter continuity
+    previousLiveSong: null,
+    previousLiveVariation: 0,
+    previousLivePosition: { partIndex: 0, slideIndex: 0 },
+    // Preview state for teleprompter "look ahead"
+    previewSong: null,
+    previewVariation: 0,
+    previewPosition: { partIndex: 0, slideIndex: 0 },
     backgroundVideo: savedSettings.backgroundVideo || '/public/videos/background.mp4',
     logoMedia: savedSettings.logoMedia || '/public/videos/logo.mp4',
     displayMode: 'clear', // 'lyrics' | 'logo' | 'black' | 'clear'

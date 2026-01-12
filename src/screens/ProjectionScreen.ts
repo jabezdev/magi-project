@@ -106,8 +106,8 @@ function setupConfidenceMonitorUpdates(): void {
   unsubscribe = subscribeToState((changedKeys: StateChangeKey[]) => {
     if (!isInitialized) return
 
-    // Update teleprompter content when live state changes
-    if (changedKeys.includes('live') || changedKeys.includes('displayMode')) {
+    // Update teleprompter content when live state OR preview state changes
+    if (changedKeys.includes('live') || changedKeys.includes('preview') || changedKeys.includes('displayMode')) {
       updateTeleprompterContent()
     }
 

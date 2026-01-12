@@ -194,19 +194,17 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow-y: hidden;
-    /* Hide scroll, we handle it manually via transform */
-    overflow-x: hidden;
+    overflow: hidden;
+    position: relative;
     padding-top: var(--cm-margin-top, 0.5rem);
     padding-bottom: var(--cm-margin-bottom, 0.5rem);
     padding-left: var(--cm-margin-left, 0.5rem);
     padding-right: var(--cm-margin-right, 0.5rem);
 }
 
-/* Hide scrollbar but keep functionality */
+/* Hide scrollbar */
 .cm-teleprompter::-webkit-scrollbar {
-    width: 0;
-    background: transparent;
+    display: none;
 }
 
 .cm-teleprompter {
@@ -219,9 +217,8 @@
     flex-direction: column;
     align-items: stretch;
     width: 100%;
-    /* Hardware accelerated scrolling */
     will-change: transform;
-    transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: transform 0.4s ease-out;
 }
 
 /* Spacers to allow first/last slide to be centered */
@@ -238,9 +235,25 @@
     transition: opacity 0.5s ease, transform 0.5s ease;
     padding: 1.5rem 0;
     margin-bottom: var(--cm-slide-gap, 0);
-    content-visibility: auto;
-    /* Optimization */
-    contain-intrinsic-size: 200px;
+}
+
+/* Divider between songs */
+.tp-divider {
+    width: 100%;
+    height: var(--cm-divider-height, 2px);
+    background: var(--cm-divider-color, rgba(255, 255, 255, 0.2));
+    margin: 2rem 0;
+    flex-shrink: 0;
+}
+
+/* Preview song styling */
+.tp-preview {
+    opacity: var(--cm-prev-next-opacity, 0.35);
+}
+
+/* Hidden slides in preview (before selected position) */
+.tp-hidden {
+    display: none;
 }
 
 .tp-slide.tp-empty {

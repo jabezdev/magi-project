@@ -68,6 +68,9 @@ export const state: AppState = {
   liveSong: null,
   liveVariation: 0,
   livePosition: { ...DEFAULT_POSITION },
+  previousLiveSong: null,
+  previousLiveVariation: 0,
+  previousLivePosition: { ...DEFAULT_POSITION },
   backgroundVideo: DEFAULT_BACKGROUND_VIDEO,
   previewBackground: loadSavedPreviewBackground(),
   availableVideos: [],
@@ -118,7 +121,7 @@ function getChangedGroups(updatedKeys: Array<keyof AppState>): StateChangeKey[] 
   const groups: StateChangeKey[] = [...updatedKeys]
 
   const previewKeys: Array<keyof AppState> = ['previewSong', 'previewVariation', 'previewPosition']
-  const liveKeys: Array<keyof AppState> = ['liveSong', 'liveVariation', 'livePosition']
+  const liveKeys: Array<keyof AppState> = ['liveSong', 'liveVariation', 'livePosition', 'previousLiveSong', 'previousLiveVariation', 'previousLivePosition']
   const displayKeys: Array<keyof AppState> = ['displayMode', 'displaySettings', 'backgroundVideo', 'previewBackground', 'logoMedia']
   const dataKeys: Array<keyof AppState> = ['songs', 'schedule', 'lyricsData']
 

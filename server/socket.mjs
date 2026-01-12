@@ -11,6 +11,12 @@ export function setupSocket(io) {
             liveSong: sharedState.liveSong,
             liveVariation: sharedState.liveVariation,
             livePosition: sharedState.livePosition,
+            previousLiveSong: sharedState.previousLiveSong,
+            previousLiveVariation: sharedState.previousLiveVariation,
+            previousLivePosition: sharedState.previousLivePosition,
+            previewSong: sharedState.previewSong,
+            previewVariation: sharedState.previewVariation,
+            previewPosition: sharedState.previewPosition,
             backgroundVideo: sharedState.backgroundVideo,
             logoMedia: sharedState.logoMedia,
             displayMode: sharedState.displayMode,
@@ -31,6 +37,12 @@ export function setupSocket(io) {
                 liveSong: sharedState.liveSong,
                 liveVariation: sharedState.liveVariation,
                 livePosition: sharedState.livePosition,
+                previousLiveSong: sharedState.previousLiveSong,
+                previousLiveVariation: sharedState.previousLiveVariation,
+                previousLivePosition: sharedState.previousLivePosition,
+                previewSong: sharedState.previewSong,
+                previewVariation: sharedState.previewVariation,
+                previewPosition: sharedState.previewPosition,
                 backgroundVideo: sharedState.backgroundVideo,
                 logoMedia: sharedState.logoMedia,
                 displayMode: sharedState.displayMode,
@@ -43,10 +55,35 @@ export function setupSocket(io) {
         // Update current slide (go live)
         socket.on('update-slide', (data) => {
             console.log('📝 Updating slide:', data.song?.title, 'position:', JSON.stringify(data.position))
+
+            // If the song is changing, capture the previous state
+            if (data.song && sharedState.liveSong && data.song.id !== sharedState.liveSong.id) {
+                sharedState.previousLiveSong = sharedState.liveSong
+                sharedState.previousLiveVariation = sharedState.liveVariation
+                sharedState.previousLivePosition = { ...sharedState.livePosition }
+            }
+
             sharedState.liveSong = data.song
             sharedState.liveVariation = data.variation
             sharedState.livePosition = data.position
-            io.emit('slide-updated', data)
+
+            // Emit all relevant state for proper sync
+            io.emit('slide-updated', {
+                song: data.song,
+                variation: data.variation,
+                position: data.position,
+                previousSong: sharedState.previousLiveSong,
+                previousVariation: sharedState.previousLiveVariation,
+                previousPosition: sharedState.previousLivePosition
+            })
+        })
+
+        // Update preview song (for confidence monitor look-ahead)
+        socket.on('update-preview', (data) => {
+            sharedState.previewSong = data.song
+            sharedState.previewVariation = data.variation
+            sharedState.previewPosition = data.position
+            io.emit('preview-updated', data)
         })
 
         // Update video background

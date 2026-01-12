@@ -126,6 +126,10 @@ export interface AppState {
   liveSong: Song | null
   liveVariation: number
   livePosition: SlidePosition
+  // Previous Live state (for transition context)
+  previousLiveSong: Song | null
+  previousLiveVariation: number
+  previousLivePosition: SlidePosition
   // Display settings
   previewBackground: string
   backgroundVideo: string

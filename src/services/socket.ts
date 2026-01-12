@@ -29,11 +29,14 @@ class SocketService {
       console.log('[Socket] Disconnected from server')
     })
 
-    this.socket.on('slide-updated', (data: SlideUpdate) => {
+    this.socket.on('slide-updated', (data: SlideUpdate & { previousSong?: any, previousVariation?: number, previousPosition?: any }) => {
       this.notifyStateUpdate({
         liveSong: data.song,
         liveVariation: data.variation,
-        livePosition: data.position
+        livePosition: data.position,
+        previousLiveSong: data.previousSong ?? null,
+        previousLiveVariation: data.previousVariation ?? 0,
+        previousLivePosition: data.previousPosition ?? { partIndex: 0, slideIndex: 0 }
       })
     })
 
@@ -64,6 +67,14 @@ class SocketService {
     this.socket.on('confidence-monitor-settings-updated', (data: { settings: ConfidenceMonitorSettings }) => {
       this.notifyStateUpdate({
         confidenceMonitorSettings: data.settings
+      })
+    })
+
+    this.socket.on('preview-updated', (data: { song: any, variation: number, position: any }) => {
+      this.notifyStateUpdate({
+        previewSong: data.song,
+        previewVariation: data.variation,
+        previewPosition: data.position
       })
     })
 
