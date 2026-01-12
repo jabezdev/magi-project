@@ -2,7 +2,7 @@
  * Control Panel Screen
  * 
  * Renders the main control interface for managing the projection.
- * Uses efficient DOM updates for slide selection changes.
+ * Uses efficient DOM updates for slide selection changes, schedule updates, and library changes.
  */
 
 import { state, subscribeToState, StateChangeKey, saveLayoutSettings } from '../state'
@@ -21,7 +21,13 @@ import {
   renderProjectionControlColumn,
   renderOutputMonitorColumn,
   renderPreviewColumn,
-  renderLiveColumn, // Keep these if needed by internal updates, but we use ProjectionControl used generally
+  renderLiveColumn,
+  // Specific component renders & inits for granular updates
+  renderScheduleList,
+  initScheduleListListeners,
+  renderLibraryList,
+  initLibraryListListeners,
+
   initSongListListeners,
   initProjectionControlListeners,
   initOutputMonitorListeners,
@@ -106,6 +112,15 @@ function setupEfficientUpdates(): void {
     if (changedKeys.includes('backgroundVideo') || changedKeys.includes('previewBackground')) {
       updateVideoSelection()
     }
+
+    // Handle data changes efficiently
+    if (changedKeys.includes('schedule')) {
+      handleScheduleChange()
+    }
+
+    if (changedKeys.includes('songs')) {
+      handleDataChange()
+    }
   })
 }
 
@@ -154,6 +169,71 @@ function handleLiveChange(): void {
       updateLiveSlideSelection()
     }
   }
+}
+
+/**
+ * Handle schedule changes efficiently
+ */
+function handleScheduleChange(): void {
+  // Update schedule section
+  const scheduleContainer = document.querySelector('.schedule-section')
+  if (scheduleContainer && scheduleContainer.parentElement) {
+    const tempContainer = document.createElement('div')
+    tempContainer.innerHTML = renderScheduleList()
+    const newSchedule = tempContainer.firstElementChild
+
+    if (newSchedule) {
+      // Preserve height if manually resized
+      const currentHeight = (scheduleContainer as HTMLElement).style.height
+      const currentFlex = (scheduleContainer as HTMLElement).style.flex
+
+      if (currentHeight) {
+        (newSchedule as HTMLElement).style.height = currentHeight
+      }
+      if (currentFlex) {
+        (newSchedule as HTMLElement).style.flex = currentFlex
+      }
+
+      scheduleContainer.replaceWith(newSchedule)
+      initScheduleListListeners()
+
+      // Restore selection state
+      updateSongSelectionUI()
+      updateLiveStatusUI()
+    }
+  }
+}
+
+/**
+ * Handle data/library changes efficiently
+ */
+function handleDataChange(): void {
+  // 1. Update library section
+  const libraryContainer = document.querySelector('.library-section')
+  if (libraryContainer) {
+    const tempContainer = document.createElement('div')
+    tempContainer.innerHTML = renderLibraryList()
+    const newLibrary = tempContainer.firstElementChild
+
+    if (newLibrary) {
+      // Preserve layout styles
+      const currentHeight = (libraryContainer as HTMLElement).style.height
+      const currentFlex = (libraryContainer as HTMLElement).style.flex
+
+      if (currentHeight) (newLibrary as HTMLElement).style.height = currentHeight
+      if (currentFlex) (newLibrary as HTMLElement).style.flex = currentFlex
+
+      libraryContainer.replaceWith(newLibrary)
+      initLibraryListListeners()
+    }
+  }
+
+  // 2. Also update schedule as song details might have changed
+  handleScheduleChange()
+
+  // 3. Selection states might need re-check if IDs changed
+  updateSongSelectionUI()
+  updateLiveStatusUI()
 }
 
 /**

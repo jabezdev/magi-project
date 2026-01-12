@@ -33,10 +33,11 @@ function updateScreen(): void {
     return
   }
 
-  // For control panel, we need to re-render on song changes
-  // The efficient update system handles position/mode changes
+  // For control panel, we rely on efficient updates in ControlPanel.ts
+  // DO NOT trigger performRender() here for state changes, as it rebuilds the entire DOM
+  // and breaks scroll position / drag states / selection
   if (currentScreen === 'control-panel') {
-    performRender()
+    return
   }
   // Projection screens use subscription-based updates after initial render
 }
@@ -87,7 +88,7 @@ async function init(): Promise<void> {
   try {
     // Check if there's a saved schedule name
     const savedScheduleName = getSavedCurrentSchedule()
-    
+
     const [songs, videos] = await Promise.all([
       fetchSongs(),
       fetchVideoAssets()
