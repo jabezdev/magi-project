@@ -250,6 +250,11 @@
     background: var(--bg-secondary);
 }
 
+.cp-monitors .header-section-right {
+    gap: 0 !important;
+    padding-right: 0 !important;
+}
+
 .monitor-list {
     display: flex;
     flex-direction: column;
@@ -282,6 +287,13 @@
     border-radius: var(--radius-sm);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.monitor-wrapper:hover {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 .ratio-16-9 {

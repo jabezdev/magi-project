@@ -19,6 +19,8 @@ export function renderOutputMonitorColumn(): string {
         <div class="header-section-center"></div>
         <div class="header-section-right">
           <div class="status-indicator-wrapper">${renderStatusIndicator()}</div>
+          <button class="icon-btn settings-header-btn flush-btn" id="focus-all-btn" title="Focus All Windows">${ICONS.target}</button>
+          <button class="icon-btn settings-header-btn flush-btn" id="data-screen-btn" title="Full Screen">${ICONS.maximize}</button>
           <button class="icon-btn settings-header-btn flush-btn" id="settings-btn" title="Settings">${ICONS.settings}</button>
         </div>
       </div>
@@ -85,5 +87,81 @@ export function initOutputMonitorListeners(): void {
   // Init Settings Button
   document.getElementById('settings-btn')?.addEventListener('click', () => {
     openSettings()
+  })
+
+  // Window references
+  let mainWin: Window | null = null
+  let confidenceWin: Window | null = null
+  let thirdsWin: Window | null = null
+
+  // Monitor click listeners
+  const openWindow = (path: string, ref: Window | null, w: number, h: number): Window | null => {
+    if (ref && !ref.closed) {
+      ref.focus()
+      return ref
+    }
+    const newWin = window.open(path, '_blank', `width=${w},height=${h},menubar=no,toolbar=no,location=no,status=no`)
+    if (newWin) newWin.focus()
+    return newWin
+  }
+
+  // Setup click listeners for monitors
+  const monitorGroups = document.querySelectorAll('.monitor-group')
+
+  if (monitorGroups.length >= 1) {
+    // Main
+    monitorGroups[0].querySelector('.monitor-wrapper')?.addEventListener('click', () => {
+      mainWin = openWindow('/main', mainWin, 1920, 1080)
+    })
+  }
+
+  if (monitorGroups.length >= 2) {
+    // Confidence
+    monitorGroups[1].querySelector('.monitor-wrapper')?.addEventListener('click', () => {
+      confidenceWin = openWindow('/confidence', confidenceWin, 1920, 1080)
+    })
+  }
+
+  if (monitorGroups.length >= 3) {
+    // Lower Thirds
+    monitorGroups[2].querySelector('.monitor-wrapper')?.addEventListener('click', () => {
+      thirdsWin = openWindow('/thirds', thirdsWin, 1920, 1080)
+    })
+  }
+
+  // Focus All Button
+  document.getElementById('focus-all-btn')?.addEventListener('click', () => {
+    if (mainWin && !mainWin.closed) mainWin.focus()
+    if (confidenceWin && !confidenceWin.closed) confidenceWin.focus()
+    if (thirdsWin && !thirdsWin.closed) thirdsWin.focus()
+  })
+
+  // Init Full Screen Button
+  const fsBtn = document.getElementById('data-screen-btn')
+  fsBtn?.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen()
+      fsBtn.innerHTML = ICONS.minimize
+      fsBtn.title = 'Exit Full Screen'
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen()
+        fsBtn.innerHTML = ICONS.maximize
+        fsBtn.title = 'Full Screen'
+      }
+    }
+  })
+
+  // Listen for fullscreen change events (ESCN etc)
+  document.addEventListener('fullscreenchange', () => {
+    if (fsBtn) {
+      if (document.fullscreenElement) {
+        fsBtn.innerHTML = ICONS.minimize
+        fsBtn.title = 'Exit Full Screen'
+      } else {
+        fsBtn.innerHTML = ICONS.maximize
+        fsBtn.title = 'Full Screen'
+      }
+    }
   })
 }
