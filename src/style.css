@@ -1,21 +1,16 @@
-/* ========== MAIN STYLES ========== */
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+/* ========== CORE STYLES ========== */
 @import './styles/variables.css';
 @import './styles/base.css';
 @import './styles/utils.css';
-@import './styles/components/buttons.css';
-@import './styles/components/status.css';
-@import './styles/components/shortcuts.css';
-@import './styles/components/modal.css';
-@import './styles/components/editor.css';
 
-/* Features */
-@import './styles/features/control-panel.css';
-@import './styles/features/songs.css';
-@import './styles/features/video.css';
-@import './styles/features/lyrics.css';
-@import './styles/features/part-colors.css';
-@import './styles/features/live.css';
-@import './styles/features/settings.css';
-@import './styles/features/projection.css';
-@import './styles/features/lower-thirds.css';
-@import './styles/features/mobile.css';
+/* ========== COMPONENTS ========== */
+@import './styles/core-layout.css';
+@import './styles/components/buttons.css';
+@import './styles/components/modal.css';
+
+/* ========== SCREENS ========== */
+@import './styles/screens.css';

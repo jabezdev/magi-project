@@ -1,225 +1,115 @@
-/* ========== BUTTONS ========== */
+/* ========== BUTTONS (Tailwind) ========== */
 
-/* Icon Button */
-.icon-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 0.15s;
-}
+@layer components {
 
-.icon-btn:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-}
+    /* Icon Button */
+    .icon-btn {
+        @apply flex items-center justify-center w-8 h-8 bg-bg-tertiary border border-border-color rounded-md text-text-secondary cursor-pointer transition-all duration-150;
+    }
 
-.icon-btn svg {
-    width: 16px;
-    height: 16px;
-}
+    .icon-btn:hover {
+        @apply bg-bg-hover text-text-primary;
+    }
 
-/* Small Icon Button */
-.icon-btn-sm {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    background: transparent;
-    border: none;
-    border-radius: 4px;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: all 0.15s;
-    padding: 0;
-}
+    .icon-btn svg {
+        @apply w-4 h-4;
+    }
 
-.icon-btn-sm:hover {
-    background: var(--bg-hover);
-    color: var(--accent-primary);
-}
+    /* Small Icon Button */
+    .icon-btn-sm {
+        @apply flex items-center justify-center w-6 h-6 bg-transparent border-none rounded text-text-muted cursor-pointer transition-all duration-150 p-0;
+    }
 
-.icon-btn-sm svg {
-    width: 14px;
-    height: 14px;
-}
+    .icon-btn-sm:hover {
+        @apply bg-bg-hover text-accent-primary;
+    }
 
-/* Hide in song items until hover */
-.song-item .icon-btn-sm {
-    opacity: 0;
-}
+    .icon-btn-sm svg {
+        @apply w-[14px] h-[14px];
+    }
 
-.song-item:hover .icon-btn-sm {
-    opacity: 1;
-}
+    /* Hide in song items until hover */
+    .song-item .icon-btn-sm {
+        @apply opacity-0;
+    }
 
-/* Display Control Button */
-.display-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 24px;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: all 0.15s;
-}
+    .song-item:hover .icon-btn-sm {
+        @apply opacity-100;
+    }
 
-.display-btn:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-}
+    /* Display Control Button */
+    .display-btn {
+        @apply flex items-center justify-center w-7 h-6 bg-bg-tertiary border border-border-color rounded text-text-muted cursor-pointer transition-all duration-150;
+    }
 
-.display-btn.active {
-    background: var(--accent-primary);
-    border-color: var(--accent-primary);
-    color: white;
-}
+    .display-btn:hover {
+        @apply bg-bg-hover text-text-primary;
+    }
 
-.display-btn svg {
-    width: 14px;
-    height: 14px;
-}
+    .display-btn.active {
+        @apply bg-accent-primary border-accent-primary text-white;
+    }
 
-/* Navigation Buttons */
-.nav-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.25rem;
-    padding: 0.5rem 1rem;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    color: var(--text-secondary);
-    font-size: 0.7rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s;
-}
+    .display-btn svg {
+        @apply w-[14px] h-[14px];
+    }
 
-.nav-btn:hover:not(:disabled) {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-}
+    /* Navigation Buttons */
+    .nav-btn {
+        @apply flex items-center justify-center gap-1 px-4 py-2 bg-bg-tertiary border border-border-color rounded-md text-text-secondary text-[0.7rem] font-semibold cursor-pointer transition-all duration-150;
+    }
 
-.nav-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
+    .nav-btn:hover:not(:disabled) {
+        @apply bg-bg-hover text-text-primary;
+    }
 
-.nav-btn svg {
-    width: 14px;
-    height: 14px;
-}
+    .nav-btn:disabled {
+        @apply opacity-40 cursor-not-allowed;
+    }
 
-.nav-large {
-    flex: 1;
-    padding: 0.75rem;
-    font-size: 0.75rem;
-}
+    .nav-btn svg {
+        @apply w-[14px] h-[14px];
+    }
 
-/* Go Live Button */
-.go-live-btn {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: var(--success);
-    border: none;
-    border-radius: 6px;
-    color: white;
-    font-size: 0.75rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.15s;
-}
+    .nav-large {
+        @apply flex-1 p-3 text-xs;
+    }
 
-.go-live-btn:hover {
-    background: #16a34a;
-}
+    /* Go Live Button */
+    .go-live-btn {
+        @apply flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-success border-none rounded-md text-white text-xs font-bold cursor-pointer transition-all duration-150;
+    }
 
-.go-live-btn svg {
-    width: 14px;
-    height: 14px;
-}
+    .go-live-btn:hover {
+        @apply bg-[#16a34a];
+        /* Manual approximation or use a separate shade if available. Tailwind 'success' is mapped to var, but hover is hex. Using arbitrary value. */
+    }
 
-.go-live-btn.sm {
-    flex: 0 0 auto;
-    padding: 0.25rem 0.75rem;
-    font-size: 0.7rem;
-}
+    .go-live-btn svg {
+        @apply w-[14px] h-[14px];
+    }
 
-/* Ghost Button */
-.btn-ghost {
-    padding: 0.5rem 1rem;
-    background: transparent;
-    border: none;
-    border-radius: 6px;
-    color: var(--text-secondary);
-    font-size: 0.8rem;
-    cursor: pointer;
-}
+    .go-live-btn.sm {
+        @apply flex-none px-3 py-1 text-[0.7rem];
+    }
 
-.btn-ghost:hover {
-    color: var(--text-primary);
-    background: var(--bg-hover);
-}
+    /* Ghost Button */
+    .btn-ghost {
+        @apply px-4 py-2 bg-transparent border-none rounded-md text-text-secondary text-sm cursor-pointer hover:text-text-primary hover:bg-bg-hover;
+    }
 
-/* Outline Button */
-.btn-outline {
-    padding: 0.5rem 1rem;
-    background: transparent;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    color: var(--text-primary);
-    font-size: 0.8rem;
-    cursor: pointer;
-}
+    /* Outline Button */
+    .btn-outline {
+        @apply px-4 py-2 bg-transparent border border-border-color rounded-md text-text-primary text-sm cursor-pointer hover:bg-bg-hover;
+    }
 
-.btn-outline:hover {
-    background: var(--bg-hover);
-}
+    /* Primary Button */
+    .btn-primary {
+        @apply px-4 py-2 bg-accent-primary border-none rounded-md text-white text-sm font-medium cursor-pointer hover:bg-accent-secondary;
+    }
 
-/* Primary Button */
-.btn-primary {
-    padding: 0.5rem 1rem;
-    background: var(--accent-primary);
-    border: none;
-    border-radius: 6px;
-    color: white;
-    font-size: 0.8rem;
-    font-weight: 500;
-    cursor: pointer;
-}
-
-.btn-primary:hover {
-    background: var(--accent-secondary);
-}
-
-/* Secondary Button */
-.btn-secondary {
-    padding: 0.5rem 1rem;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    color: var(--text-primary);
-    font-size: 0.8rem;
-    cursor: pointer;
-}
-
-.btn-secondary:hover {
-    background: var(--bg-hover);
+    /* Secondary Button */
+    .btn-secondary {
+        @apply px-4 py-2 bg-bg-tertiary border border-border-color rounded-md text-text-primary text-sm cursor-pointer hover:bg-bg-hover;
+    }
 }

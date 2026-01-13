@@ -6,9 +6,8 @@
  */
 
 import type { AppState, DisplaySettings, ConfidenceMonitorSettings, LayoutSettings, Song, PartColorSettings } from '../types'
-import { DEFAULT_DISPLAY_SETTINGS, DEFAULT_CONFIDENCE_MONITOR_SETTINGS, DEFAULT_LAYOUT_SETTINGS, DEFAULT_POSITION, DEFAULT_BACKGROUND_VIDEO, DEFAULT_LOGO_MEDIA, STORAGE_KEYS, DEFAULT_PART_COLORS } from '../constants/defaults'
-import { socketService } from '../services/socket'
-import { saveSettings as saveSettingsToServer, fetchSettings } from '../services/api'
+import { DEFAULT_DISPLAY_SETTINGS, DEFAULT_CONFIDENCE_MONITOR_SETTINGS, DEFAULT_LAYOUT_SETTINGS, DEFAULT_POSITION, DEFAULT_BACKGROUND_VIDEO, DEFAULT_LOGO_MEDIA, STORAGE_KEYS, DEFAULT_PART_COLORS } from '../constants'
+import { socketService, saveSettings as saveSettingsToServer, fetchSettings } from '../services'
 
 // Load saved settings from localStorage (fallback)
 function loadSavedTheme(): 'light' | 'dark' {
@@ -216,7 +215,7 @@ export function updateState(newState: Partial<AppState>, skipRender = false): vo
     }
 
     if (hasChanged) {
-      effectiveUpdates[k] = value as any
+      ; (effectiveUpdates as any)[k] = value
       changedKeys.push(k)
     }
   }
@@ -343,8 +342,8 @@ export async function loadSettingsFromServer(): Promise<void> {
       localStorage.setItem(STORAGE_KEYS.LAYOUT_SETTINGS, JSON.stringify(merged))
     }
 
-    if ((serverSettings as any).partColors) {
-      const merged = { ...DEFAULT_PART_COLORS, ...((serverSettings as any).partColors) }
+    if (serverSettings.partColors) {
+      const merged = { ...DEFAULT_PART_COLORS, ...serverSettings.partColors }
       updates.partColors = merged
       localStorage.setItem(STORAGE_KEYS.PART_COLORS, JSON.stringify(merged))
     }

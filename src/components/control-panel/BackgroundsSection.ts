@@ -1,7 +1,6 @@
 import { state, saveLayoutSettings, subscribeToState, updateState } from '../../state'
-import { ICONS } from '../../constants/icons'
-import { selectLiveVideo, selectPreviewVideo } from '../../actions/controlPanel'
-import { toggleClass } from '../../utils/dom'
+import { ICONS } from '../../constants'
+import { selectLiveVideo, selectPreviewVideo } from '../../actions'
 
 function renderVideoGridItems(): string {
   const items = state.availableVideos.map(video => {
@@ -12,43 +11,76 @@ function renderVideoGridItems(): string {
     const isPreview = state.previewBackground === video.path
     const isLive = state.backgroundVideo === video.path
 
-    let classes = 'video-thumb'
-    if (isPreview) classes += ' preview-active'
-    if (isLive) classes += ' live-active'
+    // video-thumb class styles
+    let baseClass = 'flex flex-col gap-[0.125rem] p-0 relative bg-bg-tertiary border-[3px] border-transparent rounded-sm cursor-pointer transition-all duration-150 overflow-hidden aspect-video box-border m-0 hover:bg-bg-hover video-thumb'
+    // Contain layout paint for performance
+    let style = 'contain: layout paint;'
+
+    if (isPreview) {
+      baseClass += ' preview-active shadow-[0_0_0_3px_var(--accent-primary)] z-[1]'
+      style = 'contain: none;'
+    }
+    if (isLive) {
+      baseClass += ' live-active shadow-[0_0_0_3px_var(--live-red)] z-[1]'
+      style = 'contain: none;'
+    }
+    if (isLive && isPreview) {
+      // Both active
+      baseClass = baseClass.replace('shadow-[0_0_0_3px_var(--accent-primary)]', '').replace('shadow-[0_0_0_3px_var(--live-red)]', '')
+      baseClass += ' z-[5]'
+      style = 'contain: none; box-shadow: 0 0 0 3px var(--live-red), 0 0 0 6px var(--accent-primary);'
+    }
+
+    // thumb-media
+    const thumbMediaClass = 'w-full h-full object-cover bg-black block'
+    // video-name
+    const videoNameClass = 'absolute bottom-0 left-0 w-full pt-8 pb-1 px-1 text-[0.6rem] font-medium text-white text-center whitespace-nowrap overflow-hidden text-ellipsis pointer-events-none'
+    const videoNameStyle = "background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0) 100%); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);"
 
     return `
-          <button class="${classes}" data-video-path="${video.path}" title="${video.name}">
+          <button class="${baseClass}" data-video-path="${video.path}" title="${video.name}" style="${style}">
             ${isImage
-        ? `<img data-src="${thumbSrc}" class="thumb-media thumb-image" alt="thumbnail" loading="lazy" />`
-        : `<video data-src="${thumbSrc}" muted preload="none" class="thumb-media thumb-video"></video>`
+        ? `<img data-src="${thumbSrc}" class="${thumbMediaClass} thumb-media thumb-image" alt="thumbnail" loading="lazy" />`
+        : `<video data-src="${thumbSrc}" muted preload="none" class="${thumbMediaClass} thumb-media thumb-video"></video>`
       }
-            <span class="video-name">${video.name.replace(/\.[^.]+$/, '')}</span>
+            <span class="${videoNameClass}" style="${videoNameStyle}">${video.name.replace(/\.[^.]+$/, '')}</span>
           </button>
         `}).join('')
 
   if (state.availableVideos.length === 0) {
-    return '<div class="empty-msg">No videos in folder</div>'
+    return '<div class="col-span-full text-center text-text-muted text-[0.7rem] p-4">No videos in folder</div>'
   }
 
   return items
 }
 
 export function renderBackgroundsSection(): string {
+  // Inline Tailwind Classes for header
+  const headerClass = "flex flex-row items-center justify-between gap-0 p-0 h-[2.2rem] min-h-[2.2rem] bg-bg-secondary border-b border-border-color shrink-0 text-[0.85rem] relative z-10 shadow-sm"
+  const headerLeft = "flex items-center h-full px-2 gap-2"
+  const headerIconClass = "w-[14px] h-[14px] opacity-70"
+  const headerRight = "flex items-center h-full gap-0 p-0"
+  const flushBtnClass = "h-full w-[2.2rem] border-l border-border-color rounded-none m-0 p-0 bg-transparent flex items-center justify-center text-text-secondary transition-colors duration-200 hover:bg-bg-hover hover:text-text-primary flush-btn"
+
+  // video-grid 
+  const gridClass = "grid gap-4 p-4 box-border auto-rows-min content-start flex-1 overflow-y-auto"
+  const gridStyle = "grid-template-columns: repeat(var(--col-count, 2), minmax(0, 1fr));"
+
   return `
-    <div class="video-section">
-      <div class="cp-column-header horizontal-layout compact-header backgrounds-header">
-        <div class="header-section-left">
-          <span class="header-icon">${ICONS.video}</span>
-          <span>BACKGROUNDS</span>
+    <div class="h-full overflow-y-auto flex flex-col video-section">
+      <div class="${headerClass} cp-column-header horizontal-layout compact-header backgrounds-header">
+        <div class="${headerLeft}">
+          <span class="${headerIconClass}">${ICONS.video}</span>
+          <span class="font-semibold uppercase tracking-[0.5px] text-text-secondary">BACKGROUNDS</span>
         </div>
-        <div class="header-section-center"></div>
-        <div class="header-section-right with-separator">
-          <button class="icon-btn flush-btn" id="refresh-videos-btn" title="Refresh Videos">${ICONS.refresh}</button>
-          <button class="icon-btn flush-btn" id="zoom-out-btn" title="Zoom Out">${ICONS.minus || '-'}</button>
-          <button class="icon-btn flush-btn" id="zoom-in-btn" title="Zoom In">${ICONS.plus || '+'}</button>
+        <div class="flex-1 flex items-center justify-center h-full min-w-0 p-0"></div>
+        <div class="${headerRight}">
+          <button class="${flushBtnClass}" id="refresh-videos-btn" title="Refresh Videos" style="border-left-width: 1px !important;">${ICONS.refresh}</button>
+          <button class="${flushBtnClass}" id="zoom-out-btn" title="Zoom Out" style="border-left-width: 1px !important;">${ICONS.minus || '-'}</button>
+          <button class="${flushBtnClass}" id="zoom-in-btn" title="Zoom In" style="border-left-width: 1px !important;">${ICONS.plus || '+'}</button>
         </div>
       </div>
-      <div class="video-grid" id="video-grid">
+      <div class="${gridClass} video-grid" id="video-grid" style="${gridStyle}">
         ${renderVideoGridItems()}
       </div>
     </div>
@@ -60,9 +92,6 @@ function initVideoListeners() {
   document.querySelectorAll('.video-thumb').forEach(btn => {
     // Single click -> Preview (Blue)
     btn.addEventListener('click', () => {
-      // Prevent double firing if double clicked? 
-      // Actually usually fine. DblClick fires click twice then dblclick.
-      // We'll let it select preview then immediately select live on double click.
       const path = btn.getAttribute('data-video-path') || ''
       selectPreviewVideo(path)
     })
@@ -249,13 +278,34 @@ export function updateVideoSelection(): void {
   const { backgroundVideo, previewBackground } = state
   const thumbs = document.querySelectorAll('.video-thumb')
 
+  // Tailwind classes for selection states
+  const previewClasses = ['preview-active', 'shadow-[0_0_0_3px_var(--accent-primary)]', 'z-[1]']
+  const liveClasses = ['live-active', 'shadow-[0_0_0_3px_var(--live-red)]', 'z-[1]']
+
   thumbs.forEach(thumb => {
     const path = thumb.getAttribute('data-video-path')
+    const el = thumb as HTMLElement
 
-    // Update Live Status
-    toggleClass(thumb, 'live-active', path === backgroundVideo)
+    const isLive = path === backgroundVideo
+    const isPreview = path === previewBackground
 
-    // Update Preview Status
-    toggleClass(thumb, 'preview-active', path === previewBackground)
+    // Reset contain style
+    el.style.contain = 'layout paint'
+
+    // Clear all active classes
+    thumb.classList.remove(...previewClasses, ...liveClasses, 'z-[5]')
+    el.style.boxShadow = ''
+
+    if (isLive && isPreview) {
+      thumb.classList.add('live-active', 'preview-active', 'z-[5]')
+      el.style.boxShadow = '0 0 0 3px var(--live-red), 0 0 0 6px var(--accent-primary)'
+      el.style.contain = 'none'
+    } else if (isLive) {
+      thumb.classList.add(...liveClasses)
+      el.style.contain = 'none'
+    } else if (isPreview) {
+      thumb.classList.add(...previewClasses)
+      el.style.contain = 'none'
+    }
   })
 }

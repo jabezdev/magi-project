@@ -6,14 +6,10 @@
  */
 
 import './style.css'
-import { fetchSongs, fetchSchedule, fetchScheduleByName, fetchVideoAssets } from './services/api'
+import { fetchSongs, fetchSchedule, fetchScheduleByName, fetchVideoAssets } from './services'
 import { state, updateState, setUpdateScreenCallback, loadSettingsFromServer, getSavedCurrentSchedule } from './state'
-import { socketService } from './services/socket'
-import { getScreenType } from './utils/screen'
-import { renderControlPanel } from './screens/ControlPanel'
-import { renderProjectionScreen } from './screens/ProjectionScreen'
-import { renderLowerThirdsScreen } from './screens/LowerThirds'
-import { renderMobileScreen } from './screens/MobileScreen'
+import { getScreenType } from './utils'
+import { renderControlPanel, renderProjectionScreen, renderLowerThirdsScreen, renderMobileScreen } from './screens'
 import type { ScreenType } from './types'
 
 // Store the current screen type
@@ -108,15 +104,24 @@ async function init(): Promise<void> {
     }
 
     // Initial data load - triggers first render
-    updateState({
+    const updates: any = {
       songs,
       schedule,
-      availableVideos: videos,
-      displayMode: 'logo' // Force Logo view on startup
-    })
+      availableVideos: videos
+    }
 
-    // Also sync to server so it sticks
-    socketService.updateDisplayMode('logo')
+    // Force Logo view on startup ONLY if we are the main Control Panel
+    // This prevents sub-screens (iframes) from resetting the global state
+    if (currentScreen === 'control-panel' && window.top === window) {
+      updates.displayMode = 'logo'
+      updateState(updates)
+
+      // Also ensure socket service is notified to sync with other clients
+      const { socketService } = await import('./services')
+      socketService.updateDisplayMode('logo')
+    } else {
+      updateState(updates)
+    }
   } catch (error) {
     console.error('Failed to load initial data:', error)
     // Still render the screen even if data load fails

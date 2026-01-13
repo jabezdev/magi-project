@@ -11,9 +11,9 @@
 
 import { state, subscribeToState, StateChangeKey } from '../state'
 import type { Song, SlidePosition, Schedule, SongSummary } from '../types'
-import { getAllSlides } from '../utils/slides'
-import { updateHTML } from '../utils/dom'
-import { fetchSongById } from '../services/api'
+import { getAllSlides } from '../utils'
+import { updateHTML } from '../utils'
+import { fetchSongById } from '../services'
 
 // Local storage key for mobile font size
 const MOBILE_FONT_SIZE_KEY = 'magi-mobile-font-size'
@@ -69,15 +69,15 @@ export function buildMobileScreenHTML(): string {
   `
 
   return `
-    <div class="mobile-screen" style="${mobileStyles}">
+    <div class="flex flex-col h-screen bg-bg-primary overflow-hidden relative mobile-screen" style="${mobileStyles} height: 100dvh;">
       ${buildMobileNavbar(currentSong, schedule, songs)}
       ${buildArrangementBar(currentSong, currentVariation, livePosition, isViewingLiveSong)}
-      <div class="mobile-teleprompter">
+      <div class="flex-1 flex flex-col overflow-y-auto overflow-x-hidden scroll-smooth mobile-teleprompter" style="padding: var(--cm-margin-top, 0.5rem) var(--cm-margin-right, 0.5rem) var(--cm-margin-bottom, 0.5rem) var(--cm-margin-left, 0.5rem);">
         ${buildTeleprompterContent(currentSong, currentVariation, livePosition, displayMode, isViewingLiveSong)}
       </div>
       ${buildRealignButton(!isViewingLiveSong)}
       ${buildSettingsPanel(mobileFontSize)}
-      <button class="mobile-settings-btn" title="Settings">
+      <button class="fixed top-2 right-2 w-10 h-10 flex items-center justify-center text-text-muted bg-transparent border-none rounded-full cursor-pointer transition-all duration-200 z-[60] hover:text-text-primary hover:bg-bg-hover mobile-settings-btn" title="Settings">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
     </div>
@@ -94,13 +94,13 @@ function buildMobileNavbar(currentSong: Song | null, schedule: Schedule, songs: 
 
   const options = scheduledSongs.length > 0
     ? scheduledSongs.map(s =>
-      `<option value="${s.id}" ${s.id === currentId ? 'selected' : ''}>${s.title}</option>`
+      `< option value = "${s.id}" ${s.id === currentId ? 'selected' : ''}> ${s.title} </option>`
     ).join('')
     : '<option value="">No songs scheduled</option>'
 
   return `
-    <nav class="mobile-navbar">
-      <select class="mobile-song-select" id="mobile-song-select">
+    <nav class="flex justify-center items-center p-2 bg-bg-secondary border-b border-border-color shrink-0 mobile-navbar">
+      <select class="flex-1 max-w-[400px] py-2 px-4 text-base font-medium text-text-primary bg-bg-primary border border-border-color rounded-md cursor-pointer appearance-none bg-no-repeat pr-10 focus:outline-none focus:border-accent-primary mobile-song-select" id="mobile-song-select" style="background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E&quot;); background-position: right 0.75rem center;">
         ${options}
       </select>
     </nav>
@@ -109,7 +109,7 @@ function buildMobileNavbar(currentSong: Song | null, schedule: Schedule, songs: 
 
 function buildArrangementBar(song: Song | null, variation: number, position: SlidePosition, isViewingLiveSong: boolean): string {
   if (!song) {
-    return '<div class="mobile-arrangement"></div>'
+    return '<div class="flex gap-1 p-2 bg-bg-tertiary border-b border-border-color shrink-0 overflow-x-auto mobile-arrangement" style="scrollbar-width: none;"></div>'
   }
 
   const arrangement = song.variations[variation]?.arrangement || []
@@ -121,7 +121,7 @@ function buildArrangementBar(song: Song | null, variation: number, position: Sli
     const isActive = index === currentPartIndex
 
     return `
-      <button class="mobile-arrangement-item ${isActive ? 'active' : ''}" 
+      <button class="shrink-0 py-[0.35rem] px-[0.65rem] text-[0.7rem] font-semibold uppercase tracking-[0.5px] border border-border-color rounded bg-clip-padding cursor-pointer transition-all duration-150 ${isActive ? 'bg-accent-primary text-white border-accent-primary' : 'text-text-muted bg-bg-secondary hover:bg-bg-hover hover:text-text-primary'} mobile-arrangement-item" 
               data-part-index="${index}"
               title="${label}">
         ${partId}
@@ -130,7 +130,7 @@ function buildArrangementBar(song: Song | null, variation: number, position: Sli
   }).join('')
 
   return `
-    <div class="mobile-arrangement">
+    <div class="flex gap-1 p-2 bg-bg-tertiary border-b border-border-color shrink-0 overflow-x-auto mobile-arrangement" style="scrollbar-width: none;">
       ${partsHTML}
     </div>
   `
@@ -139,19 +139,20 @@ function buildArrangementBar(song: Song | null, variation: number, position: Sli
 function buildTeleprompterContent(song: Song | null, variation: number, position: SlidePosition, displayMode: string, isViewingLiveSong: boolean): string {
   // Handle special display modes (only show for live song)
   if (isViewingLiveSong) {
+    const overlayClass = "flex items-center justify-center w-full h-full mode-overlay";
     if (displayMode === 'black') {
-      return '<div class="mode-overlay black"><span>BLACK</span></div>'
+      return `<div class="${overlayClass} bg-black text-[#333]"><span class="text-[2rem] font-bold tracking-[0.5rem]">BLACK</span></div>`
     }
     if (displayMode === 'clear') {
-      return '<div class="mode-overlay clear"><span>CLEAR</span></div>'
+      return `<div class="${overlayClass} bg-transparent text-accent-primary"><span class="text-[2rem] font-bold tracking-[0.5rem]">CLEAR</span></div>`
     }
     if (displayMode === 'logo') {
-      return '<div class="mode-overlay logo"><span>LOGO</span></div>'
+      return `<div class="${overlayClass} bg-transparent text-accent-secondary"><span class="text-[2rem] font-bold tracking-[0.5rem]">LOGO</span></div>`
     }
   }
 
   if (!song) {
-    return '<div class="cm-empty">No song loaded</div>'
+    return '<div class="flex items-center justify-center flex-1 text-xl text-text-muted cm-empty">No song loaded</div>'
   }
 
   const allSlides = getAllSlides(song, variation)
@@ -170,38 +171,47 @@ function buildTeleprompterContent(song: Song | null, variation: number, position
 
   const slidesHTML = allSlides.map((slide, index) => {
     let slideClass = 'tp-slide'
+    let style = `opacity: var(--cm-prev-next-opacity, 0.35);`
+    let isCurrent = false;
+
     if (isViewingLiveSong) {
       if (index < currentFlatIndex) {
-        slideClass += ' tp-past'
+        slideClass += ' past'
       } else if (index === currentFlatIndex) {
-        slideClass += ' tp-current'
+        slideClass += ' current'
+        style = `opacity: 1;`
+        isCurrent = true;
       } else {
-        slideClass += ' tp-future'
+        slideClass += ' future'
       }
     }
 
+    const textStyle = `font-size: var(--cm-font-size, 2.5rem); line-height: var(--cm-line-height, 1.4); font-family: var(--cm-font-family, system-ui);`
+
     return `
-      <div class="${slideClass}" data-index="${index}" id="mobile-tp-slide-${index}">
-        <div class="tp-part-indicator"><span>${slide.partLabel}</span></div>
-        <div class="tp-content">
-          <div class="tp-text">${slide.text.replace(/\n/g, '<br>')}</div>
+      <div class="flex items-stretch w-full transition-all duration-500 ease-in-out py-6 ${slideClass}" data-index="${index}" id="mobile-tp-slide-${index}" style="${style}">
+        <div class="flex items-center justify-center w-10 shrink-0 relative tp-part-indicator">
+          <span class="absolute whitespace-nowrap text-[0.7rem] font-bold uppercase tracking-[2px] rotate-[-90deg] ${isCurrent ? 'text-accent-primary' : 'text-text-muted'}">${slide.partLabel}</span>
+        </div>
+        <div class="flex-1 flex items-center pl-4 tp-content">
+          <div class="tp-text ${isCurrent ? 'text-text-primary font-medium' : 'text-text-secondary'}" style="${textStyle}">${slide.text.replace(/\n/g, '<br>')}</div>
         </div>
       </div>
     `
   }).join('')
 
   return `
-    <div class="teleprompter-scroll" data-current-index="${currentFlatIndex}" data-song-id="${song.id}">
-      <div class="tp-spacer-top"></div>
+    <div class="flex flex-col items-stretch w-full teleprompter-scroll" data-current-index="${currentFlatIndex}" data-song-id="${song.id}">
+      <div class="shrink-0 h-[35vh] tp-spacer-top"></div>
       ${slidesHTML}
-      <div class="tp-spacer-bottom"></div>
+      <div class="shrink-0 h-[35vh] tp-spacer-bottom"></div>
     </div>
   `
 }
 
 function buildRealignButton(show: boolean): string {
   return `
-    <button class="mobile-realign-btn ${show ? '' : 'hidden'}" id="mobile-realign-btn" title="Realign with live">
+    <button class="fixed bottom-6 right-6 flex items-center gap-2 py-3 px-5 text-[0.9rem] font-semibold text-white bg-accent-primary border-none rounded-[50px] cursor-pointer transition-all duration-200 z-[50] ${show ? '' : 'hidden'} hover:-translate-y-[2px] active:translate-y-0" id="mobile-realign-btn" title="Realign with live" style="box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
       <span>Sync</span>
     </button>
@@ -210,21 +220,21 @@ function buildRealignButton(show: boolean): string {
 
 function buildSettingsPanel(fontSize: number): string {
   return `
-    <div class="mobile-settings-panel hidden" id="mobile-settings-panel">
-      <div class="mobile-settings-header">
-        <h3>Settings</h3>
-        <button class="mobile-settings-close" id="mobile-settings-close">&times;</button>
+    <div class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-[320px] bg-bg-secondary border border-border-color rounded-xl z-[100] overflow-hidden hidden" id="mobile-settings-panel" style="box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);">
+      <div class="flex justify-between items-center p-4 bg-bg-tertiary border-b border-border-color mobile-settings-header">
+        <h3 class="m-0 text-base font-semibold text-text-primary">Settings</h3>
+        <button class="w-8 h-8 flex items-center justify-center text-2xl text-text-muted bg-transparent border-none rounded-full cursor-pointer transition-all duration-200 hover:text-text-primary hover:bg-bg-hover mobile-settings-close" id="mobile-settings-close">&times;</button>
       </div>
-      <div class="mobile-settings-content">
-        <div class="mobile-setting-row">
-          <label for="mobile-font-size">Font Size</label>
-          <div class="mobile-font-size-controls">
-            <button class="mobile-font-btn" data-delta="-0.25">−</button>
-            <span class="mobile-font-size-value" id="mobile-font-size-value">${fontSize.toFixed(2)}</span>
-            <button class="mobile-font-btn" data-delta="0.25">+</button>
+      <div class="p-4 mobile-settings-content">
+        <div class="flex justify-between items-center mb-4 mobile-setting-row">
+          <label class="text-[0.9rem] font-medium text-text-primary" for="mobile-font-size">Font Size</label>
+          <div class="flex items-center gap-2 mobile-font-size-controls">
+            <button class="w-9 h-9 flex items-center justify-center text-xl font-semibold text-text-primary bg-bg-primary border border-border-color rounded-md cursor-pointer transition-all duration-150 hover:bg-bg-hover hover:border-accent-primary active:scale-95 mobile-font-btn" data-delta="-0.25">−</button>
+            <span class="min-w-[50px] text-center text-[0.9rem] font-medium tabular-nums text-text-primary mobile-font-size-value" id="mobile-font-size-value">${fontSize.toFixed(2)}</span>
+            <button class="w-9 h-9 flex items-center justify-center text-xl font-semibold text-text-primary bg-bg-primary border border-border-color rounded-md cursor-pointer transition-all duration-150 hover:bg-bg-hover hover:border-accent-primary active:scale-95 mobile-font-btn" data-delta="0.25">+</button>
           </div>
         </div>
-        <p class="mobile-settings-note">Other settings are managed from the Control Panel's Confidence Monitor settings.</p>
+        <p class="m-0 p-3 text-[0.75rem] text-text-muted bg-bg-primary rounded-md leading-[1.4] mobile-settings-note">Other settings are managed from the Control Panel's Confidence Monitor settings.</p>
       </div>
     </div>
   `
@@ -307,7 +317,7 @@ async function handleSongChange(e: Event): Promise<void> {
         const part = song.parts.find(p => p.id === partId)
         const label = part?.label || partId
         return `
-          <button class="mobile-arrangement-item" 
+          <button class="shrink-0 py-[0.35rem] px-[0.65rem] text-[0.7rem] font-semibold uppercase tracking-[0.5px] text-text-muted bg-bg-secondary border border-border-color rounded bg-clip-padding cursor-pointer transition-all duration-150 hover:bg-bg-hover hover:text-text-primary mobile-arrangement-item" 
                   data-part-index="${index}"
                   title="${label}">
             ${partId}
@@ -481,13 +491,23 @@ function updateSlideClasses(position: SlidePosition): void {
 
   // Update all slide classes
   document.querySelectorAll('.mobile-teleprompter .tp-slide').forEach((slide, index) => {
-    slide.classList.remove('tp-past', 'tp-current', 'tp-future')
+    slide.classList.remove('past', 'current', 'future')
+    const indicator = slide.querySelector('.tp-part-indicator span')
+    const text = slide.querySelector('.tp-text')
+
+    if (indicator) indicator.className = 'absolute whitespace-nowrap text-[0.7rem] font-bold uppercase tracking-[2px] rotate-[-90deg] text-text-muted';
+    if (text) text.className = 'tp-text text-text-secondary';
+    (slide as HTMLElement).style.opacity = 'var(--cm-prev-next-opacity, 0.35)';
+
     if (index < currentFlatIndex) {
-      slide.classList.add('tp-past')
+      slide.classList.add('past')
     } else if (index === currentFlatIndex) {
-      slide.classList.add('tp-current')
+      slide.classList.add('current')
+      if (indicator) indicator.className = 'absolute whitespace-nowrap text-[0.7rem] font-bold uppercase tracking-[2px] rotate-[-90deg] text-accent-primary';
+      if (text) text.className = 'tp-text text-text-primary font-medium';
+      (slide as HTMLElement).style.opacity = '1';
     } else {
-      slide.classList.add('tp-future')
+      slide.classList.add('future')
     }
   })
 
@@ -500,7 +520,7 @@ function updateSlideClasses(position: SlidePosition): void {
 
 function scrollToCurrentSlide(): void {
   requestAnimationFrame(() => {
-    const currentSlide = document.querySelector('.mobile-teleprompter .tp-slide.tp-current')
+    const currentSlide = document.querySelector('.mobile-teleprompter .tp-slide.current')
     const teleprompter = document.querySelector('.mobile-teleprompter')
 
     if (currentSlide && teleprompter) {

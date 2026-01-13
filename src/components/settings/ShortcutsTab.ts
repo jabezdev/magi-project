@@ -1,52 +1,61 @@
 
+// Reusable Tailwind class constants
+const sectionClass = "mb-5"
+const sectionTitleClass = "text-[0.75rem] font-semibold text-text-muted uppercase tracking-[0.5px] mb-3"
+const descClass = "text-[0.8rem] text-text-secondary mb-4"
+const tableClass = "w-full border-collapse text-sm"
+const thClass = "text-left p-2 border-b border-border-color text-text-muted font-semibold text-xs uppercase"
+const tdClass = "p-2 border-b border-border-color/50 text-text-primary"
+const kbdClass = "px-2 py-1 bg-bg-tertiary border border-border-color rounded text-[0.75rem] font-mono text-text-secondary"
+
 export function renderShortcutsTab(): string {
-    return `
-    <div class="settings-tab" id="tab-shortcuts">
-      <div class="settings-section">
-        <h3>Keyboard Shortcuts</h3>
-        <p class="settings-description">
+  return `
+    <div class="hidden settings-tab" id="tab-shortcuts" style="display: none;">
+      <div class="${sectionClass}">
+        <h3 class="${sectionTitleClass}">Keyboard Shortcuts</h3>
+        <p class="${descClass}">
           Use these keyboard shortcuts to quickly control the presentation.
         </p>
         
-        <table class="shortcuts-table">
+        <table class="${tableClass}">
           <thead>
             <tr>
-              <th>Action</th>
-              <th>Shortcut</th>
+              <th class="${thClass}">Action</th>
+              <th class="${thClass}">Shortcut</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td>Next Slide</td>
-              <td><kbd>→</kbd> or <kbd>Space</kbd></td>
+              <td class="${tdClass}">Next Slide</td>
+              <td class="${tdClass}"><kbd class="${kbdClass}">→</kbd> or <kbd class="${kbdClass}">Space</kbd></td>
             </tr>
             <tr>
-              <td>Previous Slide</td>
-              <td><kbd>←</kbd></td>
+              <td class="${tdClass}">Previous Slide</td>
+              <td class="${tdClass}"><kbd class="${kbdClass}">←</kbd></td>
             </tr>
             <tr>
-              <td>Go Live / Update</td>
-              <td><kbd>Enter</kbd></td>
+              <td class="${tdClass}">Go Live / Update</td>
+              <td class="${tdClass}"><kbd class="${kbdClass}">Enter</kbd></td>
             </tr>
             <tr>
-              <td>Black Screen</td>
-              <td><kbd>B</kbd></td>
+              <td class="${tdClass}">Black Screen</td>
+              <td class="${tdClass}"><kbd class="${kbdClass}">B</kbd></td>
             </tr>
             <tr>
-              <td>Clear Screen</td>
-              <td><kbd>C</kbd></td>
+              <td class="${tdClass}">Clear Screen</td>
+              <td class="${tdClass}"><kbd class="${kbdClass}">C</kbd></td>
             </tr>
             <tr>
-              <td>Logo Screen</td>
-              <td><kbd>L</kbd></td>
+              <td class="${tdClass}">Logo Screen</td>
+              <td class="${tdClass}"><kbd class="${kbdClass}">L</kbd></td>
             </tr>
             <tr>
-              <td>Lyrics Mode</td>
-              <td><kbd>Esc</kbd></td>
+              <td class="${tdClass}">Lyrics Mode</td>
+              <td class="${tdClass}"><kbd class="${kbdClass}">Esc</kbd></td>
             </tr>
             <tr>
-              <td>Show Shortcuts</td>
-              <td><kbd>?</kbd></td>
+              <td class="${tdClass}">Show Shortcuts</td>
+              <td class="${tdClass}"><kbd class="${kbdClass}">?</kbd></td>
             </tr>
           </tbody>
         </table>

@@ -1,8 +1,8 @@
 import { state } from '../state'
 import type { DisplaySettings } from '../types'
-import { getSlideText } from '../utils/slides'
-import { updateHTML } from '../utils/dom'
-import { socketService } from '../services/socket'
+import { getSlideText } from '../utils'
+import { updateHTML } from '../utils'
+import { socketService } from '../services'
 
 // Check if we're in static mode (for control panel preview optimization)
 function isStaticMode(): boolean {
@@ -28,7 +28,7 @@ export function buildMainProjectionHTML(): string {
 
     switch (displayMode) {
         case 'black':
-            contentHTML = '<div class="black-screen"></div>'
+            contentHTML = '<div class="w-full h-full bg-black"></div>'
             break
         case 'clear':
             contentHTML = '' // Just show the video background
@@ -39,7 +39,7 @@ export function buildMainProjectionHTML(): string {
         case 'lyrics':
         default:
             contentHTML = `
-        <div class="lyrics-display" style="${lyricsStyle}">
+        <div class="flex flex-col items-center justify-center text-center text-white w-full h-full box-border will-change-contents" style="${lyricsStyle}">
           ${formatLyricsText(lyricsText)}
         </div>
       `
@@ -71,22 +71,27 @@ export function buildMainProjectionHTML(): string {
             : `background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);`
 
         backgroundHTML = `
-      <div class="background-static" style="${bgStyle}"></div>
+      <div class="absolute inset-0 w-full h-full bg-cover bg-center z-[1]" style="${bgStyle}"></div>
     `
     } else {
+        const videoClass = "absolute inset-0 w-full h-full object-cover z-[1] opacity-0 transition-opacity duration-1000 ease-in-out";
         backgroundHTML = `
-      <video class="background-video bg-layer-1 active" src="${backgroundVideo}" autoplay loop muted playsinline></video>
-      <video class="background-video bg-layer-2" autoplay loop muted playsinline></video>
+      <video class="${videoClass} bg-layer-1 active opacity-100" src="${backgroundVideo}" autoplay loop muted playsinline></video>
+      <video class="${videoClass} bg-layer-2" autoplay loop muted playsinline></video>
     `
     }
 
+    // Build class and style for the overlay to ensure background colors are applied without custom CSS
+    const overlayBaseClass = "absolute inset-0 flex items-center justify-center z-[2] transition-[background] duration-300 ease-in-out content-overlay";
+    const overlayBgStyle = (displayMode === 'lyrics' || displayMode === 'clear') ? 'background: transparent;' : 'background: black;';
+
     return `
-    <div class="projection-screen main-projection${staticMode ? ' static-mode' : ''}">
+    <div class="relative w-full h-screen overflow-hidden bg-black main-projection${staticMode ? ' static-mode' : ''}" style="contain: strict;">
       ${backgroundHTML}
-      <div class="content-overlay ${displayMode}">
+      <div class="${overlayBaseClass} ${displayMode}" style="${overlayBgStyle}">
         ${contentHTML}
       </div>
-      <button class="fullscreen-btn" title="Toggle Fullscreen">
+      <button class="fixed bottom-5 right-5 w-12 h-12 flex items-center justify-center bg-black/60 border border-white/20 rounded-lg text-white cursor-pointer z-[100] opacity-0 transition-all duration-300 ease-in-out hover:bg-black/80 hover:opacity-100 group-hover:opacity-100 fullscreen-btn flush-btn" title="Toggle Fullscreen">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
       </button>
     </div>
@@ -100,15 +105,17 @@ export function updateDisplayMode(): void {
 
     if (!overlay) return
 
-    // Update overlay classes
-    overlay.className = `content-overlay ${displayMode}`
+    // Update overlay classes and background
+    const overlayBgStyle = (displayMode === 'lyrics' || displayMode === 'clear') ? 'transparent' : 'black';
+    (overlay as HTMLElement).style.background = overlayBgStyle;
+    overlay.className = `absolute inset-0 flex items-center justify-center z-[2] transition-[background] duration-300 ease-in-out content-overlay ${displayMode}`;
 
     // Update content based on mode
     let contentHTML = ''
 
     switch (displayMode) {
         case 'black':
-            contentHTML = '<div class="black-screen"></div>'
+            contentHTML = '<div class="w-full h-full bg-black"></div>'
             break
         case 'clear':
             contentHTML = ''
@@ -124,7 +131,7 @@ export function updateDisplayMode(): void {
             }
             const lyricsStyle = buildLyricsStyleString(displaySettings)
             contentHTML = `
-        <div class="lyrics-display" style="${lyricsStyle}">
+        <div class="flex flex-col items-center justify-center text-center text-white w-full h-full box-border will-change-contents" style="${lyricsStyle}">
           ${formatLyricsText(lyricsText)}
         </div>
       `
@@ -192,11 +199,13 @@ export function updateBackgroundVideo(): void {
     const playAndFade = () => {
         next.play().then(() => {
             // Apply fade
-            next.classList.add('active')
+            next.classList.add('active', 'opacity-100')
+            next.classList.remove('opacity-0')
             // Respect duration for CSS transition too (we need to update the style inline or class)
             next.style.transition = type === 'none' ? 'none' : `opacity ${fadeDuration}s ease`
 
-            active.classList.remove('active')
+            active.classList.remove('active', 'opacity-100')
+            active.classList.add('opacity-0')
         }).catch(err => {
             console.error("BG Video play failed", err)
         })
@@ -211,7 +220,7 @@ export function updateBackgroundVideo(): void {
 
 export function updateLyricsDisplay(): void {
     const { displayMode, liveSong, liveVariation, livePosition } = state
-    const lyricsEl = document.querySelector('.lyrics-display')
+    const lyricsEl = document.querySelector('.will-change-contents') as HTMLElement
 
     if (lyricsEl && displayMode === 'lyrics' && liveSong) {
         const lyricsText = getSlideText(liveSong, liveVariation, livePosition) || ''
@@ -221,7 +230,7 @@ export function updateLyricsDisplay(): void {
 
             // Optimization: Recycle DOM nodes if line count matches
             // This prevents layout thrashing
-            const existingLines = lyricsEl.querySelectorAll('.lyric-line')
+            const existingLines = lyricsEl.querySelectorAll('.mb-\\[0\\.25em\\]')
 
             if (existingLines.length === lines.length && lines.length > 0) {
                 // Smart update: just change text
@@ -256,7 +265,7 @@ export function updateLyricsDisplay(): void {
 
 export function updateLyricsStyle(): void {
     const { displaySettings } = state
-    const lyricsEl = document.querySelector('.lyrics-display') as HTMLElement
+    const lyricsEl = document.querySelector('.will-change-contents') as HTMLElement
 
     if (lyricsEl) {
         // We can't easily parse current styles back to displaySettings to update gracefully without re-render or complex DOM manip
@@ -281,7 +290,7 @@ export function updateLogoMedia(): void {
 export function updateStaticBackground(): void {
     if (!isStaticMode()) return
 
-    const staticBg = document.querySelector('.background-static') as HTMLElement
+    const staticBg = document.querySelector('.background-static, .absolute.inset-0.w-full.h-full.bg-cover.bg-center.z-\\[1\\]') as HTMLElement
     if (!staticBg) return
 
     const { backgroundVideo, availableVideos } = state
@@ -361,15 +370,15 @@ function buildLogoHTML(logoMedia: string): string {
     const isVideo = logoMedia.endsWith('.mp4') || logoMedia.endsWith('.webm') || logoMedia.endsWith('.mov')
 
     if (isVideo) {
-        return `<video class="logo-media" src="${logoMedia}" autoplay loop muted playsinline></video>`
+        return `<video class="w-full h-full object-fill logo-media" src="${logoMedia}" autoplay loop muted playsinline></video>`
     } else {
-        return `<img class="logo-media" src="${logoMedia}" alt="Logo" />`
+        return `<img class="w-full h-full object-fill logo-media" src="${logoMedia}" alt="Logo" />`
     }
 }
 
 function formatLyricsText(text: string): string {
     if (!text) return ''
-    return text.split('\n').map(line => `<div class="lyric-line">${line}</div>`).join('')
+    return text.split('\n').map(line => `<div class="mb-[0.25em] last:mb-0">${line}</div>`).join('')
 }
 
 export function setupMarginMarkersListener(): void {
@@ -380,7 +389,7 @@ export function setupMarginMarkersListener(): void {
 }
 
 function toggleMarginMarkers(visible: boolean): void {
-    const screen = document.querySelector('.projection-screen')
+    const screen = document.querySelector('.main-projection')
     if (!screen) return
 
     let markers = screen.querySelector('.margin-markers')
@@ -388,7 +397,7 @@ function toggleMarginMarkers(visible: boolean): void {
     if (visible) {
         if (!markers) {
             markers = document.createElement('div')
-            markers.className = 'margin-markers'
+            markers.className = 'absolute inset-0 pointer-events-none z-[50] margin-markers'
             screen.appendChild(markers)
         }
         updateMarginMarkers()
@@ -404,11 +413,12 @@ function updateMarginMarkers(): void {
     const markers = document.querySelector('.margin-markers') as HTMLElement
 
     if (markers) {
+        const markerClass = "absolute border border-dashed bg-red-600/20 border-red-600/60";
         markers.innerHTML = `
-      <div class="margin-marker top" style="height: ${displaySettings.marginTop}%"></div>
-      <div class="margin-marker bottom" style="height: ${displaySettings.marginBottom}%"></div>
-      <div class="margin-marker left" style="width: ${displaySettings.marginLeft}%"></div>
-      <div class="margin-marker right" style="width: ${displaySettings.marginRight}%"></div>
+      <div class="${markerClass} top-0 left-0 right-0" style="height: ${displaySettings.marginTop}%"></div>
+      <div class="${markerClass} bottom-0 left-0 right-0" style="height: ${displaySettings.marginBottom}%"></div>
+      <div class="${markerClass} top-0 bottom-0 left-0" style="width: ${displaySettings.marginLeft}%"></div>
+      <div class="${markerClass} top-0 bottom-0 right-0" style="width: ${displaySettings.marginRight}%"></div>
     `
     }
 }

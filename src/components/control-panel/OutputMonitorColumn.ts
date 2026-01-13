@@ -30,13 +30,15 @@ function renderMonitorContent(
   staticMode?: boolean
 ): string {
   if (!enabled) {
-    return `<div class="monitor-disabled"><span>${ICONS.power}</span><span>Display Off</span></div>`
+    // monitor-disabled
+    return `<div class="flex flex-col items-center justify-center gap-2 w-full h-full bg-bg-tertiary text-text-muted text-xs font-medium uppercase tracking-[0.5px]"><span class="w-6 h-6 opacity-50">${ICONS.power}</span><span>Display Off</span></div>`
   }
 
   // For static mode, add query param so MainProjection uses thumbnail instead of video
   const src = staticMode ? `${path}?static=1` : path
 
-  return `<iframe src="${src}" scrolling="no" class="monitor-frame" style="width: ${res.width}px; height: ${res.height}px;"></iframe>`
+  // monitor-frame
+  return `<iframe src="${src}" scrolling="no" class="absolute top-0 left-0 border-none origin-top-left pointer-events-none bg-black" style="width: ${res.width}px; height: ${res.height}px;"></iframe>`
 }
 
 export function renderOutputMonitorColumn(): string {
@@ -46,65 +48,86 @@ export function renderOutputMonitorColumn(): string {
   const staticMode = isStaticModeEnabled()
   const confidenceRes = getConfidenceResolution()
 
+  // Inline Tailwind Classes
+  const columnClass = "flex flex-col bg-bg-primary overflow-hidden min-w-0 min-w-[200px] bg-bg-secondary cp-monitors"
+  const headerClass = "flex flex-row items-center justify-between gap-0 p-0 h-[2.2rem] min-h-[2.2rem] bg-bg-secondary border-b border-border-color shrink-0 text-[0.85rem]"
+  const headerLeft = "flex items-center h-full px-2 gap-2"
+  const headerIconClass = "w-[14px] h-[14px] opacity-70"
+  const headerRight = "flex items-center h-full gap-0 pr-0"
+  const statusWrapper = "flex items-center px-3 h-full"
+  const flushBtnClass = "h-full w-[2.2rem] border-l border-border-color rounded-none m-0 p-0 bg-transparent flex items-center justify-center text-text-secondary transition-colors duration-200 hover:bg-bg-hover hover:text-text-primary"
+
+  const columnBodyClass = "flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-4 p-4 bg-bg-tertiary [&::-webkit-scrollbar]:hidden"
+  const monitorGroupClass = "flex flex-col gap-1 monitor-group"
+  const monitorLabelClass = "flex items-center gap-2 text-[0.7rem] font-semibold text-text-muted uppercase tracking-[0.5px] h-5"
+
+  // toggle-switch
+  const toggleSwitchClass = "relative inline-block w-8 h-[18px] shrink-0 toggle-switch"
+  // monitor-wrapper
+  const monitorWrapperClass = "w-full relative overflow-hidden bg-black rounded-sm shadow-sm border border-border-color cursor-pointer transition-all duration-200 hover:border-accent-primary hover:shadow-[0_0_0_2px_rgba(59,130,246,0.2)] monitor-wrapper"
+
   return `
-    <div class="cp-column cp-monitors">
-      <div class="cp-column-header horizontal-layout compact-header">
-        <div class="header-section-left">
-          <span class="header-icon">${ICONS.monitor}</span>
-          <span>OUTPUTS</span>
+    <div class="${columnClass}">
+      <div class="${headerClass} cp-column-header horizontal-layout compact-header">
+        <div class="${headerLeft}">
+          <span class="${headerIconClass}">${ICONS.monitor}</span>
+          <span class="font-semibold uppercase tracking-[0.5px] text-text-secondary">OUTPUTS</span>
         </div>
-        <div class="header-section-center"></div>
-        <div class="header-section-right">
-          <div class="status-indicator-wrapper">${renderStatusIndicator()}</div>
-          <button class="icon-btn settings-header-btn flush-btn" id="focus-all-btn" title="Focus All Windows">${ICONS.target}</button>
-          <button class="icon-btn settings-header-btn flush-btn" id="data-screen-btn" title="Full Screen">${ICONS.maximize}</button>
-          <button class="icon-btn settings-header-btn flush-btn" id="settings-btn" title="Settings">${ICONS.settings}</button>
+        <div class="flex-1 flex items-center justify-center h-full min-w-0 p-0"></div>
+        <div class="${headerRight}">
+          <div class="${statusWrapper}">${renderStatusIndicator()}</div>
+          <button class="${flushBtnClass} flush-btn" id="focus-all-btn" title="Focus All Windows" style="border-left-width: 1px !important;">${ICONS.target}</button>
+          <button class="${flushBtnClass} flush-btn" id="data-screen-btn" title="Full Screen" style="border-left-width: 1px !important;">${ICONS.maximize}</button>
+          <button class="${flushBtnClass} flush-btn" id="settings-btn" title="Settings" style="border-left-width: 1px !important;">${ICONS.settings}</button>
         </div>
       </div>
-      <div class="cp-column-body monitor-list">
+      <div class="${columnBodyClass}" style="scrollbar-width: none;">
         
         <!-- Main Projection (16:9) -->
-        <div class="monitor-group" data-monitor="main">
-          <div class="monitor-label">
-            <label class="toggle-switch">
-              <input type="checkbox" class="monitor-toggle" data-monitor="main" ${mainEnabled ? 'checked' : ''}>
-              <span class="toggle-slider"></span>
+        <div class="${monitorGroupClass}" data-monitor="main">
+          <div class="${monitorLabelClass}">
+            <label class="${toggleSwitchClass}">
+              <input type="checkbox" class="w-0 h-0 opacity-0 monitor-toggle" data-monitor="main" ${mainEnabled ? 'checked' : ''}>
+              <span class="absolute inset-0 cursor-pointer ${mainEnabled ? 'bg-success' : 'bg-[#444]'} rounded transition-all duration-200 before:absolute before:content-[''] before:h-[14px] before:w-[14px] before:left-[2px] before:top-1/2 before:-translate-y-1/2 before:bg-[#888] before:rounded-[3px] before:transition-all before:duration-200 toggle-slider"></span>
             </label>
-            <span>Main Projection</span>
-            <label class="toggle-switch static-toggle" title="Static Mode (saves GPU)">
-              <input type="checkbox" class="static-mode-toggle" data-monitor="main" ${staticMode ? 'checked' : ''}>
-              <span class="toggle-slider"></span>
-            </label>
+            <span class="flex-1">Main Projection</span>
+            <div class="flex items-center gap-2">
+               <span class="text-[0.65rem] font-bold text-text-muted">STATIC</span>
+               <label class="${toggleSwitchClass} static-toggle" title="Static Mode (saves GPU)">
+                 <input type="checkbox" class="w-0 h-0 opacity-0 static-mode-toggle" data-monitor="main" ${staticMode ? 'checked' : ''}>
+                 <span class="absolute inset-0 cursor-pointer ${staticMode ? 'bg-orange-600' : 'bg-[#444]'} rounded transition-all duration-200 before:absolute before:content-[''] before:h-[14px] before:w-[14px] before:left-[2px] before:top-1/2 before:-translate-y-1/2 before:bg-[#888] before:rounded-[3px] before:transition-all before:duration-200 toggle-slider" style="${staticMode ? 'background-color: #ea580c !important;' : ''}"></span>
+               </label>
+            </div>
           </div>
-          <div class="monitor-wrapper ratio-16-9" data-width="${RES_16_9.width}" data-height="${RES_16_9.height}">
+          <div class="${monitorWrapperClass} aspect-video ratio-16-9" data-width="${RES_16_9.width}" data-height="${RES_16_9.height}">
             ${renderMonitorContent('/main', RES_16_9, mainEnabled, staticMode)}
           </div>
         </div>
 
         <!-- Confidence Monitor (4:3) -->
-        <div class="monitor-group" data-monitor="confidence">
-          <div class="monitor-label">
-            <label class="toggle-switch">
-              <input type="checkbox" class="monitor-toggle" data-monitor="confidence" ${confidenceEnabled ? 'checked' : ''}>
-              <span class="toggle-slider"></span>
+        <div class="${monitorGroupClass}" data-monitor="confidence">
+          <div class="${monitorLabelClass}">
+            <label class="${toggleSwitchClass}">
+              <input type="checkbox" class="w-0 h-0 opacity-0 monitor-toggle" data-monitor="confidence" ${confidenceEnabled ? 'checked' : ''}>
+              <span class="absolute inset-0 cursor-pointer bg-[#444] rounded transition-all duration-200 before:absolute before:content-[''] before:h-[14px] before:w-[14px] before:left-[2px] before:top-1/2 before:-translate-y-1/2 before:bg-[#888] before:rounded-[3px] before:transition-all before:duration-200 toggle-slider"></span>
             </label>
-            <span>Confidence</span>
+            <span class="flex-1">Confidence</span>
           </div>
-          <div class="monitor-wrapper ratio-4-3" data-width="${confidenceRes.width}" data-height="${confidenceRes.height}">
+          <div class="${monitorWrapperClass} aspect-[4/3] ratio-4-3" data-width="${confidenceRes.width}" data-height="${confidenceRes.height}">
             ${renderMonitorContent('/confidence', confidenceRes, confidenceEnabled)}
           </div>
         </div>
 
         <!-- Lower Thirds (16:9) -->
-        <div class="monitor-group" data-monitor="thirds">
-          <div class="monitor-label">
-            <label class="toggle-switch">
-              <input type="checkbox" class="monitor-toggle" data-monitor="thirds" ${thirdsEnabled ? 'checked' : ''}>
-              <span class="toggle-slider"></span>
+        <div class="${monitorGroupClass}" data-monitor="thirds">
+          <div class="${monitorLabelClass}">
+            <label class="${toggleSwitchClass}">
+              <input type="checkbox" class="w-0 h-0 opacity-0 monitor-toggle" data-monitor="thirds" ${thirdsEnabled ? 'checked' : ''}>
+              <span class="absolute inset-0 cursor-pointer bg-[#444] rounded transition-all duration-200 before:absolute before:content-[''] before:h-[14px] before:w-[14px] before:left-[2px] before:top-1/2 before:-translate-y-1/2 before:bg-[#888] before:rounded-[3px] before:transition-all before:duration-200 toggle-slider"></span>
             </label>
-            <span>Lower Thirds</span>
+            <span class="flex-1">Lower Thirds</span>
           </div>
-          <div class="monitor-wrapper ratio-16-9" data-width="${RES_16_9.width}" data-height="${RES_16_9.height}">
+          <div class="${monitorWrapperClass} aspect-video ratio-16-9" data-width="${RES_16_9.width}" data-height="${RES_16_9.height}">
             ${renderMonitorContent('/thirds', RES_16_9, thirdsEnabled)}
           </div>
         </div>
@@ -148,11 +171,24 @@ export function initOutputMonitorListeners(): void {
     openSettings()
   })
 
-  // Monitor toggle checkboxes
+  // Monitor toggle checkboxes - style the slider
   document.querySelectorAll('.monitor-toggle').forEach(checkbox => {
     checkbox.addEventListener('change', (e) => {
       e.stopPropagation()
       const monitor = checkbox.getAttribute('data-monitor') as 'main' | 'confidence' | 'thirds'
+
+      // Update slider style
+      const slider = (checkbox as HTMLElement).nextElementSibling as HTMLElement
+      if (slider) {
+        if ((checkbox as HTMLInputElement).checked) {
+          slider.classList.add('bg-success')
+          slider.classList.remove('bg-[#444]')
+        } else {
+          slider.classList.remove('bg-success')
+          slider.classList.add('bg-[#444]')
+        }
+      }
+
       toggleMonitor(monitor)
     })
   })
@@ -228,7 +264,7 @@ export function initOutputMonitorListeners(): void {
     }
   })
 
-  // Listen for fullscreen change events (ESCN etc)
+  // Listen for fullscreen change events (ESC etc)
   document.addEventListener('fullscreenchange', () => {
     if (fsBtn) {
       if (document.fullscreenElement) {
@@ -274,7 +310,7 @@ function updateMonitorDisplay(monitor: 'main' | 'confidence' | 'thirds'): void {
 
   const wrapper = group.querySelector('.monitor-wrapper') as HTMLElement
   const toggleBtn = group.querySelector('.monitor-toggle')
-  const staticBtn = group.querySelector('.static-mode-btn')
+  const staticBtn = group.querySelector('.static-mode-toggle')
 
   if (!wrapper) return
 
@@ -283,14 +319,35 @@ function updateMonitorDisplay(monitor: 'main' | 'confidence' | 'thirds'): void {
 
   // Update toggle button state
   if (toggleBtn) {
-    toggleBtn.classList.toggle('active', enabled)
+    (toggleBtn as HTMLInputElement).checked = enabled
     toggleBtn.setAttribute('title', enabled ? 'Disable Monitor' : 'Enable Monitor')
+    const slider = (toggleBtn as HTMLElement).nextElementSibling as HTMLElement
+    if (slider) {
+      if (enabled) {
+        slider.classList.add('bg-success')
+        slider.classList.remove('bg-[#444]')
+      } else {
+        slider.classList.remove('bg-success')
+        slider.classList.add('bg-[#444]')
+      }
+    }
   }
 
   // Update static mode button state (only for main)
   if (staticBtn) {
-    staticBtn.classList.toggle('active', staticMode)
-    staticBtn.setAttribute('title', staticMode ? 'Disable Static Mode' : 'Enable Static Mode (saves GPU)')
+    (staticBtn as HTMLInputElement).checked = staticMode
+    const slider = (staticBtn as HTMLElement).nextElementSibling as HTMLElement
+    if (slider) {
+      if (staticMode) {
+        slider.classList.add('bg-orange-600')
+        slider.classList.remove('bg-[#444]')
+        slider.style.setProperty('background-color', '#ea580c', 'important')
+      } else {
+        slider.classList.remove('bg-orange-600')
+        slider.classList.add('bg-[#444]')
+        slider.style.removeProperty('background-color')
+      }
+    }
   }
 
   // Get resolution for this monitor

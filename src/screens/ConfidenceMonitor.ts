@@ -1,7 +1,7 @@
 import { state } from '../state'
 
-import { getAllSlides } from '../utils/slides'
-import { updateHTML } from '../utils/dom'
+import { getAllSlides } from '../utils'
+import { updateHTML } from '../utils'
 
 let clockInterval: number | null = null
 
@@ -26,14 +26,14 @@ export function buildConfidenceMonitorHTML(): string {
     `
 
     return `
-        <div class="confidence-screen" style="${cmStyles}">
-            <nav class="cm-navbar">
-                <div class="cm-clock" id="cm-clock"></div>
+        <div class="flex flex-col h-screen bg-bg-primary confidence-screen" style="${cmStyles}">
+            <nav class="flex justify-center items-center px-4 py-2 bg-bg-secondary border-b border-border-color shrink-0 cm-navbar">
+                <div class="text-xl font-semibold tabular-nums text-text-primary cm-clock" id="cm-clock" style="font-size: var(--cm-clock-size, 1.25rem);"></div>
             </nav>
-            <div class="cm-teleprompter">
+            <div class="flex-1 flex flex-col overflow-hidden relative cm-teleprompter" style="padding: var(--cm-margin-top, 0.5rem) var(--cm-margin-right, 0.5rem) var(--cm-margin-bottom, 0.5rem) var(--cm-margin-left, 0.5rem);">
                 ${buildTeleprompterContent()}
             </div>
-            <button class="fullscreen-btn" title="Toggle Fullscreen">
+            <button class="fixed bottom-5 right-5 w-12 h-12 flex items-center justify-center bg-black/60 border border-white/20 rounded-lg text-white cursor-pointer z-[100] opacity-0 transition-all duration-300 ease-in-out hover:opacity-100 group-hover:opacity-100 fullscreen-btn" title="Toggle Fullscreen">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
             </button>
         </div>
@@ -43,19 +43,21 @@ export function buildConfidenceMonitorHTML(): string {
 function buildTeleprompterContent(): string {
     const { displayMode, liveSong, liveVariation, livePosition, previousLiveSong, previousLiveVariation, previousLivePosition, previewSong, previewVariation, previewPosition } = state
 
-    // Build mode overlay for non-lyrics modes
-    // Build mode overlay for non-lyrics modes
+    // Build mode overlay for non-lyrics modes - ONLY if no song is loaded
     let modeOverlay = ''
-    if (displayMode === 'black') {
-        modeOverlay = '<div class="mode-overlay black"></div>'
-    } else if (displayMode === 'clear') {
-        modeOverlay = '<div class="mode-overlay clear"></div>'
-    } else if (displayMode === 'logo') {
-        modeOverlay = '<div class="mode-overlay logo"></div>'
+    if (!liveSong && !previousLiveSong) {
+        const overlayClass = "absolute inset-0 flex items-center justify-center w-full h-full z-[10] mode-overlay";
+        if (displayMode === 'black') {
+            modeOverlay = `<div class="${overlayClass} bg-black text-[#333]"></div>`
+        } else if (displayMode === 'clear') {
+            modeOverlay = `<div class="${overlayClass} bg-transparent"></div>`
+        } else if (displayMode === 'logo') {
+            modeOverlay = `<div class="${overlayClass} bg-transparent"></div>`
+        }
     }
 
     if (!liveSong && !previousLiveSong) {
-        return modeOverlay + '<div class="cm-empty">No song loaded</div>'
+        return modeOverlay + '<div class="flex items-center justify-center flex-1 text-xl text-text-muted cm-empty">No song loaded</div>'
     }
 
     // Accumulate all slide HTML strings
@@ -98,20 +100,20 @@ function buildTeleprompterContent(): string {
 
                 // Show ONLY the active part (hide everything else)
                 const isHidden = index < prevStartIndex || index >= prevEndIndex
-                const hiddenClass = isHidden ? ' tp-hidden' : ''
+                const hiddenClass = isHidden ? ' hidden' : ''
 
                 // Use normal styling for visible previous slides (no tp-past) to ensure readability
-                const styleClass = isHidden ? 'tp-slide tp-past' : 'tp-slide'
+                const styleClass = isHidden ? 'past' : ''
 
                 // Check if this slide starts a new part
                 const newPart = index > 0 && prevSlides[index - 1].partLabel !== slide.partLabel
-                return renderSlide(slide, idx, `${styleClass}${hiddenClass}`, newPart)
+                return renderSlide(slide, idx, `tp-slide ${styleClass}${hiddenClass}`, newPart)
             }).join('')
 
             htmlParts.push(prevHtml)
 
             // Separator between previous and live song
-            htmlParts.push('<div class="tp-divider"></div>')
+            htmlParts.push('<div class="w-full my-8 shrink-0 tp-divider" style="height: var(--cm-divider-height, 2px); background: var(--cm-divider-color, rgba(255, 255, 255, 0.2));"></div>')
         }
     }
 
@@ -134,12 +136,12 @@ function buildTeleprompterContent(): string {
             let slideClass = 'tp-slide'
 
             if (index < localCurrentIndex) {
-                slideClass += ' tp-past'
+                slideClass += ' past'
             } else if (index === localCurrentIndex) {
-                slideClass += ' tp-current'
+                slideClass += ' current'
                 currentGlobalIndex = globalIdx // Found our scroll target
             } else {
-                slideClass += ' tp-future'
+                slideClass += ' future'
             }
 
             return renderSlide(slide, globalIdx, slideClass, index > 0 && liveSlides[index - 1].partLabel !== slide.partLabel)
@@ -152,7 +154,7 @@ function buildTeleprompterContent(): string {
     // Only show if different from live song and exists
     if (previewSong && previewSong.id !== liveSong?.id) {
         // Separator
-        htmlParts.push('<div class="tp-divider"></div>')
+        htmlParts.push('<div class="w-full my-8 shrink-0 tp-divider" style="height: var(--cm-divider-height, 2px); background: var(--cm-divider-color, rgba(255, 255, 255, 0.2));"></div>')
 
         const previewSlides = getAllSlides(previewSong, previewVariation)
 
@@ -170,9 +172,9 @@ function buildTeleprompterContent(): string {
             const globalIdx = slideCounter++
             // Hide slides before the selected preview position
             const isHidden = index < previewStartIndex
-            const hiddenClass = isHidden ? ' tp-hidden' : ''
+            const hiddenClass = isHidden ? ' hidden' : ''
             const newPart = index > 0 && previewSlides[index - 1].partLabel !== slide.partLabel
-            return renderSlide(slide, globalIdx, `tp-slide tp-preview${hiddenClass}`, newPart)
+            return renderSlide(slide, globalIdx, `tp-slide preview${hiddenClass}`, newPart)
         }).join('')
 
         htmlParts.push(previewHtml)
@@ -180,24 +182,33 @@ function buildTeleprompterContent(): string {
 
     return `
         ${modeOverlay}
-        <div class="teleprompter-scroll" data-current-index="${currentGlobalIndex}" data-song-id="${liveSong?.id}" data-prev-song-id="${previousLiveSong?.id || ''}" data-preview-song-id="${previewSong?.id || ''}" data-preview-position="${previewPosition.partIndex}-${previewPosition.slideIndex}">
-            <div class="tp-spacer-top"></div>
+        <div class="flex flex-col items-stretch w-full will-change-transform transition-transform duration-[400ms] ease-out teleprompter-scroll" data-current-index="${currentGlobalIndex}" data-song-id="${liveSong?.id}" data-prev-song-id="${previousLiveSong?.id || ''}" data-preview-song-id="${previewSong?.id || ''}" data-preview-position="${previewPosition.partIndex}-${previewPosition.slideIndex}">
+            <div class="shrink-0 h-[40vh] tp-spacer-top"></div>
             ${htmlParts.join('')}
-            <div class="tp-spacer-bottom"></div>
+            <div class="shrink-0 h-[40vh] tp-spacer-bottom"></div>
         </div>
     `
 }
 
 function renderSlide(slide: any, index: number, className: string, newPart: boolean): string {
-    let style = ''
-    if (newPart) {
-        style = `margin-top: var(--cm-part-gap, 2rem);`
+    let style = `opacity: var(--cm-prev-next-opacity, 0.35);`
+    if (className.includes('current')) {
+        style = `opacity: 1;`
     }
+    if (newPart) {
+        style += `margin-top: var(--cm-part-gap, 2rem);`
+    }
+
+    const textStyle = `font-size: var(--cm-font-size, 2.5rem); line-height: var(--cm-line-height, 1.4); font-family: var(--cm-font-family, system-ui);`
+    const isCurrent = className.includes('current')
+
     return `
-        <div class="${className}" data-index="${index}" id="tp-slide-${index}" style="${style}">
-            <div class="tp-part-indicator"><span>${slide.partLabel}</span></div>
-            <div class="tp-content">
-                <div class="tp-text">${slide.text.replace(/\n/g, '<br>')}</div>
+        <div class="flex items-stretch w-full transition-all duration-500 ease-in-out py-6 ${className}" data-index="${index}" id="tp-slide-${index}" style="${style} margin-bottom: var(--cm-slide-gap, 0);">
+            <div class="flex items-center justify-center w-10 shrink-0 relative tp-part-indicator">
+                <span class="absolute whitespace-nowrap text-[0.7rem] font-bold uppercase tracking-[2px] rotate-[-90deg] ${isCurrent ? 'text-accent-primary' : 'text-text-muted'}">${slide.partLabel}</span>
+            </div>
+            <div class="flex-1 flex items-center pl-4 tp-content">
+                <div class="tp-text ${isCurrent ? 'text-text-primary font-medium' : 'text-text-secondary'}" style="${textStyle}">${slide.text.replace(/\n/g, '<br>')}</div>
             </div>
         </div>
     `
@@ -318,13 +329,18 @@ function updateModeOverlay(teleprompter: Element, displayMode: string): void {
         existingOverlay.remove()
     }
 
+    // Only add overlay if NO song is loaded and NOT in lyrics mode
+    const { liveSong, previousLiveSong } = state
+    if (liveSong || previousLiveSong) return
+
     // Add new overlay if not in lyrics mode
+    const overlayClass = "absolute inset-0 flex items-center justify-center w-full h-full z-[10] mode-overlay";
     if (displayMode === 'black') {
-        teleprompter.insertAdjacentHTML('afterbegin', '<div class="mode-overlay black"></div>')
+        teleprompter.insertAdjacentHTML('afterbegin', `<div class="${overlayClass} bg-black text-[#333]"></div>`)
     } else if (displayMode === 'clear') {
-        teleprompter.insertAdjacentHTML('afterbegin', '<div class="mode-overlay clear"></div>')
+        teleprompter.insertAdjacentHTML('afterbegin', `<div class="${overlayClass} bg-transparent"></div>`)
     } else if (displayMode === 'logo') {
-        teleprompter.insertAdjacentHTML('afterbegin', '<div class="mode-overlay logo"></div>')
+        teleprompter.insertAdjacentHTML('afterbegin', `<div class="${overlayClass} bg-transparent"></div>`)
     }
 }
 
@@ -360,21 +376,30 @@ function updateSlideClasses(): void {
 
     // Update all slide classes
     document.querySelectorAll('.tp-slide').forEach((slide, index) => {
-        slide.classList.remove('tp-past', 'tp-current', 'tp-future')
+        slide.classList.remove('past', 'current', 'future')
+        const indicator = slide.querySelector('.tp-part-indicator span')
+        const text = slide.querySelector('.tp-text')
+
+        if (indicator) indicator.className = 'absolute whitespace-nowrap text-[0.7rem] font-bold uppercase tracking-[2px] rotate-[-90deg] text-text-muted';
+        if (text) text.className = 'tp-text text-text-secondary';
+        (slide as HTMLElement).style.opacity = 'var(--cm-prev-next-opacity, 0.35)';
 
         // Previous song slides are always "past"
         if (index < previousSlidesCount) {
-            slide.classList.add('tp-past')
+            slide.classList.add('past')
         } else {
             // Live song slides
             const liveIndex = index - previousSlidesCount
             if (liveIndex < liveSlides.length) {
                 if (liveIndex < localCurrentIndex) {
-                    slide.classList.add('tp-past')
+                    slide.classList.add('past')
                 } else if (liveIndex === localCurrentIndex) {
-                    slide.classList.add('tp-current')
+                    slide.classList.add('current')
+                    if (indicator) indicator.className = 'absolute whitespace-nowrap text-[0.7rem] font-bold uppercase tracking-[2px] rotate-[-90deg] text-accent-primary';
+                    if (text) text.className = 'tp-text text-text-primary font-medium';
+                    (slide as HTMLElement).style.opacity = '1';
                 } else {
-                    slide.classList.add('tp-future')
+                    slide.classList.add('future')
                 }
             }
             // Preview song slides keep their tp-preview class (opacity handled by CSS)

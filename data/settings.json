@@ -41,10 +41,10 @@
   },
   "currentSchedule": "2026-01-11",
   "layoutSettings": {
-    "songsColumnWidth": 295,
-    "scheduleSectionHeight": 416,
+    "songsColumnWidth": 296,
+    "scheduleSectionHeight": 354,
     "librarySectionHeight": null,
-    "backgroundsSectionHeight": 308,
+    "backgroundsSectionHeight": 310,
     "thumbnailSize": 217.8,
     "mainMonitorEnabled": true,
     "confidenceMonitorEnabled": true,
@@ -53,11 +53,11 @@
       "width": 1024,
       "height": 768
     },
-    "mainProjectionStaticMode": false,
-    "monitorColumnWidth": 460
+    "mainProjectionStaticMode": true,
+    "monitorColumnWidth": 450
   },
-  "backgroundVideo": "/media/teal_squares.mp4",
-  "previewBackground": "/media/teal_squares.mp4",
+  "backgroundVideo": "/media/red_bokeh.mp4",
+  "previewBackground": "/media/red_bokeh.mp4",
   "logoMedia": "/media/logo.mp4",
   "partColors": {
     "V": "#007bff",

@@ -11,9 +11,9 @@ import {
   setDisplayMode,
   prevSlide,
   nextSlide
-} from '../actions/controlPanel'
-import { initKeyboardHandlers, setupKeyboardListener, removeKeyboardListener } from '../utils/keyboard'
-import { toggleShortcutsModal } from '../components/ShortcutsModal'
+} from '../actions'
+import { initKeyboardHandlers, setupKeyboardListener, removeKeyboardListener } from '../utils'
+import { toggleShortcutsModal } from '../components/modals'
 
 
 import {
@@ -273,13 +273,14 @@ export function renderControlPanel(): void {
 }
 
 function buildControlPanelHTML(): string {
+  const resizerClass = "w-1 bg-[#2a2a32] cursor-col-resize hover:bg-accent-primary transition-colors duration-200 shrink-0 select-none z-[10]";
   return `
-    <div class="control-panel no-navbar">
-      <div class="cp-main">
+    <div class="w-full h-full flex flex-col items-stretch overflow-hidden bg-bg-primary text-text-primary control-panel no-navbar">
+      <div class="flex-1 flex overflow-hidden min-h-0 cp-main" style="--song-list-width: ${activeSongListWidth}px; --monitor-column-width: ${activeMonitorColumnWidth}px;">
         ${renderSongListColumn()}
-        <div class="resizer" id="cp-resizer"></div>
+        <div class="${resizerClass}" id="cp-resizer"></div>
         ${renderProjectionControlColumn()}
-        <div class="resizer" id="cp-resizer-monitors"></div>
+        <div class="${resizerClass}" id="cp-resizer-monitors"></div>
         ${renderOutputMonitorColumn()}
       </div>
     </div>
@@ -309,7 +310,7 @@ function initResizer(): void {
 
   resizer.addEventListener('mousedown', () => {
     isResizing = true
-    resizer.classList.add('resizing')
+    resizer.classList.add('bg-accent-primary', 'resizing')
     document.body.style.cursor = 'col-resize'
     document.body.style.userSelect = 'none'
   })
@@ -328,7 +329,7 @@ function initResizer(): void {
   document.addEventListener('mouseup', () => {
     if (isResizing) {
       isResizing = false
-      resizer.classList.remove('resizing')
+      resizer.classList.remove('bg-accent-primary', 'resizing')
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
 
@@ -352,7 +353,7 @@ function initMonitorResizer(): void {
 
   resizer.addEventListener('mousedown', () => {
     isResizing = true
-    resizer.classList.add('resizing')
+    resizer.classList.add('bg-accent-primary', 'resizing')
     document.body.style.cursor = 'col-resize'
     document.body.style.userSelect = 'none'
   })
@@ -366,12 +367,12 @@ function initMonitorResizer(): void {
     // H = W*(9/16) + W*(3/4) + W*(9/16) = W*(1.875)
     // H_vp > H + Fixed (approx 200px for headers/padding)
     // W < (H_vp - 200) / 1.875
-    const FIXED_V_SPACE = 90
+    const FIXED_V_SPACE = 108
     const availHeight = window.innerHeight - FIXED_V_SPACE
     const calcMaxWidth = Math.floor(Math.max(200, availHeight / 1.875))
 
-    // Also limit by window width (allow up to 70% of screen)
-    const maxWidth = Math.min(calcMaxWidth, window.innerWidth * 0.7)
+    // Also limit by window width
+    const maxWidth = Math.min(calcMaxWidth, window.innerWidth * 0.75)
 
     const newWidth = Math.max(200, Math.min(maxWidth, window.innerWidth - e.clientX))
 
@@ -382,7 +383,7 @@ function initMonitorResizer(): void {
   document.addEventListener('mouseup', () => {
     if (isResizing) {
       isResizing = false
-      resizer.classList.remove('resizing')
+      resizer.classList.remove('bg-accent-primary', 'resizing')
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
 

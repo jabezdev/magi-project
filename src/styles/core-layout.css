@@ -1,0 +1,265 @@
+/* ========== CONTROL PANEL CORE LAYOUT ========== */
+/* These rules are required for the 3-column Control Panel layout */
+
+@layer components {
+
+    /* Main Control Panel Container */
+    .control-panel {
+        @apply flex flex-col w-full h-screen overflow-hidden bg-bg-primary;
+    }
+
+    .control-panel.no-navbar {
+        @apply h-screen;
+    }
+
+    /* Main Content Area - 3 Column Layout */
+    .cp-main {
+        @apply flex flex-1 min-h-0 overflow-hidden;
+        --song-list-width: 350px;
+        --monitor-column-width: 300px;
+    }
+
+    /* Column 1: Songs (Schedule + Library) */
+    .cp-songs {
+        @apply flex flex-col overflow-hidden shrink-0;
+        width: var(--song-list-width);
+    }
+
+    /* Column 2: Projection Control (Preview/Live + Backgrounds) */
+    .projection-control-column {
+        @apply flex flex-col flex-1 min-w-0 overflow-hidden;
+    }
+
+    /* Column 3: Output Monitors */
+    .cp-monitors {
+        @apply flex flex-col overflow-hidden shrink-0;
+        width: var(--monitor-column-width);
+    }
+
+    /* Vertical Resizer between columns */
+    .resizer {
+        @apply w-1 bg-bg-secondary cursor-col-resize transition-colors duration-200 z-10 hover:bg-accent-primary shrink-0;
+    }
+
+    .resizer.resizing {
+        @apply bg-accent-primary;
+    }
+
+    /* Horizontal section resizer (between schedule/library, between preview+live/backgrounds) */
+    .section-resizer {
+        @apply h-2 bg-bg-secondary cursor-row-resize transition-colors duration-200 z-10 hover:bg-accent-primary shrink-0;
+    }
+
+    /* Preview and Live columns share space equally */
+    .cp-preview,
+    .cp-live {
+        @apply flex-1 min-w-0;
+    }
+
+    /* ========== TOGGLE SWITCHES ========== */
+    .toggle-switch {
+        @apply relative inline-block shrink-0;
+    }
+
+    .toggle-switch input {
+        @apply opacity-0 w-0 h-0 absolute;
+    }
+
+    .toggle-switch .toggle-slider {
+        @apply absolute inset-0 cursor-pointer bg-[#444] rounded transition-all duration-200;
+    }
+
+    .toggle-switch .toggle-slider::before {
+        @apply absolute content-[''] bg-[#888] rounded-[3px] transition-all duration-200;
+        height: 14px;
+        width: 14px;
+        left: 2px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .toggle-switch input:checked+.toggle-slider {
+        @apply bg-success;
+    }
+
+    .toggle-switch input:checked+.toggle-slider::before {
+        @apply bg-white;
+        transform: translateY(-50%) translateX(14px);
+    }
+
+    /* ========== ICON SIZING ========== */
+    /* Constrain SVG icons in headers and buttons */
+    .cp-column-header svg,
+    .flush-btn svg,
+    .icon-btn svg,
+    .icon-btn-sm svg,
+    .nav-icon svg {
+        @apply w-4 h-4 shrink-0;
+    }
+
+    /* Smaller icons in compact contexts */
+    .compact-header svg {
+        @apply w-[14px] h-[14px];
+    }
+
+    /* Header icon wrapper */
+    .header-icon,
+    [class*="headerIcon"] {
+        @apply w-[14px] h-[14px] flex items-center justify-center;
+    }
+
+    .header-icon svg {
+        @apply w-[14px] h-[14px];
+    }
+
+    /* Modal icons */
+    .modal-icon {
+        @apply w-5 h-5 flex items-center justify-center shrink-0;
+    }
+
+    .modal-icon svg {
+        @apply w-5 h-5;
+    }
+
+    /* Song Editor Styles */
+    .song-editor-modal h2 {
+        @apply text-base font-semibold m-0;
+    }
+
+    .song-editor-modal svg {
+        @apply w-4 h-4 shrink-0;
+    }
+
+    .part-drag-handle svg {
+        @apply w-4 h-4;
+    }
+
+    .part-actions svg {
+        @apply w-[14px] h-[14px];
+    }
+
+    /* Save button icon */
+    .save-btn svg {
+        @apply w-4 h-4;
+    }
+
+    /* ========== PART COLORS ========== */
+    .part-v1,
+    .part-v2,
+    .part-v3,
+    .part-v4,
+    .part-v5,
+    .part-v6,
+    .part-V {
+        @apply text-blue-400;
+    }
+
+    .part-ch,
+    .part-ch1,
+    .part-ch2,
+    .part-CH {
+        @apply text-red-400;
+    }
+
+    .part-pch,
+    .part-pCH {
+        @apply text-fuchsia-400;
+    }
+
+    .part-br,
+    .part-BR {
+        @apply text-amber-400;
+    }
+
+    .part-tag,
+    .part-end,
+    .part-TAG {
+        @apply text-lime-400;
+    }
+
+    .part-intro,
+    .part-outro,
+    .part-inst,
+    .part-IN,
+    .part-OUT {
+        @apply text-gray-400;
+    }
+
+    .live-indicator-text {
+        @apply text-[0.8rem] font-extrabold tracking-[0.1em] text-live-red px-2 py-[2px] rounded border inline-block;
+        background-color: rgba(220, 38, 38, 0.1);
+        border-color: rgba(220, 38, 38, 0.2);
+    }
+
+    .header-label {
+        @apply flex items-center;
+    }
+
+    /* ========== LYRICS & SLIDE BUTTONS ========== */
+    .lyrics-scroll {
+        @apply flex flex-col p-0 overflow-hidden h-full;
+    }
+
+    .song-info {
+        @apply z-10 bg-bg-primary mb-0 py-2 px-3 border-b border-border-color shrink-0;
+    }
+
+    .song-info .song-name {
+        @apply text-base font-semibold text-text-primary inline-flex items-baseline gap-2 flex-wrap;
+    }
+
+    .song-info .song-artist {
+        @apply text-[0.6rem] text-text-muted font-normal;
+    }
+
+    .lyrics-arrangement {
+        @apply flex flex-col gap-3 p-3 flex-1 overflow-y-auto min-h-0;
+    }
+
+    .lyrics-part {
+        @apply flex flex-col gap-1;
+    }
+
+    .part-header {
+        @apply text-[0.65rem] font-semibold uppercase tracking-[0.5px] text-accent-primary py-1;
+    }
+
+    .part-slides {
+        @apply flex flex-col gap-1;
+    }
+
+    .slide-btn {
+        @apply flex items-start gap-2 p-2 bg-bg-tertiary border border-transparent rounded-md cursor-pointer transition-all duration-150 text-left w-full;
+    }
+
+    .slide-btn:hover {
+        @apply bg-bg-hover;
+    }
+
+    .slide-btn:active {
+        @apply scale-[0.98];
+    }
+
+    .slide-btn.active {
+        @apply border-accent-primary;
+        background-color: rgba(99, 102, 241, 0.15);
+    }
+
+    .slide-btn.live {
+        @apply border-live-red;
+        background-color: rgba(220, 38, 38, 0.15);
+    }
+
+    .slide-num {
+        @apply text-[0.65rem] font-semibold text-text-muted min-w-[16px];
+    }
+
+    .slide-text {
+        @apply text-xs text-text-secondary leading-[1.4];
+    }
+
+    .slide-btn.active .slide-text,
+    .slide-btn.live .slide-text {
+        @apply text-text-primary;
+    }
+}

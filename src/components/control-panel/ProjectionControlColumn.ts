@@ -5,14 +5,23 @@ import { renderBackgroundsSection, initBackgroundsListeners } from './Background
 import { state, saveLayoutSettings } from '../../state'
 
 export function renderProjectionControlColumn(): string {
+  // Inline Tailwind Classes
+  const columnClass = "flex flex-col h-full projection-control-column"
+  const projectionRowClass = "flex flex-1 min-h-0 gap-[1px] bg-border-color projection-row"
+  const resizerClass = "bg-[#2a2a32] cursor-row-resize transition-colors duration-200 z-10 h-1 w-full hover:bg-accent-primary"
+  const backgroundsRowClass = "h-[200px] border-t border-border-color bg-bg-primary overflow-hidden backgrounds-row"
+
+  const bgHeight = state.layoutSettings.backgroundsSectionHeight
+  const bgStyle = bgHeight ? `height: ${bgHeight}px;` : ''
+
   return `
-    <div class="cp-column projection-control-column">
-      <div class="projection-row">
+    <div class="${columnClass}">
+      <div class="${projectionRowClass}">
         ${renderPreviewColumn()}
         ${renderLiveColumn()}
       </div>
-      <div class="resizer" id="bg-panel-resizer" style="cursor: row-resize; height: 4px; width: 100%;"></div>
-      <div class="backgrounds-row" style="${state.layoutSettings.backgroundsSectionHeight ? `height: ${state.layoutSettings.backgroundsSectionHeight}px` : ''}">
+      <div class="${resizerClass}" id="bg-panel-resizer"></div>
+      <div class="${backgroundsRowClass}" style="${bgStyle}">
         ${renderBackgroundsSection()}
       </div>
     </div>
@@ -41,7 +50,7 @@ function initBackgroundsResizer(): void {
     isResizing = true
     startY = e.clientY
     startHeight = backgroundsRow.offsetHeight
-    resizer.classList.add('resizing')
+    resizer.classList.add('bg-accent-primary') // 'resizing' state
     document.body.style.cursor = 'row-resize'
     document.body.style.userSelect = 'none'
 
@@ -51,22 +60,15 @@ function initBackgroundsResizer(): void {
 
   const onMouseMove = (e: MouseEvent) => {
     if (!isResizing) return
-    // Moving down decreases height (if resizer is above, wait resizer is above bg row)
-    // Resizer is top of bg row. Moving down decreases projection row, increases bg row?
-    // Wait, typical layout: resizer is between.
-    // If I move down, Top section grows, Bottom shrinks.
-    // backgroundsRow is the bottom section.
-    // So dy > 0 (down) -> Backgrounds shrinks. dy < 0 (up) -> Backgrounds grows.
     const deltaY = e.clientY - startY
     const newHeight = Math.max(100, Math.min(600, startHeight - deltaY))
 
     backgroundsRow.style.height = `${newHeight}px`
-    // We don't touch projectionRow, it's flex: 1 so it auto adjusts
   }
 
   const onMouseUp = () => {
     isResizing = false
-    resizer.classList.remove('resizing')
+    resizer.classList.remove('bg-accent-primary')
     document.body.style.cursor = ''
     document.body.style.userSelect = ''
 

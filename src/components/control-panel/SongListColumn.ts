@@ -4,12 +4,19 @@ import { renderLibraryList, initLibraryListListeners } from './LibraryList'
 import { state, saveLayoutSettings } from '../../state'
 
 export function renderSongListColumn(): string {
-  // We no longer rely on 'sets', we render Schedule + Library
+  // Inline Tailwind Classes
+  const columnClass = "flex flex-col bg-bg-primary overflow-hidden min-w-0 cp-songs"
+  const columnBodyClass = "flex-1 overflow-y-auto p-0 flex flex-col" // cp-column-body, but different layout for songs
+  const resizerClass = "h-1 bg-[#2a2a32] cursor-row-resize transition-colors duration-200 z-10 hover:bg-accent-primary section-resizer"
+
+  // Note: Schedule and Library sections have their own internal structure and should follow the cp-section pattern
+  // I'm not modifying render functions here, just the column wrapper.
+
   return `
-    <div class="cp-column cp-songs">
-      <div class="cp-column-body">
+    <div class="${columnClass}">
+      <div class="${columnBodyClass}">
         ${renderScheduleList()}
-        <div class="section-resizer" data-resize="schedule-library"></div>
+        <div class="${resizerClass}" data-resize="schedule-library"></div>
         ${renderLibraryList()}
       </div>
     </div>
@@ -35,7 +42,6 @@ function applySavedLayoutSettings(): void {
   }
 
   // We DO NOT apply librarySection height. It should retain flex: 1 to fill remaining space
-  // This prevents blank spaces if window size changes or if total fixed heights < container height
   if (librarySection) {
     librarySection.style.height = ''
     librarySection.style.flex = '1'
@@ -48,9 +54,7 @@ function saveCurrentLayout(): void {
   saveLayoutSettings({
     ...state.layoutSettings,
     scheduleSectionHeight: scheduleSection?.offsetHeight || null,
-    // We intentionally don't save library height as fixed, so it can flex
     librarySectionHeight: null,
-    // backgroundsSectionHeight: backgroundsSection?.offsetHeight || null // moved
   })
 }
 
@@ -72,7 +76,7 @@ function initSectionResizers(): void {
 
       if (sectionAbove && sectionBelow) {
         startHeightAbove = sectionAbove.offsetHeight
-        resizer.classList.add('resizing')
+        resizer.classList.add('bg-accent-primary') // 'resizing' state
         document.addEventListener('mousemove', onMouseMove)
         document.addEventListener('mouseup', onMouseUp)
       }
@@ -87,13 +91,11 @@ function initSectionResizers(): void {
       sectionAbove.style.height = `${newHeightAbove}px`
       sectionAbove.style.flex = 'none'
 
-      // We don't set sectionBelow height. Let it flex.
-      // sectionBelow.style.height = `${newHeightBelow}px`
       sectionBelow.style.flex = '1'
     }
 
     const onMouseUp = () => {
-      resizer.classList.remove('resizing')
+      resizer.classList.remove('bg-accent-primary')
       document.removeEventListener('mousemove', onMouseMove)
       document.removeEventListener('mouseup', onMouseUp)
       // Save layout after resize is complete
@@ -110,15 +112,15 @@ function initSectionResizers(): void {
 export function updateSongSelectionUI(): void {
   const selectedId = state.previewSong?.id
 
-  // Update both schedule and library lists
+  // Tailwind classes for selected state
+  const selectedClasses = ['border-accent-primary', 'bg-indigo-500/10']
+
   document.querySelectorAll('.song-item').forEach(el => {
     const id = parseInt(el.getAttribute('data-song-id') || '0')
     if (id === selectedId) {
-      el.classList.add('selected')
-      // Ensure specific variation is highlighted if applicable (only for schedule items handling it strictly)
-      // But mainly just highlighting the song is enough for now or matching specifically.
+      el.classList.add('selected', ...selectedClasses)
     } else {
-      el.classList.remove('selected')
+      el.classList.remove('selected', ...selectedClasses)
     }
   })
 }
@@ -129,12 +131,15 @@ export function updateSongSelectionUI(): void {
 export function updateLiveStatusUI(): void {
   const liveId = state.liveSong?.id
 
+  // Tailwind classes for live state
+  const liveClasses = ['border-live-red', 'bg-red-600/10']
+
   document.querySelectorAll('.song-item').forEach(el => {
     const id = parseInt(el.getAttribute('data-song-id') || '0')
     if (id === liveId) {
-      el.classList.add('live')
+      el.classList.add('live', ...liveClasses)
     } else {
-      el.classList.remove('live')
+      el.classList.remove('live', ...liveClasses)
     }
   })
 }

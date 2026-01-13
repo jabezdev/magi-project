@@ -1,9 +1,9 @@
 import { state, updateState, getSavedCurrentSchedule, saveCurrentScheduleName } from '../../state'
-import { ICONS } from '../../constants/icons'
-import { selectSongForPreview } from '../../actions/controlPanel'
-import { fetchSongById, saveSchedule, fetchScheduleList, fetchScheduleByName, createSchedule } from '../../services/api'
-import { removeFromSchedule, updateScheduleItem, moveScheduleItem } from '../../actions/schedule'
-import { openScheduleNameModal } from '../ScheduleNameModal'
+import { ICONS } from '../../constants'
+import { selectSongForPreview, removeFromSchedule, updateScheduleItem, moveScheduleItem } from '../../actions'
+import { fetchSongById, saveSchedule, fetchScheduleList, fetchScheduleByName, createSchedule } from '../../services'
+import { openScheduleNameModal } from '../modals'
+
 // Track current schedule name - initialize from saved value
 let currentScheduleName = getSavedCurrentSchedule()
 
@@ -11,79 +11,105 @@ export function renderScheduleList(): string {
   const schedule = state.schedule
   const songs = state.songs
 
+  // Inline Tailwind Class Constants
+  const sectionClass = "flex flex-col flex-1 overflow-hidden min-w-0 bg-bg-primary schedule-section" // Retained schedule-section for JS hooks
+  const headerClass = "flex flex-row items-center justify-between gap-0 p-0 h-[2.2rem] min-h-[2.2rem] bg-bg-secondary border-b border-border-color shrink-0 text-[0.85rem]"
+  const headerSectionLeft = "flex items-center h-full px-2 gap-2"
+  const headerIconClass = "w-[14px] h-[14px] opacity-70"
+  const headerTitleClass = "text-xs font-semibold uppercase tracking-[0.5px] text-text-secondary"
+
+  const headerCenterClass = "flex-1 flex items-center justify-center h-full min-w-0 p-0"
+  const selectorBtnClass = "border-l border-border-color rounded-none h-full w-full px-4 bg-transparent flex justify-between items-center gap-2 text-text-primary border-l-width-[1px] hover:bg-bg-hover cursor-pointer"
+  const selectorTextClass = "font-medium text-[0.85rem] whitespace-nowrap overflow-hidden text-ellipsis"
+  const selectorIconClass = "w-[14px] h-[14px] opacity-70"
+
+  const bodyClass = "flex-1 overflow-y-auto overflow-x-hidden p-2 cp-section-body"
+  const emptyStateClass = "flex flex-1 items-center justify-center h-full text-text-muted text-sm italic opacity-70"
+  const songListClass = "flex flex-col gap-[1px]"
+
+  // Item Styles
+  const itemClass = "flex flex-row items-center justify-between gap-2 px-[0.6rem] py-[0.4rem] bg-bg-tertiary border border-transparent rounded-sm cursor-grab transition-colors duration-100 text-left w-full p-[0.35rem_0.5rem] gap-[0.4rem] active:cursor-grabbing hover:bg-bg-hover group schedule-item" // added schedule-item for JS hook
+  const selectedClass = "border-accent-primary bg-indigo-500/10"
+  const liveClass = "border-live-red bg-red-600/10"
+
+  const titleClass = "text-xs font-medium text-text-primary whitespace-nowrap overflow-hidden text-ellipsis flex-1 min-w-0"
+  const metaClass = "flex items-center gap-[0.2rem] shrink-0 relative transition-transform duration-150 ease-out group-hover:-translate-x-6"
+
+  const variationBadgeClass = "text-[0.65rem] text-text-secondary bg-bg-primary px-[0.4rem] py-[0.15rem] rounded-sm cursor-pointer transition-all duration-150 border border-border-color hover:bg-bg-hover hover:text-accent-primary hover:border-accent-primary"
+
+  const removeBtnClass = "absolute -right-6 opacity-0 transition-all duration-150 ease-out flex items-center justify-center w-[22px] h-[22px] bg-transparent border-none rounded-[3px] text-text-muted cursor-pointer hover:text-live-red hover:bg-red-600/10 group-hover:opacity-100 group-hover:-right-6"
+
 
   if (!schedule || schedule.items.length === 0) {
     return `
-      <div class="cp-section schedule-section">
-        <div class="cp-column-header schedule-header-redesign horizontal-layout">
-            <div class="header-section-left">
-                <span class="header-icon">${ICONS.calendar || '📅'}</span>
-                <span class="header-title">SCHEDULE</span>
+      <div class="${sectionClass}">
+        <div class="${headerClass}">
+            <div class="${headerSectionLeft}">
+                <span class="${headerIconClass}">${ICONS.calendar || '📅'}</span>
+                <span class="${headerTitleClass}">SCHEDULE</span>
             </div>
-            <div class="header-section-center">
-                <button class="schedule-selector-btn" title="Select Schedule">
-                  <span class="current-schedule-name">${currentScheduleName}</span>
-                  ${ICONS.chevronDown}
+            <div class="${headerCenterClass}">
+                <button class="${selectorBtnClass} schedule-selector-btn" title="Select Schedule">
+                  <span class="${selectorTextClass} current-schedule-name">${currentScheduleName}</span>
+                  <span class="${selectorIconClass}">${ICONS.chevronDown}</span>
                 </button>
             </div>
-            <!-- Right section removed as requested -->
         </div>
-        <div class="cp-section-body empty-state">
-            <span class="empty-msg">No songs scheduled</span>
+        <div class="${bodyClass}">
+            <div class="${emptyStateClass}">No songs scheduled</div>
         </div>
-        <div class="schedule-dropdown" id="schedule-dropdown" style="display: none;"></div>
       </div>
     `
   }
 
   return `
-    <div class="cp-section schedule-section">
-      <div class="cp-column-header schedule-header-redesign horizontal-layout">
-        <div class="header-section-left">
-            <span class="header-icon">${ICONS.calendar || '📅'}</span>
-            <span class="header-title">SCHEDULE</span>
+    <div class="${sectionClass}">
+      <div class="${headerClass}">
+        <div class="${headerSectionLeft}">
+            <span class="${headerIconClass}">${ICONS.calendar || '📅'}</span>
+            <span class="${headerTitleClass}">SCHEDULE</span>
         </div>
-        <div class="header-section-center">
-            <button class="schedule-selector-btn" title="Select Schedule">
-               <span class="current-schedule-name">${currentScheduleName}</span>
-               ${ICONS.chevronDown}
+        <div class="${headerCenterClass}">
+            <button class="${selectorBtnClass} schedule-selector-btn" title="Select Schedule">
+               <span class="${selectorTextClass} current-schedule-name">${currentScheduleName}</span>
+               <span class="${selectorIconClass}">${ICONS.chevronDown}</span>
              </button>
         </div>
-        <!-- Right section removed as requested -->
       </div>
-      <div class="cp-section-body">
-        <div class="song-list" id="schedule-song-list">
+      <div class="${bodyClass}">
+        <div class="${songListClass}" id="schedule-song-list">
           ${schedule.items.map((item, index) => {
     const song = songs.find(s => s.id === item.songId)
-    if (!song) return '' // Skip if song not found
+    if (!song) return ''
 
     const isSelected = state.previewSong?.id === song.id
     const isLive = state.liveSong?.id === song.id
 
-    // Compact variation display
     let variationBadge = ''
     if (song.variations && song.variations.length > 0) {
       const selectedVar = song.variations.find(v => String(v.id) === String(item.variationId))
-      variationBadge = `<span class="variation-badge" title="Click to change">${selectedVar?.name || 'Default'}</span>`
+      variationBadge = `<span class="${variationBadgeClass} variation-badge" title="Click to change">${selectedVar?.name || 'Default'}</span>`
     }
 
+    // Construct final classes
+    const finalItemClass = `${itemClass} ${isSelected ? selectedClass : ''} ${isLive ? liveClass : ''}`
+
     return `
-              <div class="song-item schedule-item compact ${isSelected ? 'selected' : ''} ${isLive ? 'live' : ''}" 
+              <div class="song-item compact ${finalItemClass}" 
                       data-song-id="${song.id}" 
                       data-variation-id="${item.variationId}"
                       data-index="${index}"
                       draggable="true">
-                <span class="song-title">${song.title}</span>
-                <div class="song-meta">
+                <span class="${titleClass}">${song.title}</span>
+                <div class="song-meta ${metaClass}">
                    ${variationBadge}
-                   <button class="icon-btn-sm remove-schedule-btn" data-index="${index}" title="Remove">${ICONS.trash}</button>
+                   <button class="icon-btn-sm remove-schedule-btn icon-btn-sm ${removeBtnClass}" data-index="${index}" title="Remove">${ICONS.trash}</button>
                 </div>
               </div>
             `
   }).join('')}
         </div>
       </div>
-      <div class="schedule-dropdown" id="schedule-dropdown" style="display: none;"></div>
     </div>
   `
 }
@@ -109,13 +135,12 @@ export function initScheduleListListeners(): void {
     (window as any).__scheduleDropdownListenerAdded = true
     document.addEventListener('click', (e) => {
       const dropdown = document.getElementById('schedule-dropdown')
-      if (dropdown && dropdown.style.display === 'block') {
+      if (dropdown) {
         const selectorBtn = document.querySelector('.schedule-selector-btn')
-        const popover = document.querySelector('.schedule-popover')
         if (!dropdown.contains(e.target as Node) &&
           !selectorBtn?.contains(e.target as Node) &&
-          !popover?.contains(e.target as Node)) {
-          dropdown.style.display = 'none'
+          !(e.target as HTMLElement).closest('.schedule-popover')) {
+          dropdown.remove()
         }
       }
     })
@@ -129,8 +154,11 @@ export function initScheduleListListeners(): void {
       try {
         await saveSchedule(state.schedule, currentScheduleName)
         // Visual feedback
-        saveBtn.classList.add('saved')
-        setTimeout(() => saveBtn.classList.remove('saved'), 1500)
+        saveBtn.classList.add('saved') // 'saved' class style needs to be defined? Or handled via inline? 
+        // For 'saved' state, let's just toggle text color manually or assume there's a utility for it. 
+        // Or inline logic here:
+        saveBtn.classList.add('text-success')
+        setTimeout(() => saveBtn.classList.remove('text-success'), 1500)
       } catch (err) {
         console.error('Failed to save schedule:', err)
       }
@@ -231,17 +259,17 @@ function initDragAndDrop(section: Element): void {
     item.addEventListener('dragstart', (e) => {
       const event = e as DragEvent
       draggedIndex = parseInt((item as HTMLElement).getAttribute('data-index') || '0')
-        ; (item as HTMLElement).classList.add('dragging')
+        ; (item as HTMLElement).classList.add('opacity-50', 'bg-bg-hover') // 'dragging'
       event.dataTransfer?.setData('text/plain', String(draggedIndex))
       event.dataTransfer!.effectAllowed = 'move'
     })
 
     item.addEventListener('dragend', () => {
-      (item as HTMLElement).classList.remove('dragging')
+      (item as HTMLElement).classList.remove('opacity-50', 'bg-bg-hover')
       draggedIndex = null
       // Remove all drag-over classes
       section.querySelectorAll('.song-item').forEach(el => {
-        el.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom')
+        el.classList.remove('border-t-2', 'border-t-accent-primary', '-mt-[1px]', 'border-b-2', 'border-b-accent-primary', '-mb-[1px]') // remove drag-over styles
       })
     })
 
@@ -254,17 +282,17 @@ function initDragAndDrop(section: Element): void {
       const midY = rect.top + rect.height / 2
 
       // Remove previous classes
-      item.classList.remove('drag-over-top', 'drag-over-bottom')
+      item.classList.remove('border-t-2', 'border-t-accent-primary', '-mt-[1px]', 'border-b-2', 'border-b-accent-primary', '-mb-[1px]')
 
       if (event.clientY < midY) {
-        item.classList.add('drag-over-top')
+        item.classList.add('border-t-2', 'border-t-accent-primary', '-mt-[1px]') // drag-over-top
       } else {
-        item.classList.add('drag-over-bottom')
+        item.classList.add('border-b-2', 'border-b-accent-primary', '-mb-[1px]') // drag-over-bottom
       }
     })
 
     item.addEventListener('dragleave', () => {
-      item.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom')
+      item.classList.remove('border-t-2', 'border-t-accent-primary', '-mt-[1px]', 'border-b-2', 'border-b-accent-primary', '-mb-[1px]')
     })
 
     item.addEventListener('drop', async (e) => {
@@ -299,68 +327,89 @@ function initDragAndDrop(section: Element): void {
       }
 
       // Cleanup
-      item.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom')
+      item.classList.remove('border-t-2', 'border-t-accent-primary', '-mt-[1px]', 'border-b-2', 'border-b-accent-primary', '-mb-[1px]')
     })
   })
 }
 
 async function toggleScheduleDropdown(): Promise<void> {
-  const dropdown = document.getElementById('schedule-dropdown')
-  if (!dropdown) {
-    console.error('Schedule dropdown not found')
+  // Ensure only one dropdown exists
+  const existingDropdown = document.getElementById('schedule-dropdown')
+  if (existingDropdown) {
+    existingDropdown.remove()
     return
   }
 
-  // Check if already visible (block or empty means it could be visible)
-  const isVisible = dropdown.style.display === 'block'
-  if (isVisible) {
-    dropdown.style.display = 'none'
-    return
-  }
+  const dropdown = document.createElement('div')
+  dropdown.id = 'schedule-dropdown'
+
 
   // Fetch schedule list
   const schedules = await fetchScheduleList()
 
-  dropdown.innerHTML = `
-    <div class="schedule-dropdown-content">
-      <div class="schedule-dropdown-header">Select Schedule</div>
-      <div class="schedule-dropdown-list">
-        ${schedules.map(s => `
-          <div class="schedule-dropdown-item ${s.name === currentScheduleName ? 'active' : ''}" data-name="${s.name}">
-            <span class="schedule-name">${s.name}</span>
-            <span class="schedule-item-count">${s.itemCount} songs</span>
-          </div>
-        `).join('')}
-      </div>
-      <div class="schedule-dropdown-footer">
-        <button class="btn-new-schedule">${ICONS.plus} New Schedule</button>
-      </div>
-    </div>
-  `
+  // Tailwind classes for Dropdown
+  const dropdownContentClass = "w-[220px] bg-bg-secondary border border-border-color rounded-md shadow-[0_10px_40px_-5px_rgba(0,0,0,0.5)] overflow-hidden"
+  const dropdownHeaderClass = "px-3 py-2 bg-bg-tertiary border-b border-border-color text-xs font-semibold text-text-muted uppercase tracking-wide"
+  const dropdownListClass = "max-h-[300px] overflow-y-auto"
+  const dropdownItemClass = "flex items-center justify-between px-3 py-2 cursor-pointer transition-colors duration-150 border-b border-border-color/50 text-sm hover:bg-bg-hover hover:text-accent-primary"
+  const dropdownItemActiveClass = "bg-accent-primary border-transparent text-white hover:bg-accent-primary hover:text-white"
+  const dropdownFooterClass = "p-2 bg-bg-tertiary border-t border-border-color"
+  const newBtnClass = "w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-transparent border border-border-color rounded text-xs font-medium text-text-secondary transition-colors duration-150 hover:bg-bg-hover hover:text-text-primary hover:border-text-muted"
 
-  dropdown.style.display = 'block'
+  // Position relative to button
+  const rect = document.querySelector('.schedule-selector-btn')?.getBoundingClientRect()
+  const top = rect ? rect.bottom + 4 : 100
+  const left = rect ? rect.left + (rect.width / 2) - 110 : 100 // Center 220px width
+
+  dropdown.style.cssText = `position: fixed; z-index: 9999; display: block; top: ${top}px; left: ${left}px;`
+
+  dropdown.innerHTML = `
+    <div class="${dropdownContentClass}">
+      <div class="${dropdownHeaderClass}">Select Schedule</div>
+      <div class="${dropdownListClass}">
+          ${schedules.map(s => `
+          <div class="schedule-dropdown-item ${dropdownItemClass} ${s.name === currentScheduleName ? dropdownItemActiveClass : ''}" data-name="${s.name}">
+            <span class="font-medium truncate mr-2">${s.name}</span>
+            <span class="text-[0.65rem] opacity-70 whitespace-nowrap">${s.itemCount} songs</span>
+          </div>
+        `).join('')
+    }
+  </div>
+    <div class="${dropdownFooterClass}">
+      <button class="${newBtnClass} btn-new-schedule icon-btn-sm inline-flex">${ICONS.plus} New Schedule</button>
+    </div>
+  </div>
+</div>
+          `
+
+  // Move to body to avoid clipping
+  document.body.appendChild(dropdown)
 
   // Add click listeners
   dropdown.querySelectorAll('.schedule-dropdown-item').forEach(item => {
-    item.addEventListener('click', async () => {
+    item.addEventListener('click', async (e) => {
+      e.stopPropagation()
       const name = item.getAttribute('data-name')
       if (name) {
         await loadSchedule(name)
-        dropdown.style.display = 'none'
+        dropdown.remove()
       }
     })
   })
 
   // New schedule button
   dropdown.querySelector('.btn-new-schedule')?.addEventListener('click', async (e) => {
+    e.stopPropagation()
     const target = e.currentTarget as HTMLElement
     openScheduleNameModal(target, async (name) => {
       const result = await createSchedule(name)
       if (result?.success) {
         await loadSchedule(result.name)
-        dropdown.style.display = 'none'
+        dropdown.remove()
+        return true
       } else {
-        alert('Failed to create schedule. It may already exist.')
+        // Return false to indicate failure (duplicate) so modal can show error
+        return false
       }
     })
   })

@@ -2,7 +2,7 @@
  * API Service Layer
  */
 
-import type { Song, Schedule, SongSummary, DisplaySettings, ConfidenceMonitorSettings, LayoutSettings } from '../types'
+import type { Song, Schedule, SongSummary, DisplaySettings, ConfidenceMonitorSettings, LayoutSettings, PartColorSettings } from '../types'
 
 // ... (existing code, relying on smart replacement to keep lines I don't touch) ...
 
@@ -18,6 +18,7 @@ export interface ServerSettings {
   logoMedia?: string
   backgroundVideo?: string
   previewBackground?: string
+  partColors?: PartColorSettings
 }
 
 // Configuration
