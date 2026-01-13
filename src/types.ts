@@ -109,6 +109,12 @@ export interface LayoutSettings {
   backgroundsSectionHeight: number | null
   thumbnailSize?: number // Optional, defaults to 80
   monitorColumnWidth?: number | null // Optional, defaults to 300
+  // Monitor performance settings
+  mainMonitorEnabled?: boolean
+  confidenceMonitorEnabled?: boolean
+  lowerThirdsMonitorEnabled?: boolean
+  confidenceMonitorResolution?: { width: number; height: number }
+  mainProjectionStaticMode?: boolean
 }
 
 // Represents the current slide position

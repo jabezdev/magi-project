@@ -23,7 +23,7 @@
     }
   },
   "confidenceMonitorSettings": {
-    "fontSize": 8.5,
+    "fontSize": 5,
     "fontFamily": "system-ui",
     "lineHeight": 1,
     "prevNextOpacity": 0.4,
@@ -32,8 +32,8 @@
     "marginBottom": 2,
     "marginLeft": 1,
     "marginRight": 1,
-    "partGap": 5,
-    "slideGap": 1.5,
+    "partGap": 2.5,
+    "slideGap": 0.5,
     "transitions": {
       "type": "none",
       "duration": 0.3
@@ -46,9 +46,17 @@
     "librarySectionHeight": null,
     "backgroundsSectionHeight": 308,
     "thumbnailSize": 217.8,
+    "mainMonitorEnabled": true,
+    "confidenceMonitorEnabled": true,
+    "lowerThirdsMonitorEnabled": true,
+    "confidenceMonitorResolution": {
+      "width": 1024,
+      "height": 768
+    },
+    "mainProjectionStaticMode": false,
     "monitorColumnWidth": 460
   },
-  "backgroundVideo": "/media/red_bokeh.mp4",
-  "previewBackground": "/media/red_bokeh.mp4",
+  "backgroundVideo": "/media/teal_squares.mp4",
+  "previewBackground": "/media/teal_squares.mp4",
   "logoMedia": "/media/logo.mp4"
 }

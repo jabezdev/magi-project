@@ -4,8 +4,15 @@ import { getSlideText } from '../utils/slides'
 import { updateHTML } from '../utils/dom'
 import { socketService } from '../services/socket'
 
+// Check if we're in static mode (for control panel preview optimization)
+function isStaticMode(): boolean {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('static') === '1'
+}
+
 export function buildMainProjectionHTML(): string {
-    const { displayMode, liveSong, liveVariation, livePosition, backgroundVideo, logoMedia, displaySettings } = state
+    const { displayMode, liveSong, liveVariation, livePosition, backgroundVideo, logoMedia, displaySettings, availableVideos } = state
+    const staticMode = isStaticMode()
 
     // Get current lyrics text
     let lyricsText = ''
@@ -39,10 +46,43 @@ export function buildMainProjectionHTML(): string {
             break
     }
 
-    return `
-    <div class="projection-screen main-projection">
+    // In static mode, use thumbnail or gradient instead of video for GPU savings
+    let backgroundHTML: string
+    if (staticMode) {
+        // Generate thumbnail path from video path
+        // Pattern: /media/video.mp4 -> /media/thumbnails/video.mp4.jpg
+        let thumbnail = ''
+        if (backgroundVideo) {
+            // Get just the filename (e.g., "video.mp4")
+            const videoFilename = backgroundVideo.split('/').pop()
+            if (videoFilename) {
+                thumbnail = `/media/thumbnails/${videoFilename}.jpg`
+            }
+        }
+        // Also check availableVideos for a better match
+        const currentVideo = availableVideos.find(v => v.path === backgroundVideo)
+        if (currentVideo?.thumbnail) {
+            thumbnail = currentVideo.thumbnail
+        }
+
+        // Use thumbnail if available, otherwise use a dark gradient
+        const bgStyle = thumbnail
+            ? `background-image: url('${thumbnail}'); background-size: cover; background-position: center;`
+            : `background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);`
+
+        backgroundHTML = `
+      <div class="background-static" style="${bgStyle}"></div>
+    `
+    } else {
+        backgroundHTML = `
       <video class="background-video bg-layer-1 active" src="${backgroundVideo}" autoplay loop muted playsinline></video>
       <video class="background-video bg-layer-2" autoplay loop muted playsinline></video>
+    `
+    }
+
+    return `
+    <div class="projection-screen main-projection${staticMode ? ' static-mode' : ''}">
+      ${backgroundHTML}
       <div class="content-overlay ${displayMode}">
         ${contentHTML}
       </div>
@@ -52,6 +92,7 @@ export function buildMainProjectionHTML(): string {
     </div>
   `
 }
+
 
 export function updateDisplayMode(): void {
     const { displayMode, liveSong, liveVariation, livePosition, logoMedia, displaySettings } = state
@@ -113,6 +154,12 @@ export function updateDisplayMode(): void {
 }
 
 export function updateBackgroundVideo(): void {
+    // Also update static background if in static mode
+    if (isStaticMode()) {
+        updateStaticBackground()
+        return  // Don't process video elements in static mode
+    }
+
     const video1 = document.querySelector('.bg-layer-1') as HTMLVideoElement
     const video2 = document.querySelector('.bg-layer-2') as HTMLVideoElement
 
@@ -227,6 +274,41 @@ export function updateLyricsStyle(): void {
 export function updateLogoMedia(): void {
     if (state.displayMode === 'logo') {
         updateDisplayMode()
+    }
+}
+
+// Update static background when video changes (for static mode mini-screen)
+export function updateStaticBackground(): void {
+    if (!isStaticMode()) return
+
+    const staticBg = document.querySelector('.background-static') as HTMLElement
+    if (!staticBg) return
+
+    const { backgroundVideo, availableVideos } = state
+
+    // Generate thumbnail path
+    let thumbnail = ''
+    if (backgroundVideo) {
+        const videoFilename = backgroundVideo.split('/').pop()
+        if (videoFilename) {
+            thumbnail = `/media/thumbnails/${videoFilename}.jpg`
+        }
+    }
+    // Check availableVideos for a better match
+    const currentVideo = availableVideos.find(v => v.path === backgroundVideo)
+    if (currentVideo?.thumbnail) {
+        thumbnail = currentVideo.thumbnail
+    }
+
+    // Update background
+    if (thumbnail) {
+        staticBg.style.backgroundImage = `url('${thumbnail}')`
+        staticBg.style.backgroundSize = 'cover'
+        staticBg.style.backgroundPosition = 'center'
+        staticBg.style.background = '' // Clear gradient if set
+        staticBg.style.backgroundImage = `url('${thumbnail}')`
+    } else {
+        staticBg.style.background = 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'
     }
 }
 

@@ -5,7 +5,7 @@
  * Uses a tabbed interface for better organization.
  */
 
-import { state, saveTheme, saveDisplaySettings, saveConfidenceMonitorSettings, updateState } from '../../state'
+import { state, saveTheme, saveDisplaySettings, saveConfidenceMonitorSettings, saveLayoutSettings, updateState } from '../../state'
 import { socketService } from '../../services/socket'
 import { saveSettings } from '../../services/api'
 import { setModalOpen } from '../../utils/keyboard'
@@ -17,6 +17,7 @@ import { renderConfidenceMonitorTab, initConfidenceMonitorTabListeners } from '.
 import { renderMediaTab, initMediaTabListeners } from './MediaTab'
 import { renderGeneralTab } from './GeneralTab'
 import { renderShortcutsTab } from './ShortcutsTab'
+import { renderOutputMonitorTab, getConfidenceResolutionFromForm } from './OutputMonitorTab'
 
 let isOpen = false
 let onCloseCallback: (() => void) | null = null
@@ -147,6 +148,10 @@ function render(): void {
             <span class="nav-icon">${ICONS.keyboard}</span>
             <span>Shortcuts</span>
           </button>
+          <button class="settings-nav-item ${activeTab === 'outputs' ? 'active' : ''}" data-tab="outputs">
+            <span class="nav-icon">${ICONS.monitor}</span>
+            <span>Outputs</span>
+          </button>
         </nav>
       </div>
       
@@ -162,6 +167,7 @@ function render(): void {
           ${renderMediaTab()}
           ${renderGeneralTab()}
           ${renderShortcutsTab()}
+          ${renderOutputMonitorTab()}
         </div>
         
         <div class="settings-footer">
@@ -188,6 +194,7 @@ function getTabTitle(tab: string): string {
     case 'media': return 'Media Library'
     case 'general': return 'General Settings'
     case 'shortcuts': return 'Keyboard Shortcuts'
+    case 'outputs': return 'Output Monitors'
     default: return 'Settings'
   }
 }
@@ -364,6 +371,13 @@ function applySettings(): void {
   socketService.updateLogo(current.logoMedia)
   // Save logo path to server
   saveSettings({ logoMedia: current.logoMedia }).catch(console.error)
+
+  // Save output monitor resolution settings (from Outputs tab)
+  const confidenceRes = getConfidenceResolutionFromForm()
+  if (confidenceRes) {
+    const layoutSettings = { ...state.layoutSettings, confidenceMonitorResolution: confidenceRes }
+    saveLayoutSettings(layoutSettings)
+  }
 
   // Update snapshot to current so subsequent cancels don't revert
   settingsSnapshot = JSON.parse(JSON.stringify(current))

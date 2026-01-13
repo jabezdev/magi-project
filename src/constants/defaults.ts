@@ -9,7 +9,13 @@ export const DEFAULT_LAYOUT_SETTINGS: LayoutSettings = {
   scheduleSectionHeight: 300,
   librarySectionHeight: null,
   backgroundsSectionHeight: 200,
-  thumbnailSize: 80
+  thumbnailSize: 80,
+  // Monitor performance settings
+  mainMonitorEnabled: true,
+  confidenceMonitorEnabled: true,
+  lowerThirdsMonitorEnabled: true,
+  confidenceMonitorResolution: { width: 1024, height: 768 },
+  mainProjectionStaticMode: false
 }
 
 export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
