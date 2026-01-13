@@ -1,4 +1,4 @@
-import { state } from '../state'
+import { state, subscribeToState } from '../state'
 import type { DisplaySettings } from '../types'
 import { getSlideText } from '../utils'
 import { updateHTML } from '../utils'
@@ -10,79 +10,238 @@ function isStaticMode(): boolean {
     return params.get('static') === '1'
 }
 
-export function buildMainProjectionHTML(): string {
-    const { displayMode, liveSong, liveVariation, livePosition, backgroundVideo, logoMedia, displaySettings, availableVideos } = state
-    const staticMode = isStaticMode()
+// Track existing listeners to remove them
+let _currentMediaElement: HTMLVideoElement | null = null
+let _mediaListeners: { [key: string]: EventListener } = {}
+let _stateUnsubscribe: (() => void) | null = null
 
-    // Get current lyrics text
-    let lyricsText = ''
-    if (liveSong && displayMode === 'lyrics') {
-        lyricsText = getSlideText(liveSong, liveVariation, livePosition) || ''
+function setupMediaListeners(): void {
+    // Clean up old listeners
+    if (_currentMediaElement) {
+        Object.entries(_mediaListeners).forEach(([event, handler]) => {
+            _currentMediaElement?.removeEventListener(event, handler)
+        })
+        _currentMediaElement = null
+        _mediaListeners = {}
+    }
+    if (_stateUnsubscribe) {
+        _stateUnsubscribe()
+        _stateUnsubscribe = null
     }
 
-    // Build inline styles for lyrics
-    const lyricsStyle = buildLyricsStyleString(displaySettings)
+    const videoEl = document.querySelector('.content-overlay video') as HTMLVideoElement
+    if (!videoEl) return
 
-    // Determine what to show based on display mode
-    let contentHTML = ''
+    _currentMediaElement = videoEl
 
-    switch (displayMode) {
-        case 'black':
-            contentHTML = '<div class="w-full h-full bg-black"></div>'
-            break
-        case 'clear':
-            contentHTML = '' // Just show the video background
-            break
-        case 'logo':
-            contentHTML = buildLogoHTML(logoMedia)
-            break
-        case 'lyrics':
-        default:
-            contentHTML = `
-        <div class="flex flex-col items-center justify-center text-center text-white w-full h-full box-border will-change-contents" style="${lyricsStyle}">
-          ${formatLyricsText(lyricsText)}
-        </div>
-      `
-            break
-    }
+    // Define handlers
+    const onTimeUpdate = () => {
+        const currentTime = videoEl.currentTime
+        const duration = videoEl.duration
+        const { liveItem, liveMediaState } = state
 
-    // In static mode, use thumbnail or gradient instead of video for GPU savings
-    let backgroundHTML: string
-    if (staticMode) {
-        // Generate thumbnail path from video path
-        // Pattern: /media/video.mp4 -> /media/thumbnails/video.mp4.jpg
-        let thumbnail = ''
-        if (backgroundVideo) {
-            // Get just the filename (e.g., "video.mp4")
-            const videoFilename = backgroundVideo.split('/').pop()
-            if (videoFilename) {
-                thumbnail = `/media/thumbnails/${videoFilename}.jpg`
+        // Canva Slide Logic
+        if (liveItem?.type === 'video' && liveItem.settings?.isCanvaSlide && liveItem.settings.canvaHoldPoint) {
+            const holdPoint = liveItem.settings.canvaHoldPoint
+            const isHolding = liveMediaState.isCanvaHolding
+
+            // If we reached the hold point and are NOT holding, pause and hold
+            // Use a small threshold (0.25s) to catch it
+            if (!isHolding && currentTime >= holdPoint && currentTime < holdPoint + 0.5) {
+                videoEl.pause()
+                socketService.updateMediaState({
+                    isPlaying: false,
+                    isCanvaHolding: true,
+                    currentTime
+                })
+                return
             }
         }
-        // Also check availableVideos for a better match
-        const currentVideo = availableVideos.find(v => v.path === backgroundVideo)
-        if (currentVideo?.thumbnail) {
-            thumbnail = currentVideo.thumbnail
-        }
 
-        // Use thumbnail if available, otherwise use a dark gradient
+        socketService.updateMediaState({
+            currentTime,
+            duration,
+            isPlaying: !videoEl.paused
+        })
+    }
+
+    const onPlay = () => {
+        socketService.updateMediaState({ isPlaying: true })
+    }
+
+    const onPause = () => {
+        // Only update state if we are not holding (holding handles its own state)
+        if (!state.liveMediaState.isCanvaHolding) {
+            socketService.updateMediaState({ isPlaying: false })
+        }
+    }
+
+    const onEnded = () => {
+        socketService.updateMediaState({ isPlaying: false, currentTime: videoEl.duration })
+    }
+
+    // Attach
+    videoEl.addEventListener('timeupdate', onTimeUpdate)
+    videoEl.addEventListener('play', onPlay)
+    videoEl.addEventListener('pause', onPause)
+    videoEl.addEventListener('ended', onEnded)
+
+    // Store for cleanup
+    _mediaListeners = {
+        'timeupdate': onTimeUpdate,
+        'play': onPlay,
+        'pause': onPause,
+        'ended': onEnded
+    }
+
+    // Subscribe to state changes for Remote Control
+    _stateUnsubscribe = subscribeToState((changes) => {
+        // If 'live' group changed (which includes liveMediaState from socket update)
+        // Or if we specifically check for liveMediaState... 
+        // The `getChangedGroups` returns 'live' if liveItems change. 
+        // We really want to know if `liveMediaState` changed.
+        // But `notifySubscribers` passes the GROUPS.
+        // Wait, `getChangedGroups` logic in `state/index.ts` to put `liveMediaState` where?
+        // It's likely NOT in the 'live' group list I saw earlier (it only had song/variation/position).
+        // I should have checked that.
+        // If it's not grouped, it might come as a raw key? 
+        // `notifySubscribers` passes `changes` which is `StateChangeKey[]`. 
+        // `StateChangeKey` includes `keyof AppState`.
+
+        if (changes.includes('liveMediaState' as any) || changes.includes('live')) {
+            const shouldBePlaying = state.liveMediaState.isPlaying
+            if (shouldBePlaying && videoEl.paused) {
+                videoEl.play().catch(() => { })
+            } else if (!shouldBePlaying && !videoEl.paused) {
+                videoEl.pause()
+            }
+        }
+    })
+}
+
+export function buildMainProjectionHTML(): string {
+    const { displayMode, liveItem, liveSong, liveVariation, livePosition, backgroundVideo, logoMedia, displaySettings, availableVideos } = state
+    const staticMode = isStaticMode()
+
+    // --- Content Generation ---
+    let contentHTML = ''
+
+    // 1. Handle Overrides (Black, Clear, Logo)
+    if (displayMode === 'black') {
+        contentHTML = '<div class="w-full h-full bg-black"></div>'
+    } else if (displayMode === 'logo') {
+        contentHTML = buildLogoHTML(logoMedia)
+    } else if (displayMode === 'clear') {
+        contentHTML = '' // Just background
+    } else {
+        // 2. Handle Live Item Content
+        if (liveItem) {
+            switch (liveItem.type) {
+                case 'song':
+                    // existing lyrics logic
+                    let lyricsText = ''
+                    if (liveSong) {
+                        lyricsText = getSlideText(liveSong, liveVariation, livePosition as any) || ''
+                    }
+                    const lyricsStyle = buildLyricsStyleString(displaySettings)
+                    contentHTML = `
+                        <div class="flex flex-col items-center justify-center text-center text-white w-full h-full box-border will-change-contents" style="${lyricsStyle}">
+                          ${formatLyricsText(lyricsText)}
+                        </div>
+                    `
+                    break
+
+                case 'image':
+                    contentHTML = `
+                        <div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('${liveItem.url}');"></div>
+                    `
+                    break
+
+                case 'video':
+                    // Video is typically handled as a "background" but for specific video items, we render it as content 
+                    // OR we force the background video to match this item. 
+                    // For the unified system, let's render it as a full-screen video element in the content layer if it's the main item,
+                    // but usually, video players want to be in the background layer to allow overlays?
+                    // Actually, if it's a "User Video", it might be the only thing. 
+                    // Let's use the background layer for performance/consistency if possible, OR a dedicated video tag here.
+                    // Given existing background architecture, let's render nothing in content and ensure the background handles it.
+                    // BUT: We need to handle audio? The background video is currently muted.
+                    // If this is a generic video item, it might need sound.
+                    // For MVP: Let's assume user videos are rendered in the content layer to separate them from "Background Loops".
+                    const isYouTube = liveItem.isYouTube
+                    if (isYouTube) {
+                        // Simple iframe embed for MVP
+                        // Extract ID? usually url is full.
+                        // TODO: Robust YouTube parsing.
+                        contentHTML = `<iframe class="w-full h-full" src="${liveItem.url}?autoplay=1&controls=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`
+                    } else {
+                        contentHTML = `<video class="w-full h-full object-contain" src="${liveItem.url}" autoplay ${liveItem.loop ? 'loop' : ''} playsinline></video>`
+                    }
+                    break
+
+                case 'presentation':
+                    // Render current slide
+                    const slideIndex = (livePosition as any).index || 0
+                    const slide = liveItem.slides[slideIndex]
+                    if (slide) {
+                        if (slide.type === 'image') {
+                            contentHTML = `<div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('${slide.content}');"></div>`
+                        } else if (slide.type === 'text') {
+                            contentHTML = `<div class="flex items-center justify-center h-full text-white text-6xl font-bold p-10 text-center">${slide.content}</div>`
+                        }
+                    }
+                    break
+
+                case 'scripture':
+                    contentHTML = `
+                        <div class="flex flex-col items-center justify-center h-full text-white p-20 text-center">
+                             <div class="text-4xl mb-8">${liveItem.reference}</div>
+                             <div class="text-6xl font-serif leading-tight">
+                                "${liveItem.verses.map(v => v.text).join(' ')}"
+                             </div>
+                        </div>
+                     `
+                    break
+            }
+        }
+    }
+
+    // --- Background Generation ---
+    // If liveItem is a VIDEO type, we might want to SUPPRESS the standard background 
+    // to avoid double playing, or use the standard background system to PLAY it.
+    // Use standard background for loop consistency, unless it's a specific Video Item which might have audio.
+    const isVideoItem = liveItem?.type === 'video'
+
+    // In static mode, use thumbnail or gradient
+    let backgroundHTML: string
+    if (staticMode) {
+        let thumbnail = ''
+        if (backgroundVideo) {
+            const videoFilename = backgroundVideo.split('/').pop()
+            if (videoFilename) thumbnail = `/media/thumbnails/${videoFilename}.jpg`
+        }
+        // ... (existing thumbnail logic) ... 
         const bgStyle = thumbnail
             ? `background-image: url('${thumbnail}'); background-size: cover; background-position: center;`
             : `background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);`
 
-        backgroundHTML = `
-      <div class="absolute inset-0 w-full h-full bg-cover bg-center z-[1]" style="${bgStyle}"></div>
-    `
+        backgroundHTML = `<div class="absolute inset-0 w-full h-full bg-cover bg-center z-[1]" style="${bgStyle}"></div>`
     } else {
+        // Standard background video system
+        // If we are playing a foreground video item, we might hide this or make it black?
+        // Let's keep it running behind (opacity 0?) or replace it?
+        // Ideally: If liveItem is video, we hide the standard background.
+        const bgClass = isVideoItem ? 'hidden' : 'active opacity-100'
+
         const videoClass = "absolute inset-0 w-full h-full object-cover z-[1] opacity-0 transition-opacity duration-1000 ease-in-out";
         backgroundHTML = `
-      <video class="${videoClass} bg-layer-1 active opacity-100" src="${backgroundVideo}" autoplay loop muted playsinline></video>
+      <video class="${videoClass} bg-layer-1 ${bgClass}" src="${backgroundVideo}" autoplay loop muted playsinline></video>
       <video class="${videoClass} bg-layer-2" autoplay loop muted playsinline></video>
     `
     }
 
-    // Build class and style for the overlay to ensure background colors are applied without custom CSS
     const overlayBaseClass = "absolute inset-0 flex items-center justify-center z-[2] transition-[background] duration-300 ease-in-out content-overlay";
+    // If showing video content, bg should be black?
     const overlayBgStyle = (displayMode === 'lyrics' || displayMode === 'clear') ? 'background: transparent;' : 'background: black;';
 
     return `
@@ -98,66 +257,83 @@ export function buildMainProjectionHTML(): string {
   `
 }
 
-
 export function updateDisplayMode(): void {
-    const { displayMode, liveSong, liveVariation, livePosition, logoMedia, displaySettings } = state
-    const overlay = document.querySelector('.content-overlay')
+    // Re-use the full build logic for simplicity in MVP, or implement granular partial updates.
+    // For robust "View Transitions" and accurate state reflection, calling buildMainProjectionHTML 
+    // and diffing/updating is safer, but `updateHTML` (which sets innerHTML) is what we have.
+    // Given the complexity of switching between Video/Image/Song here, let's re-render the content block.
 
+    // We can call buildMainProjectionHTML() effectively, but we are inside an update function meant to be lighter?
+    // Let's just re-run the whole HTML build for the overlay content.
+    // The background video update is handled separately by `updateBackgroundVideo`.
+
+    const overlay = document.querySelector('.content-overlay')
     if (!overlay) return
 
-    // Update overlay classes and background
+    // We simply rebuild the whole screen to catch all `liveItem` cases? 
+    // No, that replaces the background video DOM nodes and restarts the video! 
+    // We must ONLY update the overlay.
+
+    const { displayMode, liveItem, liveSong, liveVariation, livePosition, displaySettings, logoMedia } = state
+
+    // ... Copy-paste content logic from above ...
+    let contentHTML = ''
+    if (displayMode === 'black') {
+        contentHTML = '<div class="w-full h-full bg-black"></div>'
+    } else if (displayMode === 'logo') {
+        contentHTML = buildLogoHTML(logoMedia)
+    } else if (displayMode === 'clear') {
+        contentHTML = ''
+    } else {
+        if (liveItem) {
+            switch (liveItem.type) {
+                case 'song':
+                    let lyricsText = ''
+                    if (liveSong) lyricsText = getSlideText(liveSong, liveVariation, livePosition as any) || ''
+                    const lyricsStyle = buildLyricsStyleString(displaySettings)
+                    contentHTML = `<div class="flex flex-col items-center justify-center text-center text-white w-full h-full box-border will-change-contents" style="${lyricsStyle}">${formatLyricsText(lyricsText)}</div>`
+                    break
+                case 'image':
+                    contentHTML = `<div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('${liveItem.url}');"></div>`
+                    break
+                case 'video':
+                    const isYouTube = liveItem.isYouTube
+                    if (isYouTube) {
+                        contentHTML = `<iframe class="w-full h-full" src="${liveItem.url}?autoplay=1&controls=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`
+                    } else {
+                        contentHTML = `<video class="w-full h-full object-contain" src="${liveItem.url}" autoplay ${liveItem.loop ? 'loop' : ''} playsinline></video>`
+                    }
+                    break
+                case 'presentation':
+                    const slideIndex = (livePosition as any).index || 0
+                    const slide = liveItem.slides[slideIndex]
+                    if (slide) {
+                        if (slide.type === 'image') contentHTML = `<div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('${slide.content}');"></div>`
+                        else if (slide.type === 'text') contentHTML = `<div class="flex items-center justify-center h-full text-white text-6xl font-bold p-10 text-center">${slide.content}</div>`
+                    }
+                    break
+                case 'scripture':
+                    contentHTML = `<div class="flex flex-col items-center justify-center h-full text-white p-20 text-center"><div class="text-4xl mb-8">${liveItem.reference}</div><div class="text-6xl font-serif leading-tight">"${liveItem.verses.map(v => v.text).join(' ')}"</div></div>`
+                    break
+            }
+        }
+    }
+
     const overlayBgStyle = (displayMode === 'lyrics' || displayMode === 'clear') ? 'transparent' : 'black';
     (overlay as HTMLElement).style.background = overlayBgStyle;
     overlay.className = `absolute inset-0 flex items-center justify-center z-[2] transition-[background] duration-300 ease-in-out content-overlay ${displayMode}`;
 
-    // Update content based on mode
-    let contentHTML = ''
-
-    switch (displayMode) {
-        case 'black':
-            contentHTML = '<div class="w-full h-full bg-black"></div>'
-            break
-        case 'clear':
-            contentHTML = ''
-            break
-        case 'logo':
-            contentHTML = buildLogoHTML(logoMedia)
-            break
-        case 'lyrics':
-        default:
-            let lyricsText = ''
-            if (liveSong) {
-                lyricsText = getSlideText(liveSong, liveVariation, livePosition) || ''
-            }
-            const lyricsStyle = buildLyricsStyleString(displaySettings)
-            contentHTML = `
-        <div class="flex flex-col items-center justify-center text-center text-white w-full h-full box-border will-change-contents" style="${lyricsStyle}">
-          ${formatLyricsText(lyricsText)}
-        </div>
-      `
-            break
-    }
-
-    // Determine transition settings
     const { type, duration } = displaySettings.transitions || { type: 'crossfade', duration: 0.5 }
     const useTransition = type !== 'none'
 
-    // Use View Transition API if available and enabled
     if (useTransition && document.startViewTransition) {
-        // Set duration
         document.documentElement.style.setProperty('--view-transition-duration', `${duration}s`)
-
-        document.startViewTransition(() => {
-            updateHTML(overlay, contentHTML)
-        })
+        document.startViewTransition(() => updateHTML(overlay, contentHTML))
     } else {
         updateHTML(overlay, contentHTML)
     }
 
-    // Re-setup video autoplay for logo if it's a video
-    if (displayMode === 'logo') {
-        setupVideoAutoplay()
-    }
+    if (displayMode === 'logo') setupVideoAutoplay()
 }
 
 export function updateBackgroundVideo(): void {
@@ -165,6 +341,27 @@ export function updateBackgroundVideo(): void {
     if (isStaticMode()) {
         updateStaticBackground()
         return  // Don't process video elements in static mode
+    }
+
+    // If we are showing a foreground video item, we might want to pause the background layers?
+    // The render logic hides them, but they might still be playing if we don't pause.
+    // However, keeping them playing allows for instant transition back. 
+    // Let's rely on the `hidden` class logic in buildHTML/updateDisplayMode to handle visibility.
+    // But `updateBackgroundVideo` is called when `state.backgroundVideo` changes. 
+    // If we are in "Video Mode", likely the user doesn't care about background video changes yet.
+    // But let's keep the logic consistent: The background video layers always reflect `state.backgroundVideo`.
+    // The visibility is controlled by the parent container or class in rendering.
+
+    // Correction: In `buildMainProjectionHTML` I added `const bgClass = isVideoItem ? 'hidden' : 'active opacity-100'`.
+    // But `updateBackgroundVideo` manually manages classes `active` and `opacity`. 
+    // We should respect the `hidden` override if it exists, or re-apply it?
+    // Actually, `updateBackgroundVideo` is primarily for CROSSFADING between backgrounds.
+    // If we are in video mode, we probably shouldn't be crossfading backgrounds.
+
+    if (state.liveItem?.type === 'video') {
+        // Maybe just ensure they are paused or hidden?
+        // For now, let's let them be managed by state.backgroundVideo. 
+        // If the user changes background while watching a video, it will change in the background (invisible).
     }
 
     const video1 = document.querySelector('.bg-layer-1') as HTMLVideoElement

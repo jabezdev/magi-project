@@ -1,8 +1,9 @@
 import { state, updateState, getSavedCurrentSchedule, saveCurrentScheduleName } from '../../state'
 import { ICONS } from '../../constants'
-import { selectSongForPreview, removeFromSchedule, updateScheduleItem, moveScheduleItem } from '../../actions'
+import { selectItemForPreview, removeFromSchedule, updateScheduleItem, moveScheduleItem } from '../../actions'
 import { fetchSongById, saveSchedule, fetchScheduleList, fetchScheduleByName, createSchedule } from '../../services'
 import { openScheduleNameModal } from '../modals'
+import type { ScheduleItem } from '../../types'
 
 // Track current schedule name - initialize from saved value
 let currentScheduleName = getSavedCurrentSchedule()
@@ -12,7 +13,7 @@ export function renderScheduleList(): string {
   const songs = state.songs
 
   // Inline Tailwind Class Constants
-  const sectionClass = "flex flex-col flex-1 overflow-hidden min-w-0 bg-bg-primary schedule-section" // Retained schedule-section for JS hooks
+  const sectionClass = "flex flex-col flex-1 overflow-hidden min-w-0 bg-bg-primary schedule-section"
   const headerClass = "flex flex-row items-center justify-between gap-0 p-0 h-[2.2rem] min-h-[2.2rem] bg-bg-secondary border-b border-border-color shrink-0 text-[0.85rem]"
   const headerSectionLeft = "flex items-center h-full px-2 gap-2"
   const headerIconClass = "w-[14px] h-[14px] opacity-70"
@@ -28,7 +29,7 @@ export function renderScheduleList(): string {
   const songListClass = "flex flex-col gap-[1px]"
 
   // Item Styles
-  const itemClass = "flex flex-row items-center justify-between gap-2 px-[0.6rem] py-[0.4rem] bg-bg-tertiary border border-transparent rounded-sm cursor-grab transition-colors duration-100 text-left w-full p-[0.35rem_0.5rem] gap-[0.4rem] active:cursor-grabbing hover:bg-bg-hover group schedule-item" // added schedule-item for JS hook
+  const itemClass = "flex flex-row items-center justify-between gap-2 px-[0.6rem] py-[0.4rem] bg-bg-tertiary border border-transparent rounded-sm cursor-grab transition-colors duration-100 text-left w-full p-[0.35rem_0.5rem] gap-[0.4rem] active:cursor-grabbing hover:bg-bg-hover group schedule-item"
   const selectedClass = "border-accent-primary bg-indigo-500/10"
   const liveClass = "border-live-red bg-red-600/10"
 
@@ -36,6 +37,7 @@ export function renderScheduleList(): string {
   const metaClass = "flex items-center gap-[0.2rem] shrink-0 relative transition-transform duration-150 ease-out group-hover:-translate-x-6"
 
   const variationBadgeClass = "text-[0.65rem] text-text-secondary bg-bg-primary px-[0.4rem] py-[0.15rem] rounded-sm cursor-pointer transition-all duration-150 border border-border-color hover:bg-bg-hover hover:text-accent-primary hover:border-accent-primary"
+  const typeIconClass = "text-[0.65rem] opacity-50 mr-1"
 
   const removeBtnClass = "absolute -right-6 opacity-0 transition-all duration-150 ease-out flex items-center justify-center w-[22px] h-[22px] bg-transparent border-none rounded-[3px] text-text-muted cursor-pointer hover:text-live-red hover:bg-red-600/10 group-hover:opacity-100 group-hover:-right-6"
 
@@ -56,7 +58,7 @@ export function renderScheduleList(): string {
             </div>
         </div>
         <div class="${bodyClass}">
-            <div class="${emptyStateClass}">No songs scheduled</div>
+            <div class="${emptyStateClass}">No items scheduled</div>
         </div>
       </div>
     `
@@ -79,16 +81,38 @@ export function renderScheduleList(): string {
       <div class="${bodyClass}">
         <div class="${songListClass}" id="schedule-song-list">
           ${schedule.items.map((item, index) => {
-    const song = songs.find(s => s.id === item.songId)
-    if (!song) return ''
+    // Determine Title, Icon, and Extra Meta based on Type
+    let title = 'Unknown Item'
+    let icon = '?'
+    let extras = ''
+    const itemId = item.id || `item-${index}` // Fallback ID if missing
 
-    const isSelected = state.previewSong?.id === song.id
-    const isLive = state.liveSong?.id === song.id
+    const isSelected = state.previewItem?.id === item.id || (state.previewItem?.type === 'song' && item.type === 'song' && state.previewItem.songId === item.songId)
+    const isLive = state.liveItem?.id === item.id || (state.liveItem?.type === 'song' && item.type === 'song' && state.liveItem.songId === item.songId)
+    // Note: The ID match is preferred. The songId fallback is for legacy transition.
 
-    let variationBadge = ''
-    if (song.variations && song.variations.length > 0) {
-      const selectedVar = song.variations.find(v => String(v.id) === String(item.variationId))
-      variationBadge = `<span class="${variationBadgeClass} variation-badge" title="Click to change">${selectedVar?.name || 'Default'}</span>`
+    if (item.type === 'song') {
+      const song = songs.find(s => s.id === item.songId)
+      title = song ? song.title : `Song #${item.songId}`
+      icon = '🎵' // ICONS.music
+
+      if (song && song.variations && song.variations.length > 0) {
+        const selectedVar = song.variations.find(v => String(v.id) === String(item.variationId))
+        extras = `<span class="${variationBadgeClass} variation-badge" title="Click to change">${selectedVar?.name || 'Default'}</span>`
+      }
+    } else if (item.type === 'video') {
+      title = item.name || 'Video'
+      icon = item.isYouTube ? '▶️' : '🎥'
+      if (item.settings?.isCanvaSlide) extras += '<span class="text-[0.6rem] opacity-50 ml-1">SLIDE</span>'
+    } else if (item.type === 'image') {
+      title = item.name || 'Image'
+      icon = '🖼️'
+    } else if (item.type === 'presentation') {
+      title = item.title || 'Presentation'
+      icon = '📊'
+    } else if (item.type === 'scripture') {
+      title = item.reference || 'Scripture'
+      icon = '📖'
     }
 
     // Construct final classes
@@ -96,13 +120,12 @@ export function renderScheduleList(): string {
 
     return `
               <div class="song-item compact ${finalItemClass}" 
-                      data-song-id="${song.id}" 
-                      data-variation-id="${item.variationId}"
                       data-index="${index}"
                       draggable="true">
-                <span class="${titleClass}">${song.title}</span>
+                <span class="${typeIconClass}">${icon}</span>
+                <span class="${titleClass}">${title}</span>
                 <div class="song-meta ${metaClass}">
-                   ${variationBadge}
+                   ${extras}
                    <button class="icon-btn-sm remove-schedule-btn icon-btn-sm ${removeBtnClass}" data-index="${index}" title="Remove">${ICONS.trash}</button>
                 </div>
               </div>
@@ -154,9 +177,7 @@ export function initScheduleListListeners(): void {
       try {
         await saveSchedule(state.schedule, currentScheduleName)
         // Visual feedback
-        saveBtn.classList.add('saved') // 'saved' class style needs to be defined? Or handled via inline? 
-        // For 'saved' state, let's just toggle text color manually or assume there's a utility for it. 
-        // Or inline logic here:
+        saveBtn.classList.add('saved')
         saveBtn.classList.add('text-success')
         setTimeout(() => saveBtn.classList.remove('text-success'), 1500)
       } catch (err) {
@@ -184,29 +205,19 @@ export function initScheduleListListeners(): void {
   // Initialize drag and drop
   initDragAndDrop(section)
 
-  section.querySelectorAll('.song-item').forEach(item => {
-    item.addEventListener('click', async (e) => {
+  section.querySelectorAll('.song-item').forEach(el => {
+    el.addEventListener('click', async (e) => {
       // Prevent if clicking interactive elements
       if ((e.target as HTMLElement).closest('.variation-badge') ||
         (e.target as HTMLElement).closest('.remove-schedule-btn')) {
         return
       }
 
-      const songId = parseInt(item.getAttribute('data-song-id') || '0')
-      const variationId = item.getAttribute('data-variation-id')
+      const index = parseInt(el.getAttribute('data-index') || '0')
+      const item = state.schedule.items[index]
 
-      // We need to fetch the full song
-      const song = await fetchSongById(songId)
-
-      if (song) {
-        // If variationId is provided, we should select that variation.
-        let varIndex = 0
-        if (variationId) {
-          const idx = song.variations.findIndex(v => String(v.id) === String(variationId))
-          if (idx >= 0) varIndex = idx
-        }
-
-        selectSongForPreview(song, varIndex)
+      if (item) {
+        selectItemForPreview(item)
       }
     })
   })
@@ -215,26 +226,26 @@ export function initScheduleListListeners(): void {
   section.querySelectorAll('.variation-badge').forEach(badge => {
     badge.addEventListener('click', async (e) => {
       e.stopPropagation()
-      const songItem = (e.target as HTMLElement).closest('.song-item')
-      if (!songItem) return
+      const songItemEl = (e.target as HTMLElement).closest('.song-item')
+      if (!songItemEl) return
 
-      const index = parseInt(songItem.getAttribute('data-index') || '0')
-      const songId = parseInt(songItem.getAttribute('data-song-id') || '0')
-      const currentVariationId = songItem.getAttribute('data-variation-id')
+      const index = parseInt(songItemEl.getAttribute('data-index') || '0')
+      const item = state.schedule.items[index]
 
-      const song = state.songs.find(s => s.id === songId)
-      if (!song || !song.variations || song.variations.length <= 1) return
+      if (item && item.type === 'song') {
+        const song = state.songs.find(s => s.id === item.songId)
+        if (!song || !song.variations || song.variations.length <= 1) return
 
-      // Find current variation index and cycle to next
-      const currentIdx = song.variations.findIndex(v => String(v.id) === String(currentVariationId))
-      const nextIdx = (currentIdx + 1) % song.variations.length
-      const nextVariation = song.variations[nextIdx]
+        const currentIdx = song.variations.findIndex(v => String(v.id) === String(item.variationId))
+        const nextIdx = (currentIdx + 1) % song.variations.length
+        const nextVariation = song.variations[nextIdx]
 
-      updateScheduleItem(index, { variationId: nextVariation.id })
+        updateScheduleItem(index, { variationId: nextVariation.id })
 
-      // Also update preview if this song is currently being previewed
-      if (state.previewSong?.id === songId) {
-        selectSongForPreview(state.previewSong, nextIdx)
+        // Also update preview if this song is currently being previewed
+        if (state.previewItem?.id === item.id) {
+          selectItemForPreview({ ...item, variationId: nextVariation.id })
+        }
       }
     })
   })

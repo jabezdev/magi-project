@@ -97,7 +97,7 @@ export async function deleteSong(id: number): Promise<void> {
  */
 export async function fetchSchedule(): Promise<Schedule> {
   try {
-    const response = await fetch(`${getApiBaseUrl()}/schedule`)
+    const response = await fetch(`${getApiBaseUrl()}/schedules/current`)
     if (!response.ok) throw new Error('Failed to fetch schedule')
     return await response.json()
   } catch (error) {
@@ -125,7 +125,7 @@ export async function fetchScheduleList(): Promise<{ name: string; filename: str
  */
 export async function fetchScheduleByName(name: string): Promise<Schedule | null> {
   try {
-    const response = await fetch(`${getApiBaseUrl()}/schedule/${encodeURIComponent(name)}`)
+    const response = await fetch(`${getApiBaseUrl()}/schedules/${encodeURIComponent(name)}`)
     if (!response.ok) throw new Error('Failed to fetch schedule')
     return await response.json()
   } catch (error) {
@@ -139,7 +139,7 @@ export async function fetchScheduleByName(name: string): Promise<Schedule | null
  */
 export async function saveSchedule(schedule: Schedule, name?: string): Promise<void> {
   try {
-    const url = name ? `${getApiBaseUrl()}/schedule/${encodeURIComponent(name)}` : `${getApiBaseUrl()}/schedule`
+    const url = name ? `${getApiBaseUrl()}/schedules/${encodeURIComponent(name)}` : `${getApiBaseUrl()}/schedules`
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -175,7 +175,7 @@ export async function createSchedule(name: string): Promise<{ success: boolean; 
  */
 export async function fetchVideoAssets(): Promise<{ name: string; path: string; thumbnail?: string }[]> {
   try {
-    const response = await fetch(`${getApiBaseUrl()}/videos`)
+    const response = await fetch(`${getApiBaseUrl()}/media/background_videos`)
     if (!response.ok) throw new Error('Failed to fetch videos')
     return await response.json()
   } catch (error) {

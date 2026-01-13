@@ -4,18 +4,12 @@ import { saveSchedule } from '../services/api'
 import type { Schedule, ScheduleItem } from '../types'
 
 /**
- * Add a song to the schedule
+ * Add a generic item to the schedule
  */
-export async function addToSchedule(songId: number, variationId: number | string = 'default'): Promise<void> {
+export async function addItemToSchedule(item: ScheduleItem): Promise<void> {
     const currentSchedule = state.schedule
     const scheduleName = getSavedCurrentSchedule()
-    const newItems = [
-        ...currentSchedule.items,
-        {
-            songId,
-            variationId
-        }
-    ]
+    const newItems = [...currentSchedule.items, item]
 
     const newSchedule: Schedule = {
         ...currentSchedule,
@@ -27,8 +21,19 @@ export async function addToSchedule(songId: number, variationId: number | string
         await saveSchedule(newSchedule, scheduleName)
     } catch (e) {
         console.error('Failed to add to schedule', e)
-        // Revert on failure? For now just log
     }
+}
+
+/**
+ * Helper: Add a song to the schedule
+ */
+export async function addSongToSchedule(songId: number, variationId: number | string = 'default'): Promise<void> {
+    await addItemToSchedule({
+        id: crypto.randomUUID(), // Generate unique ID for the schedule item itself
+        type: 'song',
+        songId,
+        variationId
+    })
 }
 
 /**

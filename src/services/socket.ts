@@ -29,11 +29,15 @@ class SocketService {
       console.log('[Socket] Disconnected from server')
     })
 
-    this.socket.on('slide-updated', (data: SlideUpdate & { previousSong?: any, previousVariation?: number, previousPosition?: any }) => {
+    this.socket.on('slide-updated', (data: SlideUpdate & { previousSong?: any, previousVariation?: number, previousPosition?: any, liveMediaState?: any }) => {
       this.notifyStateUpdate({
         liveSong: data.song,
         liveVariation: data.variation,
         livePosition: data.position,
+        liveItem: data.item, // New: Sync generic item
+        liveMediaState: data.liveMediaState, // New: Sync media state
+
+        previousLiveItem: data.previousItem ?? null, // New
         previousLiveSong: data.previousSong ?? null,
         previousLiveVariation: data.previousVariation ?? 0,
         previousLivePosition: data.previousPosition ?? { partIndex: 0, slideIndex: 0 }
@@ -43,6 +47,12 @@ class SocketService {
     this.socket.on('video-updated', (data: VideoUpdate) => {
       this.notifyStateUpdate({
         backgroundVideo: data.video
+      })
+    })
+
+    this.socket.on('media-state-updated', (data: any) => {
+      this.notifyStateUpdate({
+        liveMediaState: data
       })
     })
 
@@ -142,6 +152,13 @@ class SocketService {
    */
   updateConfidenceMonitorSettings(settings: ConfidenceMonitorSettings): void {
     this.socket.emit('update-confidence-monitor-settings', { settings })
+  }
+
+  /**
+   * Update media playback state (from MainProjection)
+   */
+  updateMediaState(state: { isPlaying?: boolean, currentTime?: number, duration?: number, isCanvaHolding?: boolean }): void {
+    this.socket.emit('update-media-state', state)
   }
 
   /**

@@ -7,19 +7,28 @@ export interface TransitionSettings {
   duration: number // seconds
 }
 
-// Song part types
-export type PartType = string // 'v1' | 'v2' | 'v3' | 'v4' | 'ch' | 'pch' | 'br' | 'tag' | 'intro' | 'outro' | 'inst'
+// === MEDIA TYPES ===
+
+export type MediaType = 'song' | 'video' | 'image' | 'presentation' | 'scripture'
+
+export interface BaseMediaItem {
+  id: string
+  type: MediaType
+}
+
+// Song Part Types
+export type PartType = string
 
 export interface SongPart {
   id: PartType
-  label: string // 'Verse 1', 'Chorus', 'Pre-Chorus', 'Bridge', etc.
-  slides: string[] // Each slide's text content
+  label: string
+  slides: string[]
 }
 
 export interface SongVariation {
   id: number
-  name: string // 'Default', 'Short', 'Extended', 'Sunday Service'
-  arrangement: PartType[] // ['v1', 'pch', 'ch', 'v2', 'pch', 'ch', 'br', 'ch']
+  name: string
+  arrangement: PartType[]
 }
 
 export interface Song {
@@ -30,11 +39,59 @@ export interface Song {
   variations: SongVariation[]
 }
 
-// Schedule types
-export interface ScheduleItem {
+export interface SongItem extends BaseMediaItem {
+  type: 'song'
   songId: number
-  variationId: number | string
+  variationId: number | string // 'default' or specific ID
 }
+
+export interface VideoItem extends BaseMediaItem {
+  type: 'video'
+  name: string
+  url: string // Path or YouTube URL
+  isYouTube: boolean
+  thumbnail?: string
+  loop: boolean
+  settings?: {
+    isCanvaSlide?: boolean
+    canvaHoldPoint?: number // Seconds
+  }
+}
+
+export interface ImageItem extends BaseMediaItem {
+  type: 'image'
+  name: string
+  url: string
+  thumbnail?: string
+}
+
+export interface SlideContent {
+  type: 'text' | 'image' | 'video'
+  content: string // Text string or URL
+  style?: string // JSON string for styles
+}
+
+export interface PresentationItem extends BaseMediaItem {
+  type: 'presentation'
+  title: string
+  slides: SlideContent[]
+}
+
+export interface ScriptureItem extends BaseMediaItem {
+  type: 'scripture'
+  reference: string
+  translation: string
+  verses: {
+    book: string
+    chapter: number
+    verse: number
+    text: string
+  }[]
+}
+
+export type ScheduleItem = SongItem | VideoItem | ImageItem | PresentationItem | ScriptureItem
+
+// === SCHEDULE ===
 
 export interface Schedule {
   date: string
@@ -60,7 +117,7 @@ export interface LyricsData {
   sets: SongSet[] // Kept for type compat during migration if any
 }
 
-export type DisplayMode = 'lyrics' | 'logo' | 'black' | 'clear'
+export type DisplayMode = 'lyrics' | 'logo' | 'black' | 'clear' | 'media'
 
 export interface DisplaySettings {
   fontSize: number
@@ -123,19 +180,38 @@ export interface SlidePosition {
   slideIndex: number // Index within the part's slides
 }
 
+// Generic position for non-song items (e.g., presentation slides)
+export interface SimplePosition {
+  index: number
+}
+
+export interface LiveMediaState {
+  isPlaying: boolean
+  currentTime: number
+  duration: number
+  isCanvaHolding?: boolean // Special state for Canva slides
+}
+
 export interface AppState {
-  // Preview state (what's selected but not live)
-  previewSong: Song | null
-  previewVariation: number // index of the selected variation
-  previewPosition: SlidePosition
-  // Live state (what's actually displayed)
-  liveSong: Song | null
+  // Preview state
+  previewItem: ScheduleItem | null
+  previewSong: Song | null // Hydrated song data if previewItem is a song
+  previewVariation: number
+  previewPosition: SlidePosition | SimplePosition
+
+  // Live state
+  liveItem: ScheduleItem | null
+  liveSong: Song | null // Hydrated song data if liveItem is a song
   liveVariation: number
-  livePosition: SlidePosition
+  livePosition: SlidePosition | SimplePosition
+  liveMediaState: LiveMediaState
+
   // Previous Live state (for transition context)
+  previousLiveItem: ScheduleItem | null
   previousLiveSong: Song | null
   previousLiveVariation: number
-  previousLivePosition: SlidePosition
+  previousLivePosition: SlidePosition | SimplePosition
+
   // Display settings
   previewBackground: string
   backgroundVideo: string
@@ -167,9 +243,10 @@ export interface VideoFile {
 }
 
 export interface SlideUpdate {
+  item: ScheduleItem | null
   song: Song | null
-  variation: number
-  position: SlidePosition
+  variation?: number
+  position: SlidePosition | SimplePosition
 }
 
 export interface VideoUpdate {

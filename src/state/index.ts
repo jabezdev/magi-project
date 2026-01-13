@@ -73,15 +73,27 @@ function loadSavedPreviewBackground(): string {
 
 // Application state singleton
 export const state: AppState = {
+  previewItem: null,
   previewSong: null,
   previewVariation: 0,
   previewPosition: { ...DEFAULT_POSITION },
+
+  liveItem: null,
   liveSong: null,
   liveVariation: 0,
   livePosition: { ...DEFAULT_POSITION },
+  liveMediaState: {
+    isPlaying: false,
+    currentTime: 0,
+    duration: 0,
+    isCanvaHolding: false
+  },
+
+  previousLiveItem: null,
   previousLiveSong: null,
   previousLiveVariation: 0,
   previousLivePosition: { ...DEFAULT_POSITION },
+
   backgroundVideo: DEFAULT_BACKGROUND_VIDEO,
   previewBackground: loadSavedPreviewBackground(),
   availableVideos: [],

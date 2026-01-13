@@ -39,13 +39,13 @@
       "duration": 0.3
     }
   },
-  "currentSchedule": "2026-01-11",
+  "currentSchedule": "2026-01-10",
   "layoutSettings": {
-    "songsColumnWidth": 296,
-    "scheduleSectionHeight": 354,
+    "songsColumnWidth": 378,
+    "scheduleSectionHeight": 399,
     "librarySectionHeight": null,
-    "backgroundsSectionHeight": 310,
-    "thumbnailSize": 217.8,
+    "backgroundsSectionHeight": 290,
+    "thumbnailSize": 210,
     "mainMonitorEnabled": true,
     "confidenceMonitorEnabled": true,
     "lowerThirdsMonitorEnabled": true,
@@ -53,8 +53,8 @@
       "width": 1024,
       "height": 768
     },
-    "mainProjectionStaticMode": true,
-    "monitorColumnWidth": 450
+    "mainProjectionStaticMode": false,
+    "monitorColumnWidth": 422
   },
   "backgroundVideo": "/media/red_bokeh.mp4",
   "previewBackground": "/media/red_bokeh.mp4",

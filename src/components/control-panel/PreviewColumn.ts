@@ -84,6 +84,7 @@ export function renderPreviewColumn(): string {
     const isActive = state.previewPosition.partIndex === partIndex &&
       state.previewPosition.slideIndex === slideIndex
     const isLive = state.liveSong?.id === song.id &&
+      state.liveVariation === state.previewVariation &&
       state.livePosition.partIndex === partIndex &&
       state.livePosition.slideIndex === slideIndex
 
@@ -152,6 +153,7 @@ export function updatePreviewSlideSelection(): void {
     const isActive = previewPosition.partIndex === partIndex &&
       previewPosition.slideIndex === slideIndex
     const isLive = liveSong?.id === previewSong?.id &&
+      state.liveVariation === state.previewVariation &&
       livePosition.partIndex === partIndex &&
       livePosition.slideIndex === slideIndex
 

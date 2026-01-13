@@ -5,27 +5,68 @@
  * Uses efficient state updates that skip full re-renders when possible.
  */
 
-import type { Song, SlidePosition, DisplayMode } from '../types'
+import type { Song, SlidePosition, DisplayMode, ScheduleItem } from '../types'
 import { state, updateState } from '../state'
 import { socketService } from '../services/socket'
 import { fetchSongById } from '../services/api'
 import { getNextPosition, getPrevPosition } from '../utils/slides'
-import { saveSettings } from '../services/api'
+
+/**
+ * Select a specific item for preview
+ */
+export function selectItemForPreview(item: ScheduleItem): void {
+  // If it's a song, we need to fetch/set the hydrated song data
+  if (item.type === 'song') {
+    fetchSongById(item.songId).then(song => {
+      if (song) {
+        let variationIndex = 0
+        if (item.variationId && item.variationId !== 'default') {
+          const idx = song.variations.findIndex(v => String(v.id) === String(item.variationId))
+          if (idx >= 0) variationIndex = idx
+        }
+        selectSongForPreview(song, variationIndex, item)
+      }
+    })
+    return
+  }
+
+  // Non-song items
+  updateState({
+    previewItem: item,
+    previewSong: null,
+    previewPosition: { index: 0 } // Simple position
+  }, true)
+
+  socketService.emit('update-preview', {
+    item,
+    song: null,
+    position: { index: 0 }
+  })
+}
 
 /**
  * Select a song for preview
- * Requires full re-render since song content changes
  */
-export function selectSongForPreview(song: Song, variationIndex = 0): void {
+export function selectSongForPreview(song: Song, variationIndex = 0, sourceItem?: ScheduleItem): void {
   const position = { partIndex: 0, slideIndex: 0 }
+
+  // Create a transient item if not provided (e.g. from Library directly)
+  const item: ScheduleItem = sourceItem || {
+    id: 'preview-temp',
+    type: 'song',
+    songId: song.id,
+    variationId: song.variations[variationIndex]?.id || 'default'
+  }
+
   updateState({
+    previewItem: item,
     previewSong: song,
     previewVariation: variationIndex,
     previewPosition: position
-  }, true) // Skip full re-render
+  }, true)
 
-  // Sync preview to other screens (for Confidence Monitor look-ahead)
   socketService.emit('update-preview', {
+    item,
     song,
     variation: variationIndex,
     position
@@ -34,13 +75,12 @@ export function selectSongForPreview(song: Song, variationIndex = 0): void {
 
 /**
  * Select a position in the preview
- * Uses efficient update - only slide selection changes
  */
-export function selectPreviewPosition(position: SlidePosition): void {
-  updateState({ previewPosition: position }, true) // Skip full re-render
+export function selectPreviewPosition(position: SlidePosition | { index: number }): void {
+  updateState({ previewPosition: position }, true)
 
-  // Sync preview position to other screens (for Confidence Monitor look-ahead)
   socketService.emit('update-preview', {
+    item: state.previewItem,
     song: state.previewSong,
     variation: state.previewVariation,
     position
@@ -49,21 +89,28 @@ export function selectPreviewPosition(position: SlidePosition): void {
 
 /**
  * Select a variation for the preview song
- * Requires full re-render since arrangement changes
  */
 export function selectPreviewVariation(index: number): void {
+  if (!state.previewSong) return
+
+  // Update the preview item's variation ID to match
+  const newVarId = state.previewSong.variations[index].id
+  const newItem = state.previewItem && state.previewItem.type === 'song'
+    ? { ...state.previewItem, variationId: newVarId }
+    : { id: 'preview-temp', type: 'song' as const, songId: state.previewSong.id, variationId: newVarId }
+
   updateState({
+    previewItem: newItem,
     previewVariation: index,
     previewPosition: { partIndex: 0, slideIndex: 0 }
-  }, true) // Skip full re-render
+  }, true)
 }
 
 /**
  * Send the current preview to live
- * Requires full re-render to update live column
  */
 export async function goLive(): Promise<void> {
-  if (!state.previewSong) return
+  if (!state.previewItem) return
 
   // Transition background video if they differ
   if (state.previewBackground && state.previewBackground !== state.backgroundVideo) {
@@ -72,8 +119,9 @@ export async function goLive(): Promise<void> {
 
   // Capture previous live state for transitions
   let previousState: Partial<typeof state> = {}
-  if (state.liveSong) {
+  if (state.liveItem) {
     previousState = {
+      previousLiveItem: state.liveItem,
       previousLiveSong: state.liveSong,
       previousLiveVariation: state.liveVariation,
       previousLivePosition: { ...state.livePosition }
@@ -82,154 +130,148 @@ export async function goLive(): Promise<void> {
 
   const newLiveState = {
     ...previousState,
+    liveItem: state.previewItem,
     liveSong: state.previewSong,
     liveVariation: state.previewVariation,
     livePosition: { ...state.previewPosition },
+    // Reset media state for new item
+    liveMediaState: {
+      isPlaying: state.previewItem.type === 'video', // Auto-play videos?
+      currentTime: 0,
+      duration: 0,
+      isCanvaHolding: false
+    }
   }
 
+  // Update local state FIRST to prevent race condition with socket response
+  updateState(newLiveState, true)
+
+  // Then notify server (server will broadcast to other clients)
   socketService.updateSlide({
+    item: newLiveState.liveItem,
     song: newLiveState.liveSong,
     variation: newLiveState.liveVariation,
     position: newLiveState.livePosition
   })
 
-  // Note: We do NOT force displayMode to 'lyrics' here anymore.
-  // This allows Logo/Mode persistence as requested.
 
-  updateState(newLiveState, true) // Skip full re-render
+  // SCHEDULE PROGRESSION (Autopilot)
+  if (state.schedule && state.schedule.items && state.previewItem) {
+    const currentId = state.previewItem.id
 
-  // SCHEDULE PROGRESSION
-  if (state.schedule && state.schedule.items) {
-    // FIX: Get the actual variation ID from the current song and variation index
-    const currentVariation = state.previewSong?.variations[state.previewVariation]
-    const currentVariationId = currentVariation?.id
+    // Find index of current item in schedule
+    // We use the ID now since items have unique IDs
+    const currentIndex = state.schedule.items.findIndex(i => i.id === currentId)
 
-    console.log('[DEBUG] Autopilot - Song:', state.previewSong?.id, 'VarIndex:', state.previewVariation, 'VarID:', currentVariationId)
-    console.log('[DEBUG] Schedule Items:', state.schedule.items)
-
-    const currentIndex = state.schedule.items.findIndex(item => {
-      const songMatch = item.songId === state.previewSong!.id
-
-      let varMatch = false
-      // 1. Direct ID match (loose equality for string/number)
-      if (currentVariationId !== undefined && String(item.variationId) === String(currentVariationId)) {
-        varMatch = true
-      }
-      // 2. Default fallback: If schedule says 'default' (or 0) and we are on the first variation (index 0)
-      else if ((item.variationId === 'default' || item.variationId === 0) && state.previewVariation === 0) {
-        varMatch = true
-      }
-
-      return songMatch && varMatch
-    })
 
     if (currentIndex !== -1 && currentIndex < state.schedule.items.length - 1) {
       const nextItem = state.schedule.items[currentIndex + 1]
-      try {
-        const nextSong = await fetchSongById(nextItem.songId)
-        if (nextSong) {
-          let varIndex = 0
-          if (nextItem.variationId) {
-            const idx = nextSong.variations.findIndex(v => String(v.id) === String(nextItem.variationId))
-            if (idx >= 0) varIndex = idx
-          }
-          selectSongForPreview(nextSong, varIndex)
-        }
-      } catch (e) {
-        console.error("Failed to autopilot schedule", e)
-      }
+      selectItemForPreview(nextItem)
     }
   }
 }
 
 /**
  * Update the live position
- * Uses efficient update when song hasn't changed
  */
-export function goLiveWithPosition(position: SlidePosition): void {
-  if (!state.liveSong) return
+export function goLiveWithPosition(position: SlidePosition | { index: number }): void {
+  // Update local state FIRST to prevent race condition with socket response
+  updateState({ livePosition: position }, true)
 
+  // Then notify server
   socketService.updateSlide({
+    item: state.liveItem,
     song: state.liveSong,
     variation: state.liveVariation,
     position: position
   })
-
-  updateState({ livePosition: position }, true) // Skip full re-render
 }
 
 /**
- * Select a background video for PREVIEW
- * Uses efficient update
+ * Select a video for live background
  */
-export function selectPreviewVideo(path: string): void {
-  updateState({ previewBackground: path }, true) // Skip full re-render
-  saveSettings({ previewBackground: path }).catch(console.error)
+export function selectLiveVideo(video: string): void {
+  updateState({ backgroundVideo: video }, true)
+  socketService.updateVideo(video)
 }
 
 /**
- * Select a background video for LIVE
- * Uses efficient update
+ * Select a video for preview background
  */
-export function selectVideo(path: string): void {
-  selectLiveVideo(path)
-}
-
-export function selectLiveVideo(path: string): void {
-  socketService.updateVideo(path)
-  updateState({ backgroundVideo: path }, true) // Skip full re-render
-  // Save to server
-  saveSettings({ backgroundVideo: path }).catch(console.error)
-}
-
-/**
- * Set the display mode
- * Uses efficient update
- */
-export function setDisplayMode(mode: DisplayMode): void {
-  socketService.updateDisplayMode(mode)
-  updateState({ displayMode: mode }, true) // Skip full re-render
+export function selectPreviewVideo(video: string): void {
+  updateState({ previewBackground: video }, true)
+  localStorage.setItem('magi_preview_background', video)
 }
 
 /**
  * Go to next live slide
- * Uses efficient update
  */
 export function nextSlide(): void {
-  if (!state.liveSong) return
-  const next = getNextPosition(state.liveSong, state.liveVariation, state.livePosition)
-  if (next) goLiveWithPosition(next)
+  // 1. Handle Canva Slide "Resume"
+  if (state.liveItem?.type === 'video' && state.liveItem.settings?.isCanvaSlide) {
+    if (state.liveMediaState.isCanvaHolding) {
+      // Resume playback
+      const newState = {
+        ...state.liveMediaState,
+        isPlaying: true,
+        isCanvaHolding: false
+      }
+      updateState({ liveMediaState: newState }, true)
+      socketService.updateMediaState(newState)
+      return
+    }
+  }
+
+  // 2. Standard Types
+  if (state.liveItem?.type === 'song' && state.liveSong) {
+    const next = getNextPosition(state.liveSong, state.liveVariation, state.livePosition as SlidePosition)
+    if (next) goLiveWithPosition(next)
+  } else if (state.liveItem?.type === 'presentation') {
+    // Logic for presentation next
+    const current = (state.livePosition as { index: number }).index
+    const next = { index: current + 1 }
+    // Check boundaries?
+    const slides = state.liveItem.slides || []
+    if (next.index < slides.length) {
+      goLiveWithPosition(next)
+    }
+  }
 }
 
 /**
  * Go to previous live slide
- * Uses efficient update
  */
 export function prevSlide(): void {
-  if (!state.liveSong) return
-  const prev = getPrevPosition(state.liveSong, state.liveVariation, state.livePosition)
-  if (prev) goLiveWithPosition(prev)
+  if (state.liveItem?.type === 'song' && state.liveSong) {
+    const prev = getPrevPosition(state.liveSong, state.liveVariation, state.livePosition as SlidePosition)
+    if (prev) goLiveWithPosition(prev)
+  }
 }
 
 /**
  * Go to next preview slide
- * Uses efficient update
  */
 export function nextPreviewSlide(): void {
-  if (!state.previewSong) return
-  const next = getNextPosition(state.previewSong, state.previewVariation, state.previewPosition)
-  if (next) selectPreviewPosition(next)
+  if (state.previewItem?.type === 'song' && state.previewSong) {
+    const next = getNextPosition(state.previewSong, state.previewVariation, state.previewPosition as SlidePosition)
+    if (next) selectPreviewPosition(next)
+  }
 }
 
 /**
  * Go to previous preview slide
- * Uses efficient update
  */
 export function prevPreviewSlide(): void {
-  if (!state.previewSong) return
-  const prev = getPrevPosition(state.previewSong, state.previewVariation, state.previewPosition)
-  if (prev) selectPreviewPosition(prev)
+  if (state.previewItem?.type === 'song' && state.previewSong) {
+    const prev = getPrevPosition(state.previewSong, state.previewVariation, state.previewPosition as SlidePosition)
+    if (prev) selectPreviewPosition(prev)
+  }
 }
 
-// Re-export findSongById for convenience
-// export { findSongById } 
+/**
+ * Set the display mode
+ */
+export function setDisplayMode(mode: DisplayMode): void {
+  updateState({ displayMode: mode }, true)
+  socketService.updateDisplayMode(mode)
+}

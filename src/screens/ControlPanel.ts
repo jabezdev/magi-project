@@ -97,6 +97,8 @@ function setupEfficientUpdates(): void {
     if (changedKeys.includes('livePosition')) {
       updateLiveSlideSelection()
       updateLiveNavButtons()
+      // Also update preview panel's live indicators
+      updatePreviewSlideSelection()
     }
 
     if (changedKeys.includes('liveSong') || changedKeys.includes('liveVariation')) {
