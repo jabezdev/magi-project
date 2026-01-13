@@ -2,7 +2,9 @@ import { ICONS } from '../constants/icons'
 import { fetchSongById, saveSong } from '../services/api'
 import type { Song } from '../types'
 import { fetchSongs } from '../services/api'
-import { updateState } from '../state'
+import { state, updateState } from '../state'
+import { DEFAULT_PART_COLORS } from '../constants/defaults'
+import { getContrastColor } from '../utils/colors'
 
 // Helper to escape HTML
 function escapeHtml(text: string): string {
@@ -37,33 +39,63 @@ export async function openSongEditor(songId?: number): Promise<void> {
         }
     }
 
+    // -- LOGIC --
+    const getPartColor = (id: string): string => {
+        const type = id.split(' ')[0] // e.g. "V"
+        // Try state settings first, then fall back to defaults
+        if (state.partColors && state.partColors[type]) {
+            return state.partColors[type]
+        }
+        return DEFAULT_PART_COLORS[type] || '#64748b'
+    }
+
+    // Generate Add Part Buttons
+    const partTypes = [
+        { id: 'IN', label: 'Intro' },
+        { id: 'V', label: 'Verse' },
+        { id: 'pCH', label: 'Pre-Chorus' },
+        { id: 'CH', label: 'Chorus' },
+        { id: 'BR', label: 'Bridge' },
+        { id: 'TAG', label: 'Tag' },
+        { id: 'OUT', label: 'Outro' }
+    ]
+
+    const addPartsButtonsHtml = partTypes.map(pt => {
+        const color = getPartColor(pt.id)
+        const textColor = getContrastColor(color)
+        return `<button class="btn-add-part" data-type="${pt.id}" style="--btn-color: ${color}; color: ${textColor} !important;">${pt.label}</button>`
+    }).join('')
+
     // Create Modal HTML
     const modal = document.createElement('div')
     modal.className = 'modal-overlay'
     modal.innerHTML = `
     <div class="modal-content song-editor-modal">
       <div class="modal-header">
-        <div class="modal-title-group">
-          <span class="modal-icon">${ICONS.music}</span>
-          <h2>${song.id ? 'Edit Song' : 'Create New Song'}</h2>
+        <div class="header-section-left">
+            <div class="modal-title-group">
+                <span class="modal-icon">${ICONS.music}</span>
+                <h2>${song.id ? 'Edit Song' : 'New Song'}</h2>
+            </div>
         </div>
-        <button class="close-modal-btn" title="Close">${ICONS.close}</button>
+        <div class="header-section-center" style="justify-content: flex-start; padding-left: 1rem;">
+             <div class="header-song-inputs">
+                <input type="text" id="song-title" class="header-input title" value="${escapeHtml(song.title)}" placeholder="Song Title" />
+                <span class="header-input-divider">-</span>
+                <input type="text" id="song-artist" class="header-input artist" value="${escapeHtml(song.artist || '')}" placeholder="Artist" />
+            </div>
+            <div id="status-bar" class="status-bar" style="margin: 0; margin-left: auto;"></div>
+        </div>
+        <div class="header-section-right">
+            <button class="btn-ghost cancel-btn flush-btn">Cancel</button>
+            <button class="btn-primary save-btn flush-btn">${ICONS.save} Save</button>
+        </div>
       </div>
       
       <div class="modal-body">
         <!-- Top: Song Information -->
-        <div class="editor-section song-info-section">
-          <div class="song-meta-row">
-            <div class="form-group title-field">
-                <label for="song-title">Title</label>
-                <input type="text" id="song-title" value="${escapeHtml(song.title)}" placeholder="Enter song title..." />
-            </div>
-            <div class="form-group artist-field">
-                <label for="song-artist">Artist / Author</label>
-                <input type="text" id="song-artist" value="${escapeHtml(song.artist || '')}" placeholder="Optional" />
-            </div>
-          </div>
-        </div>
+        <!-- Top: Song Information (Moved to Header) -->
+        <!-- <div class="editor-section song-info-section"></div> -->
 
         <!-- Bottom: Parts & Arrangements side by side -->
         <div class="editor-layout">
@@ -72,9 +104,11 @@ export async function openSongEditor(songId?: number): Promise<void> {
             <div class="editor-section parts-section">
               <div class="section-header">
                 <h3>Parts</h3>
-                <span class="section-hint">Define verses, choruses, bridges, etc.</span>
-                <button class="btn-add add-part-btn">${ICONS.plus} Add Part</button>
+                <div class="add-parts-toolbar" style="margin: 0; border: none; background: transparent; padding: 0;">
+                    ${addPartsButtonsHtml}
+                </div>
               </div>
+              
               <div class="parts-list" id="parts-container">
                 <!-- Parts will be rendered here -->
               </div>
@@ -84,36 +118,34 @@ export async function openSongEditor(songId?: number): Promise<void> {
             </div>
           </div>
 
+          <!-- Resizer -->
+          <div class="editor-resizer" id="editor-resizer"></div>
+
           <!-- Right: Arrangements -->
           <div class="editor-sidebar">
             <div class="editor-section arrangements-section">
-              <div class="section-header">
-                <h3>Arrangements</h3>
-                <button class="btn-add add-variation-btn">${ICONS.plus}</button>
-              </div>
-              <p class="section-description">Create different arrangements by ordering parts. Click a part chip to add it.</p>
-              <div class="variations-list" id="variations-container">
-                <!-- Variations will be rendered here -->
-              </div>
-              <div class="available-parts-section">
-                <label>Available Parts:</label>
-                <div class="available-parts-chips" id="available-parts">
-                  <!-- Available parts chips for quick add -->
+                <!-- Top: Available Parts to Add -->
+                <div class="available-parts-section">
+                    <label>Add to Arrangement:</label>
+                    <div class="available-parts-chips" id="available-parts">
+                        <!-- Available parts chips -->
+                    </div>
                 </div>
-              </div>
+
+                <div class="resizer-separator"></div>
+
+                <div class="section-header">
+                    <h3>Arrangements</h3>
+                </div>
+              
+                <div class="arrangement-editor-list" id="active-arrangement-list">
+                    <!-- Horizontal list of arrangement columns -->
+                </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="modal-footer">
-        <div class="footer-left">
-          <span id="status-msg" class="status-msg"></span>
-        </div>
-        <div class="footer-actions">
-            <button class="btn-ghost cancel-btn">Cancel</button>
-            <button class="btn-primary save-btn">${ICONS.save} Save Song</button>
-        </div>
       </div>
     </div>
   `
@@ -125,23 +157,19 @@ export async function openSongEditor(songId?: number): Promise<void> {
 
     // -- LOGIC --
     let currentSong: Song = JSON.parse(JSON.stringify(song)) // Deep copy
-    let draggedPartIndex: number | null = null
-    let draggedChipIndex: number | null = null
-    let draggedVariationIndex: number | null = null
-
-    const getPartColor = (id: string): string => {
-        const colors: Record<string, string> = {
-            'v': '#6366f1', // verse - indigo
-            'c': '#22c55e', // chorus - green
-            'p': '#f59e0b', // pre-chorus - amber
-            'b': '#ec4899', // bridge - pink
-            't': '#8b5cf6', // tag - purple
-            'i': '#06b6d4', // intro - cyan
-            'o': '#ef4444', // outro - red
-        }
-        const prefix = id.charAt(0).toLowerCase()
-        return colors[prefix] || '#64748b'
+    // Ensure at least one arrangement exists
+    if (currentSong.variations.length === 0) {
+        currentSong.variations.push({ id: Date.now(), name: 'Default', arrangement: [] })
     }
+
+    let activeVariationIndex = 0
+    let draggedPartIndex: number | null = null
+
+    let isHandleDrag = false
+
+
+
+    // getPartColor moved to top
 
     const renderParts = () => {
         const container = modal.querySelector('#parts-container') as HTMLElement
@@ -160,11 +188,16 @@ export async function openSongEditor(songId?: number): Promise<void> {
             <div class="part-drag-handle" title="Drag to reorder">${ICONS.grip}</div>
             <div class="part-content-wrapper">
                 <div class="part-header-row">
-                    <div class="part-id-badge" style="background: ${getPartColor(part.id)}">
-                        <input type="text" class="part-id-input" value="${escapeHtml(part.id)}" placeholder="ID" title="Part ID (e.g. v1, ch)" />
-                    </div>
+                    ${(() => {
+                const color = getPartColor(part.id)
+                const textColor = getContrastColor(color)
+                return `<div class="part-id-badge" style="background: ${color}">
+                            <input type="text" class="part-id-input" value="${escapeHtml(part.id)}" placeholder="ID" title="Part ID (e.g. v1, ch)" style="color: ${textColor} !important;" />
+                        </div>`
+            })()}
                     <input type="text" class="part-label-input" value="${escapeHtml(part.label || '')}" placeholder="Part name (e.g. Verse 1, Chorus)" />
                     <div class="part-actions">
+                        <div class="slide-count" style="width: auto; padding: 0 0.5rem; text-align: center; color: var(--text-muted); font-size: 0.75rem;">${part.slides.filter(s => s.trim()).length} slide${part.slides.filter(s => s.trim()).length !== 1 ? 's' : ''}</div>
                         <button class="btn-icon move-up-btn" title="Move Up" ${index === 0 ? 'disabled' : ''}>${ICONS.chevronUp}</button>
                         <button class="btn-icon move-down-btn" title="Move Down" ${index === currentSong.parts.length - 1 ? 'disabled' : ''}>${ICONS.chevronDown}</button>
                         <button class="btn-icon delete-part-btn" title="Delete Part">${ICONS.trash}</button>
@@ -172,7 +205,6 @@ export async function openSongEditor(songId?: number): Promise<void> {
                 </div>
                 <div class="part-lyrics">
                     <textarea class="part-content" placeholder="Enter lyrics here...&#10;&#10;Use a blank line to create a new slide.">${escapeHtml(part.slides.join('\n\n'))}</textarea>
-                    <div class="slide-count">${part.slides.filter(s => s.trim()).length} slide${part.slides.filter(s => s.trim()).length !== 1 ? 's' : ''}</div>
                 </div>
             </div>
         </div>
@@ -193,16 +225,26 @@ export async function openSongEditor(songId?: number): Promise<void> {
             const moveUpBtn = item.querySelector('.move-up-btn')
             const moveDownBtn = item.querySelector('.move-down-btn')
 
-            // Drag events for parts
+            // Drag events for parts - Handle Only
+            const handle = item.querySelector('.part-drag-handle') as HTMLElement
+
+            handle.addEventListener('mousedown', () => { isHandleDrag = true })
+            handle.addEventListener('mouseup', () => { isHandleDrag = false })
+
             item.addEventListener('dragstart', (e) => {
+                if (!isHandleDrag) {
+                    e.preventDefault()
+                    return
+                }
                 draggedPartIndex = index
-                ;(item as HTMLElement).classList.add('dragging')
-                ;(e as DragEvent).dataTransfer?.setData('text/plain', 'part')
+                    ; (item as HTMLElement).classList.add('dragging')
+                    ; (e as DragEvent).dataTransfer?.setData('text/plain', 'part')
             })
 
             item.addEventListener('dragend', () => {
+                isHandleDrag = false
                 draggedPartIndex = null
-                ;(item as HTMLElement).classList.remove('dragging')
+                    ; (item as HTMLElement).classList.remove('dragging')
                 container.querySelectorAll('.part-item').forEach(el => el.classList.remove('drag-over'))
             })
 
@@ -225,16 +267,24 @@ export async function openSongEditor(songId?: number): Promise<void> {
                     currentSong.parts.splice(index, 0, movedPart)
                     renderParts()
                     renderAvailableParts()
+                    // Re-render arrangement to reflect potential label changes if IDs change? (IDs stay part of object)
                 }
             })
 
             idInput?.addEventListener('input', (e) => {
-                currentSong.parts[index].id = (e.target as HTMLInputElement).value
+                const val = (e.target as HTMLInputElement).value
+                currentSong.parts[index].id = val
                 // Update badge color
                 const badge = item.querySelector('.part-id-badge') as HTMLElement
-                if (badge) badge.style.background = getPartColor(currentSong.parts[index].id)
+                if (badge) {
+                    const newColor = getPartColor(val)
+                    badge.style.background = newColor
+                    const input = badge.querySelector('.part-id-input') as HTMLElement
+                    if (input) input.style.color = getContrastColor(newColor)
+                }
                 renderAvailableParts()
-                renderVariations()
+                // renderVariations - handled by renderArrangementEditor in new logic
+                renderArrangementEditor()
             })
 
             labelInput?.addEventListener('input', (e) => {
@@ -258,22 +308,22 @@ export async function openSongEditor(songId?: number): Promise<void> {
                     currentSong.parts.splice(index, 1)
                     renderParts()
                     renderAvailableParts()
-                    renderVariations()
+                    renderArrangementEditor()
                 }
             })
 
             moveUpBtn?.addEventListener('click', () => {
                 if (index > 0) {
-                    [currentSong.parts[index - 1], currentSong.parts[index]] = 
-                    [currentSong.parts[index], currentSong.parts[index - 1]]
+                    [currentSong.parts[index - 1], currentSong.parts[index]] =
+                        [currentSong.parts[index], currentSong.parts[index - 1]]
                     renderParts()
                 }
             })
 
             moveDownBtn?.addEventListener('click', () => {
                 if (index < currentSong.parts.length - 1) {
-                    [currentSong.parts[index], currentSong.parts[index + 1]] = 
-                    [currentSong.parts[index + 1], currentSong.parts[index]]
+                    [currentSong.parts[index], currentSong.parts[index + 1]] =
+                        [currentSong.parts[index + 1], currentSong.parts[index]]
                     renderParts()
                 }
             })
@@ -291,123 +341,207 @@ export async function openSongEditor(songId?: number): Promise<void> {
             return
         }
 
-        container.innerHTML = currentSong.parts.map((part) => `
-            <button class="part-chip" data-id="${escapeHtml(part.id)}" style="--chip-color: ${getPartColor(part.id)}">
+        container.innerHTML = currentSong.parts.map((part) => {
+            const color = getPartColor(part.id)
+            const textColor = getContrastColor(color)
+            return `<button class="part-chip" data-id="${escapeHtml(part.id)}" style="--chip-color: ${color}; color: ${textColor} !important;">
                 ${escapeHtml(part.id)}
-            </button>
-        `).join('')
+            </button>`
+        }).join('')
 
         // Attach click listeners
         container.querySelectorAll('.part-chip').forEach(chip => {
             chip.addEventListener('click', () => {
                 const partId = (chip as HTMLElement).getAttribute('data-id')
                 if (partId && currentSong.variations.length > 0) {
-                    currentSong.variations[0].arrangement.push(partId)
-                    renderVariations()
+                    // Add to ACTIVE arrangement
+                    currentSong.variations[activeVariationIndex].arrangement.push(partId)
+                    renderArrangementEditor()
                 }
             })
         })
     }
 
-    const renderVariations = () => {
-        const container = modal.querySelector('#variations-container') as HTMLElement
-        if (!container) return
+    // New Renders for Arrangements (Side-by-Side Columns)
+    const renderArrangementEditor = () => {
+        const listContainer = modal.querySelector('#active-arrangement-list') as HTMLElement
+        if (!listContainer) return
 
-        if (currentSong.variations.length === 0) {
-            container.innerHTML = '<div class="empty-variations">No arrangements yet. Click + to add one.</div>'
-            return
-        }
+        // Render Columns
+        listContainer.innerHTML = currentSong.variations.map((v, i) => `
+            <div class="arrangement-column ${i === activeVariationIndex ? 'active' : ''}" data-index="${i}">
+                <div class="arrangement-column-header">
+                    <span class="arr-name" contenteditable="true" title="Click to edit name" data-index="${i}">${escapeHtml(v.name)}</span>
+                    <button class="btn-icon delete-var-btn" title="Delete Arrangement" data-index="${i}">&times;</button>
+                </div>
+                <div class="arrangement-column-items" data-index="${i}">
+                    ${v.arrangement.map((partId, partIdx) => {
+            const bgColor = getPartColor(partId)
+            const textColor = getContrastColor(bgColor)
+            return `<div class="arrangement-list-item" data-var-index="${i}" data-part-index="${partIdx}" draggable="true" style="background: ${bgColor}; border: none; padding-left: 0.5rem;">
+                            <span class="arr-item-name" style="color: ${textColor};">${escapeHtml(partId)}</span>
+                            <button class="btn-icon remove-arr-item-btn" title="Remove" style="color: ${textColor}; opacity: 0.8;">&times;</button>
+                        </div>`
+        }).join('')}
+                    ${v.arrangement.length === 0 ? '<div class="empty-col-message" style="font-size: 0.7rem; color: #888; text-align: center; padding: 1rem;">Drop parts here</div>' : ''}
+                </div>
+            </div>
+        `).join('') + `
+            <button class="arrangement-column add-new-column-btn" style="min-width: 60px; width: 60px; justify-content: center; align-items: center; border: 2px dashed var(--border-color); cursor: pointer; background: transparent; color: var(--text-muted);">
+                ${ICONS.plus}
+            </button>
+        `
 
-        container.innerHTML = currentSong.variations.map((v, index) => `
-         <div class="variation-item" data-index="${index}">
-             <div class="variation-header">
-                 <input type="text" class="variation-name-input" value="${escapeHtml(v.name)}" placeholder="Arrangement name..." />
-                 <button class="btn-icon delete-variation-btn" title="Delete">${ICONS.trash}</button>
-             </div>
-             <div class="variation-arrangement" data-var-index="${index}">
-                 ${v.arrangement.length === 0 
-                    ? '<span class="arrangement-hint">Click parts below to build arrangement</span>'
-                    : v.arrangement.map((partId, chipIdx) => {
-                        return `<span class="arrangement-chip" data-chip-index="${chipIdx}" draggable="true" style="--chip-color: ${getPartColor(partId)}">
-                            ${escapeHtml(partId)}
-                            <button class="chip-remove" data-chip-index="${chipIdx}">&times;</button>
-                        </span>`
-                    }).join('')
-                 }
-             </div>
-         </div>
-       `).join('')
+        // Add New Variation
+        listContainer.querySelector('.add-new-column-btn')?.addEventListener('click', () => {
+            currentSong.variations.push({ id: Date.now(), name: `Arrangement ${currentSong.variations.length + 1}`, arrangement: [] })
+            activeVariationIndex = currentSong.variations.length - 1
+            renderArrangementEditor()
+        })
 
-        // Attach listeners
-        container.querySelectorAll('.variation-item').forEach((item) => {
-            const index = parseInt(item.getAttribute('data-index') || '0')
-            const nameInput = item.querySelector('.variation-name-input') as HTMLInputElement
-            const deleteBtn = item.querySelector('.delete-variation-btn')
+        // Column Listeners
+        listContainer.querySelectorAll('.arrangement-column').forEach(col => {
+            const varIdx = parseInt(col.getAttribute('data-index') || '-1')
+            if (varIdx === -1) return // Add button logic handled above
 
-            nameInput?.addEventListener('input', (e) => {
-                currentSong.variations[index].name = (e.target as HTMLInputElement).value
-            })
-
-            deleteBtn?.addEventListener('click', () => {
-                currentSong.variations.splice(index, 1)
-                renderVariations()
-            })
-
-            // Remove chip buttons
-            item.querySelectorAll('.chip-remove').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation()
-                    const chipIdx = parseInt((btn as HTMLElement).getAttribute('data-chip-index') || '0')
-                    currentSong.variations[index].arrangement.splice(chipIdx, 1)
-                    renderVariations()
-                })
-            })
-
-            // Drag and drop for arrangement chips
-            item.querySelectorAll('.arrangement-chip').forEach(chip => {
-                chip.addEventListener('dragstart', (e) => {
-                    draggedChipIndex = parseInt((chip as HTMLElement).getAttribute('data-chip-index') || '0')
-                    draggedVariationIndex = index
-                    ;(chip as HTMLElement).classList.add('chip-dragging')
-                    ;(e as DragEvent).dataTransfer?.setData('text/plain', 'chip')
-                })
-
-                chip.addEventListener('dragend', () => {
-                    draggedChipIndex = null
-                    draggedVariationIndex = null
-                    ;(chip as HTMLElement).classList.remove('chip-dragging')
-                    container.querySelectorAll('.arrangement-chip').forEach(c => c.classList.remove('chip-drag-over'))
-                })
-
-                chip.addEventListener('dragover', (e) => {
-                    e.preventDefault()
-                    if (draggedChipIndex !== null && draggedVariationIndex === index) {
-                        chip.classList.add('chip-drag-over')
+            // Activate on click (capture phase or specific targets?)
+            col.addEventListener('mousedown', (e) => {
+                // If not clicking interactive elements
+                if (!(e.target as HTMLElement).closest('button') && !(e.target as HTMLElement).closest('.arr-name')) {
+                    if (activeVariationIndex !== varIdx) {
+                        activeVariationIndex = varIdx
+                        renderArrangementEditor()
                     }
-                })
+                }
+            })
 
-                chip.addEventListener('dragleave', () => {
-                    chip.classList.remove('chip-drag-over')
-                })
-
-                chip.addEventListener('drop', (e) => {
-                    e.preventDefault()
-                    chip.classList.remove('chip-drag-over')
-                    const targetIdx = parseInt((chip as HTMLElement).getAttribute('data-chip-index') || '0')
-                    if (draggedChipIndex !== null && draggedVariationIndex === index && draggedChipIndex !== targetIdx) {
-                        const arr = currentSong.variations[index].arrangement
-                        const [movedChip] = arr.splice(draggedChipIndex, 1)
-                        arr.splice(targetIdx, 0, movedChip)
-                        renderVariations()
+            // Delete Variation
+            col.querySelector('.delete-var-btn')?.addEventListener('click', (e) => {
+                e.preventDefault()
+                if (currentSong.variations.length <= 1) {
+                    alert('Cannot delete the last arrangement.')
+                    return
+                }
+                if (confirm('Delete this arrangement?')) {
+                    currentSong.variations.splice(varIdx, 1)
+                    if (activeVariationIndex >= currentSong.variations.length) {
+                        activeVariationIndex = currentSong.variations.length - 1
                     }
-                })
+                    renderArrangementEditor()
+                }
+            })
+
+            // Rename Variation
+            const nameSpan = col.querySelector('.arr-name')
+            nameSpan?.addEventListener('blur', (e) => {
+                const newName = (e.target as HTMLElement).innerText.trim()
+                if (newName) {
+                    currentSong.variations[varIdx].name = newName
+                } else {
+                    (e.target as HTMLElement).innerText = currentSong.variations[varIdx].name // Revert if empty
+                }
+            })
+            // Prevent enter key new line and stop propagation for space
+            nameSpan?.addEventListener('keydown', (e: any) => {
+                e.stopPropagation()
+                if (e.key === 'Enter') {
+                    e.preventDefault()
+                    e.target.blur()
+                }
+            })
+
+            // Drop Target for Column (to add partials from toolbar or reorder)
+            const itemsContainer = col.querySelector('.arrangement-column-items') as HTMLElement
+
+            // Drag Over Column
+            itemsContainer.addEventListener('dragover', (e) => {
+                e.preventDefault()
+                itemsContainer.style.background = 'var(--bg-hover)'
+            })
+            itemsContainer.addEventListener('dragleave', () => {
+                itemsContainer.style.background = ''
+            })
+            itemsContainer.addEventListener('drop', (e) => {
+                e.preventDefault()
+                itemsContainer.style.background = ''
+
+                // Check what we are dropping
+                // If dropping a part from library (add-part logic via drag?)
+                // Currently "Add Part" buttons are click-only. 
+                // But available parts chips are draggable? Wait, I removed drag logic from available parts chips in previous cleanup?
+                // Let's check renderAvailableParts logic. It attaches click listener. 
+                // Available parts chips usually draggable? I need to check renderAvailableParts. 
+
+                // Assuming we support reordering within column or moving between columns.
+            })
+        })
+
+        // Item Listeners (Drag/Remove)
+        listContainer.querySelectorAll('.arrangement-list-item').forEach(item => {
+            const varIdx = parseInt(item.getAttribute('data-var-index') || '0')
+            const partIdx = parseInt(item.getAttribute('data-part-index') || '0')
+
+            // Remove
+            item.querySelector('.remove-arr-item-btn')?.addEventListener('click', () => {
+                currentSong.variations[varIdx].arrangement.splice(partIdx, 1)
+                renderArrangementEditor()
+            })
+
+            // Drag Start
+            item.addEventListener('dragstart', (e) => {
+                // draggedArrangementItemIndex = partIdx // Save index (unused, using dataTransfer)
+                // We need to know WHICH variation it came from
+                if ((e as DragEvent).dataTransfer) {
+                    (e as DragEvent).dataTransfer?.setData('text/plain', JSON.stringify({ varIdx, partIdx }))
+                }
+                (item as HTMLElement).classList.add('dragging')
+            })
+
+            item.addEventListener('dragend', () => {
+                // draggedArrangementItemIndex = null
+                ; (item as HTMLElement).classList.remove('dragging')
+                document.querySelectorAll('.arrangement-list-item').forEach(el => el.classList.remove('drag-over'))
+            })
+
+            // Drag Over (Reordering)
+            item.addEventListener('dragover', (e) => {
+                e.preventDefault()
+                e.stopPropagation() // Stop column drop
+                // const data = (e as DragEvent).dataTransfer?.getData('text/plain')
+                // Only allow reorder within same list or move?
+                // Let's implement move between lists support!
+                item.classList.add('drag-over')
+            })
+
+            item.addEventListener('dragleave', () => {
+                item.classList.remove('drag-over')
+            })
+
+            item.addEventListener('drop', (e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                item.classList.remove('drag-over')
+
+                try {
+                    const data = JSON.parse((e as DragEvent).dataTransfer?.getData('text/plain') || '{}')
+                    if (data.varIdx !== undefined && data.partIdx !== undefined) {
+                        // Move logic
+                        const sourceVar = currentSong.variations[data.varIdx]
+                        const targetVar = currentSong.variations[varIdx]
+
+                        const [movedPart] = sourceVar.arrangement.splice(data.partIdx, 1)
+
+                        targetVar.arrangement.splice(partIdx, 0, movedPart)
+                        renderArrangementEditor()
+                    }
+                } catch (err) { }
             })
         })
     }
 
     // Initial Render
     renderParts()
-    renderVariations()
+    renderArrangementEditor()
 
     // -- Event Listeners --
 
@@ -437,32 +571,53 @@ export async function openSongEditor(songId?: number): Promise<void> {
     }
     document.addEventListener('keydown', handleEscape)
 
-    // Add Part
-    modal.querySelector('.add-part-btn')?.addEventListener('click', () => {
-        const newId = currentSong.parts.length === 0 ? 'v1' 
-            : `v${currentSong.parts.filter(p => p.id.startsWith('v')).length + 1}`
-        const newLabel = currentSong.parts.length === 0 ? 'Verse 1'
-            : `Verse ${currentSong.parts.filter(p => p.id.startsWith('v')).length + 1}`
-        
-        currentSong.parts.push({ id: newId, label: newLabel, slides: [''] })
-        renderParts()
-        
-        // Scroll to new part and focus
-        setTimeout(() => {
-            const container = modal.querySelector('#parts-container')
-            const lastPart = container?.querySelector('.part-item:last-child')
-            lastPart?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-            const labelInput = lastPart?.querySelector('.part-label-input') as HTMLInputElement
-            labelInput?.focus()
-            labelInput?.select()
-        }, 50)
-    })
+    // Add Specific Part Buttons
+    modal.querySelectorAll('.btn-add-part').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const type = (e.currentTarget as HTMLElement).getAttribute('data-type') || 'v'
 
-    // Add Variation
-    modal.querySelector('.add-variation-btn')?.addEventListener('click', () => {
-        const name = currentSong.variations.length === 0 ? 'Default' : `Arrangement ${currentSong.variations.length + 1}`
-        currentSong.variations.push({ id: Date.now(), name, arrangement: [] })
-        renderVariations()
+            // Shorthand map and Label Map
+            const map: any = {
+                'V': { short: 'V', label: 'Verse' },
+                'CH': { short: 'CH', label: 'Chorus' },
+                'pCH': { short: 'pCH', label: 'Pre-Chorus' },
+                'BR': { short: 'BR', label: 'Bridge' },
+                'TAG': { short: 'TAG', label: 'Tag' },
+                'IN': { short: 'IN', label: 'Intro' },
+                'OUT': { short: 'OUT', label: 'Outro' }
+            }
+
+            const info = map[type]
+            // Auto Numbering
+            // Count existing parts of this type
+            const existing = currentSong.parts.filter(p => p.id.startsWith(info.short))
+            // Find max number
+            let maxNum = 0
+            existing.forEach(p => {
+                const parts = p.id.split(' ')
+                if (parts.length > 1) {
+                    const num = parseInt(parts[1])
+                    if (!isNaN(num) && num > maxNum) maxNum = num
+                }
+            })
+            const nextNum = maxNum + 1
+
+            const newId = `${info.short} ${nextNum}`
+            const newLabel = `${info.label} ${nextNum}`
+
+            currentSong.parts.push({ id: newId, label: newLabel, slides: [''] })
+            renderParts()
+
+            // Scroll to new part
+            setTimeout(() => {
+                const container = modal.querySelector('#parts-container')
+                const lastPart = container?.querySelector('.part-item:last-child')
+                lastPart?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                const labelInput = lastPart?.querySelector('.part-label-input') as HTMLInputElement
+                labelInput?.focus()
+                labelInput?.select()
+            }, 50)
+        })
     })
 
     // Save
@@ -482,11 +637,11 @@ export async function openSongEditor(songId?: number): Promise<void> {
             return
         }
 
-        const status = modal.querySelector('#status-msg') as HTMLElement
+        const status = modal.querySelector('#status-bar') as HTMLElement
         const saveBtn = modal.querySelector('.save-btn') as HTMLButtonElement
         saveBtn.disabled = true
         status.textContent = 'Saving...'
-        status.className = 'status-msg saving'
+        status.className = 'status-bar saving'
 
         try {
             await saveSong(currentSong)
@@ -500,7 +655,7 @@ export async function openSongEditor(songId?: number): Promise<void> {
             setTimeout(closeModal, 800)
         } catch (e) {
             status.textContent = 'Error saving song. Please try again.'
-            status.className = 'status-msg error'
+            status.className = 'status-bar error'
             saveBtn.disabled = false
             console.error(e)
         }
@@ -509,5 +664,41 @@ export async function openSongEditor(songId?: number): Promise<void> {
     // Remove error class on input
     modal.querySelector('#song-title')?.addEventListener('input', (e) => {
         (e.target as HTMLElement).classList.remove('input-error')
+    })
+
+    // Resizer Logic
+    const resizer = modal.querySelector('#editor-resizer') as HTMLElement
+    const rightPanel = modal.querySelector('.editor-sidebar') as HTMLElement
+    const container = modal.querySelector('.editor-layout') as HTMLElement
+
+    let isResizing = false
+
+    resizer?.addEventListener('mousedown', (e) => {
+        isResizing = true
+        document.body.style.cursor = 'col-resize'
+        resizer.classList.add('resizing')
+        e.preventDefault() // Prevent text selection
+    })
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return
+        const containerRect = container.getBoundingClientRect()
+        // Right width = Container Right - Mouse X
+        // We use Right Panel width as the flex-basis
+        const newRightWidth = containerRect.right - e.clientX
+
+        // Constraints (min 200px, max container width - 200px)
+        if (newRightWidth > 200 && newRightWidth < containerRect.width - 200) {
+            rightPanel.style.flex = `0 0 ${newRightWidth}px`
+            rightPanel.style.width = `${newRightWidth}px`
+        }
+    })
+
+    document.addEventListener('mouseup', () => {
+        if (isResizing) {
+            isResizing = false
+            document.body.style.cursor = ''
+            resizer?.classList.remove('resizing')
+        }
     })
 }

@@ -155,7 +155,10 @@ export interface AppState {
   displaySettings: DisplaySettings
   confidenceMonitorSettings: ConfidenceMonitorSettings
   layoutSettings: LayoutSettings
+  partColors: PartColorSettings
 }
+
+export type PartColorSettings = Record<string, string>
 
 export interface VideoFile {
   name: string

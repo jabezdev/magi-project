@@ -41,8 +41,8 @@
   },
   "currentSchedule": "2026-01-11",
   "layoutSettings": {
-    "songsColumnWidth": 307,
-    "scheduleSectionHeight": 446,
+    "songsColumnWidth": 295,
+    "scheduleSectionHeight": 416,
     "librarySectionHeight": null,
     "backgroundsSectionHeight": 308,
     "thumbnailSize": 217.8,
@@ -58,5 +58,14 @@
   },
   "backgroundVideo": "/media/teal_squares.mp4",
   "previewBackground": "/media/teal_squares.mp4",
-  "logoMedia": "/media/logo.mp4"
+  "logoMedia": "/media/logo.mp4",
+  "partColors": {
+    "V": "#007bff",
+    "CH": "#ef4444",
+    "pCH": "#e9ec18",
+    "BR": "#7300ff",
+    "TAG": "#00ff33",
+    "IN": "#29ffb8",
+    "OUT": "#6366f1"
+  }
 }

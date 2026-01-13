@@ -5,12 +5,12 @@
  * Uses a tabbed interface for better organization.
  */
 
-import { state, saveTheme, saveDisplaySettings, saveConfidenceMonitorSettings, saveLayoutSettings, updateState } from '../../state'
+import { state, saveTheme, saveDisplaySettings, saveConfidenceMonitorSettings, saveLayoutSettings, updateState, savePartColors } from '../../state'
 import { socketService } from '../../services/socket'
 import { saveSettings } from '../../services/api'
 import { setModalOpen } from '../../utils/keyboard'
 import { ICONS } from '../../constants/icons'
-import type { DisplaySettings, ConfidenceMonitorSettings, TransitionType } from '../../types'
+import type { DisplaySettings, ConfidenceMonitorSettings, TransitionType, PartColorSettings } from '../../types'
 
 import { renderMainScreenTab, initMainScreenTabListeners } from './MainScreenTab'
 import { renderConfidenceMonitorTab, initConfidenceMonitorTabListeners } from './ConfidenceMonitorTab'
@@ -18,6 +18,7 @@ import { renderMediaTab, initMediaTabListeners } from './MediaTab'
 import { renderGeneralTab } from './GeneralTab'
 import { renderShortcutsTab } from './ShortcutsTab'
 import { renderOutputMonitorTab, getConfidenceResolutionFromForm } from './OutputMonitorTab'
+import { renderPartColorsTab, initPartColorsTabListeners } from './PartColorsTab'
 
 let isOpen = false
 let onCloseCallback: (() => void) | null = null
@@ -29,6 +30,7 @@ interface SettingsSnapshot {
   displaySettings: DisplaySettings
   confidenceMonitorSettings: ConfidenceMonitorSettings
   logoMedia: string
+  partColors: PartColorSettings
 }
 
 let settingsSnapshot: SettingsSnapshot | null = null
@@ -47,7 +49,8 @@ export function openSettings(onClose?: () => void): void {
     theme: state.theme,
     displaySettings: state.displaySettings,
     confidenceMonitorSettings: state.confidenceMonitorSettings,
-    logoMedia: state.logoMedia
+    logoMedia: state.logoMedia,
+    partColors: state.partColors
   }))
 
   setModalOpen(true)
@@ -66,7 +69,8 @@ export function closeSettings(): void {
       theme: settingsSnapshot.theme,
       displaySettings: settingsSnapshot.displaySettings,
       confidenceMonitorSettings: settingsSnapshot.confidenceMonitorSettings,
-      logoMedia: settingsSnapshot.logoMedia
+      logoMedia: settingsSnapshot.logoMedia,
+      partColors: settingsSnapshot.partColors
     })
 
     // Restore remote screens
@@ -152,6 +156,10 @@ function render(): void {
             <span class="nav-icon">${ICONS.monitor}</span>
             <span>Outputs</span>
           </button>
+          <button class="settings-nav-item ${activeTab === 'colors' ? 'active' : ''}" data-tab="colors">
+            <span class="nav-icon">${ICONS.palette}</span>
+            <span>Colors</span>
+          </button>
         </nav>
       </div>
       
@@ -168,6 +176,7 @@ function render(): void {
           ${renderGeneralTab()}
           ${renderShortcutsTab()}
           ${renderOutputMonitorTab()}
+          ${renderPartColorsTab()}
         </div>
         
         <div class="settings-footer">
@@ -195,6 +204,7 @@ function getTabTitle(tab: string): string {
     case 'general': return 'General Settings'
     case 'shortcuts': return 'Keyboard Shortcuts'
     case 'outputs': return 'Output Monitors'
+    case 'colors': return 'Part Colors'
     default: return 'Settings'
   }
 }
@@ -237,6 +247,7 @@ function attachListeners(modal: HTMLElement): void {
   initMainScreenTabListeners()
   initConfidenceMonitorTabListeners()
   initMediaTabListeners()
+  initPartColorsTabListeners()
 
   // Apply button (save without closing)
   document.getElementById('apply-settings')?.addEventListener('click', () => {
@@ -325,11 +336,23 @@ function getFormState(): SettingsSnapshot {
     }
   }
 
+  // Part Colors
+  const partColors: PartColorSettings = { ...state.partColors }
+  const colorInputs = document.querySelectorAll('.part-color-input')
+  colorInputs.forEach(input => {
+    const el = input as HTMLInputElement
+    const key = el.getAttribute('data-key')
+    if (key) {
+      partColors[key] = el.value
+    }
+  })
+
   return {
     theme,
     displaySettings: ds,
     confidenceMonitorSettings: cms,
-    logoMedia
+    logoMedia,
+    partColors
   }
 }
 
@@ -344,7 +367,8 @@ function updatePreview(): void {
     theme: current.theme,
     displaySettings: current.displaySettings,
     confidenceMonitorSettings: current.confidenceMonitorSettings,
-    logoMedia: current.logoMedia
+    logoMedia: current.logoMedia,
+    partColors: current.partColors
   })
 
   // Update remote screens via socket
@@ -366,6 +390,7 @@ function applySettings(): void {
   saveTheme(current.theme)
   saveDisplaySettings(current.displaySettings)
   saveConfidenceMonitorSettings(current.confidenceMonitorSettings)
+  savePartColors(current.partColors)
 
   updateState({ logoMedia: current.logoMedia })
   socketService.updateLogo(current.logoMedia)

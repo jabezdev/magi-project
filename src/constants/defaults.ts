@@ -2,7 +2,7 @@
  * Default configuration values
  */
 
-import type { DisplaySettings, SlidePosition, ConfidenceMonitorSettings, LayoutSettings, LowerThirdsSettings } from '../types'
+import type { DisplaySettings, SlidePosition, ConfidenceMonitorSettings, LayoutSettings, LowerThirdsSettings, PartColorSettings } from '../types'
 
 export const DEFAULT_LAYOUT_SETTINGS: LayoutSettings = {
   songsColumnWidth: 350,
@@ -103,5 +103,16 @@ export const STORAGE_KEYS = {
   CURRENT_SCHEDULE: 'magi-current-schedule',
   LAYOUT_SETTINGS: 'magi-layout-settings',
   LOWER_THIRDS_SETTINGS: 'magi-lower-thirds-settings',
-  PREVIEW_BACKGROUND: 'magi-preview-background'
+  PREVIEW_BACKGROUND: 'magi-preview-background',
+  PART_COLORS: 'magi-part-colors'
 } as const
+
+export const DEFAULT_PART_COLORS: Record<string, string> = {
+  'V': '#3b82f6',   // Blue-500
+  'CH': '#ef4444',  // Red-500
+  'pCH': '#f97316', // Orange-500
+  'BR': '#8b5cf6',  // Violet-500
+  'TAG': '#ec4899', // Pink-500
+  'IN': '#10b981',  // Emerald-500
+  'OUT': '#6366f1'  // Indigo-500
+}

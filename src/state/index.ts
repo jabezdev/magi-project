@@ -5,8 +5,8 @@
  * Components can subscribe to specific state changes instead of full re-renders.
  */
 
-import type { AppState, DisplaySettings, ConfidenceMonitorSettings, LayoutSettings, Song } from '../types'
-import { DEFAULT_DISPLAY_SETTINGS, DEFAULT_CONFIDENCE_MONITOR_SETTINGS, DEFAULT_LAYOUT_SETTINGS, DEFAULT_POSITION, DEFAULT_BACKGROUND_VIDEO, DEFAULT_LOGO_MEDIA, STORAGE_KEYS } from '../constants/defaults'
+import type { AppState, DisplaySettings, ConfidenceMonitorSettings, LayoutSettings, Song, PartColorSettings } from '../types'
+import { DEFAULT_DISPLAY_SETTINGS, DEFAULT_CONFIDENCE_MONITOR_SETTINGS, DEFAULT_LAYOUT_SETTINGS, DEFAULT_POSITION, DEFAULT_BACKGROUND_VIDEO, DEFAULT_LOGO_MEDIA, STORAGE_KEYS, DEFAULT_PART_COLORS } from '../constants/defaults'
 import { socketService } from '../services/socket'
 import { saveSettings as saveSettingsToServer, fetchSettings } from '../services/api'
 
@@ -51,6 +51,18 @@ function loadSavedLayoutSettings(): LayoutSettings {
   return DEFAULT_LAYOUT_SETTINGS
 }
 
+function loadSavedPartColors(): PartColorSettings {
+  const saved = localStorage.getItem(STORAGE_KEYS.PART_COLORS)
+  if (saved) {
+    try {
+      return { ...DEFAULT_PART_COLORS, ...JSON.parse(saved) }
+    } catch {
+      return DEFAULT_PART_COLORS
+    }
+  }
+  return DEFAULT_PART_COLORS
+}
+
 function loadSavedCurrentSchedule(): string {
   return localStorage.getItem(STORAGE_KEYS.CURRENT_SCHEDULE) || 'current'
 }
@@ -84,7 +96,8 @@ export const state: AppState = {
   theme: loadSavedTheme(),
   displaySettings: loadSavedDisplaySettings(),
   confidenceMonitorSettings: loadSavedConfidenceMonitorSettings(),
-  layoutSettings: loadSavedLayoutSettings()
+  layoutSettings: loadSavedLayoutSettings(),
+  partColors: loadSavedPartColors()
 }
 
 // Types for state change notifications
@@ -272,6 +285,16 @@ export function saveLayoutSettings(settings: LayoutSettings): void {
 }
 
 /**
+ * Save part colors to localStorage and server
+ */
+export function savePartColors(settings: PartColorSettings): void {
+  state.partColors = settings
+  localStorage.setItem(STORAGE_KEYS.PART_COLORS, JSON.stringify(settings))
+  // Save to server (fire and forget)
+  saveSettingsToServer({ partColors: settings } as any).catch(console.error)
+}
+
+/**
  * Save current schedule name
  */
 export function saveCurrentScheduleName(name: string): void {
@@ -318,6 +341,12 @@ export async function loadSettingsFromServer(): Promise<void> {
       const merged = { ...DEFAULT_LAYOUT_SETTINGS, ...serverSettings.layoutSettings } as LayoutSettings
       updates.layoutSettings = merged
       localStorage.setItem(STORAGE_KEYS.LAYOUT_SETTINGS, JSON.stringify(merged))
+    }
+
+    if ((serverSettings as any).partColors) {
+      const merged = { ...DEFAULT_PART_COLORS, ...((serverSettings as any).partColors) }
+      updates.partColors = merged
+      localStorage.setItem(STORAGE_KEYS.PART_COLORS, JSON.stringify(merged))
     }
 
     if (serverSettings.currentSchedule) {
