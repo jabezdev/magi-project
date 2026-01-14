@@ -1,5 +1,8 @@
 import fs from 'fs'
 import { join, basename, extname } from 'path'
+import { partial } from 'filesize'
+
+const formatSize = partial({ standard: 'jedec' })
 
 // === HELPERS ===
 
@@ -47,15 +50,19 @@ export const Scanners = {
                 const content = JSON.parse(fs.readFileSync(file.path, 'utf-8'))
                 return {
                     id: content.id,
+                    type: 'song',
                     title: content.title,
-                    artist: content.artist,
-                    variations: content.variations || [],
-                    // Flatten lyrics for search optimization
-                    searchContent: [
-                        content.artist || '',
-                        ...(content.parts || []).map(p => p.slides.join(' '))
-                    ].join(' '),
-                    _filename: file.filename
+                    subtitle: content.artist || '',
+                    thumbnail: null,
+                    data: {
+                        artist: content.artist,
+                        variations: content.variations || [],
+                        searchContent: [
+                            content.artist || '',
+                            ...(content.parts || []).map(p => p.slides.join(' '))
+                        ].join(' '),
+                        filename: file.filename
+                    }
                 }
             } catch (e) {
                 console.warn(`Failed to parse song ${file.filename}`, e)
@@ -107,11 +114,24 @@ export const Scanners = {
                 }
             }
 
+            let size = ''
+            try {
+                const stats = fs.statSync(file.path)
+                size = formatSize(stats.size)
+            } catch { }
+
             return {
-                name: file.filename,
-                path: urlPath, // Web-accessible path
-                thumbnail,
-                type: isVideo ? 'video' : 'image'
+                id: urlPath, // Use web path as ID for static media
+                type: isVideo ? 'video' : 'image',
+                title: file.filename,
+                subtitle: size, // Show size in subtitle
+                thumbnail: thumbnail,
+                data: {
+                    path: urlPath,
+                    filename: file.filename,
+                    subpath: subpath,
+                    size: size
+                }
             }
         })
     },
@@ -143,7 +163,14 @@ export const Scanners = {
             })
         })
 
-        return allSlides
+        return allSlides.map(s => ({
+            id: s.id || `slide-${s.name}`,
+            type: 'slide',
+            title: s.name,
+            subtitle: s._typeSubfolder,
+            thumbnail: null,
+            data: s
+        }))
     },
 
     // --- SCRIPTURES ---
@@ -156,13 +183,72 @@ export const Scanners = {
                 const content = JSON.parse(fs.readFileSync(file.path, 'utf-8'))
                 return {
                     id: content.id || file.filename.replace('.json', ''),
-                    name: content.name,
-                    // Don't load full content into list, just metadata
-                    _filename: file.filename
+                    type: 'scripture',
+                    title: content.name,
+                    subtitle: 'Scripture',
+                    thumbnail: null,
+                    data: {
+                        filename: file.filename
+                    }
                 }
             } catch {
                 return null
             }
         }).filter(Boolean)
+    },
+
+    // --- AUDIO ---
+    scanAudio(dataDir) {
+        const dir = join(dataDir, 'media', 'audio')
+        const extensions = ['.mp3', '.wav', '.ogg', '.m4a']
+        const files = getFiles(dir, extensions)
+
+        return files.map(file => {
+            const urlPath = `/media/audio/${file.filename}`
+
+            let size = ''
+            try {
+                const stats = fs.statSync(file.path)
+                size = formatSize(stats.size)
+            } catch { }
+
+            return {
+                id: urlPath,
+                type: 'audio',
+                title: file.filename,
+                subtitle: size || 'Audio',
+                thumbnail: null,
+                data: {
+                    path: urlPath,
+                    filename: file.filename,
+                    size: size
+                }
+            }
+        })
+    },
+
+    // --- YOUTUBE ---
+    scanYouTube(dataDir) {
+        const dbPath = join(dataDir, 'media', 'youtube_links.json')
+        if (!fs.existsSync(dbPath)) return []
+
+        try {
+            const links = JSON.parse(fs.readFileSync(dbPath, 'utf-8'))
+            return links.map(link => ({
+                id: `youtube-${link.id}`,
+                type: 'video',
+                title: link.title || link.url,
+                subtitle: 'YouTube',
+                thumbnail: link.localThumbnail || link.thumbnail,
+                data: {
+                    isYouTube: true,
+                    path: link.url, // For YT, path is the URL
+                    thumbnail: link.localThumbnail || link.thumbnail
+                }
+            }))
+        } catch (e) {
+            console.warn('Failed to scan YouTube links', e)
+            return []
+        }
     }
 }

@@ -47,7 +47,7 @@ export function renderScheduleList(): string {
       <div class="${sectionClass}">
         <div class="${headerClass}">
             <div class="${headerSectionLeft}">
-                <span class="${headerIconClass}">${ICONS.calendar || '📅'}</span>
+                <span class="${headerIconClass}">${ICONS.calendar}</span>
                 <span class="${headerTitleClass}">SCHEDULE</span>
             </div>
             <div class="${headerCenterClass}">
@@ -68,7 +68,7 @@ export function renderScheduleList(): string {
     <div class="${sectionClass}">
       <div class="${headerClass}">
         <div class="${headerSectionLeft}">
-            <span class="${headerIconClass}">${ICONS.calendar || '📅'}</span>
+            <span class="${headerIconClass}">${ICONS.calendar}</span>
             <span class="${headerTitleClass}">SCHEDULE</span>
         </div>
         <div class="${headerCenterClass}">
@@ -81,38 +81,87 @@ export function renderScheduleList(): string {
       <div class="${bodyClass}">
         <div class="${songListClass}" id="schedule-song-list">
           ${schedule.items.map((item, index) => {
-    // Determine Title, Icon, and Extra Meta based on Type
-    let title = 'Unknown Item'
-    let icon = '?'
+    // Determine Title, Icon, and Extras based on Type
+    let title = item.title || 'Unknown Item'
+    // let subtitle = item.subtitle || '' // Unused
+    let icon: string = ICONS.file
     let extras = ''
-    const itemId = item.id || `item-${index}` // Fallback ID if missing
 
-    const isSelected = state.previewItem?.id === item.id || (state.previewItem?.type === 'song' && item.type === 'song' && state.previewItem.songId === item.songId)
-    const isLive = state.liveItem?.id === item.id || (state.liveItem?.type === 'song' && item.type === 'song' && state.liveItem.songId === item.songId)
-    // Note: The ID match is preferred. The songId fallback is for legacy transition.
+    // Check for Thumbnail
+    if (item.type === 'video' || item.type === 'image') {
+      if (item.thumbnail && !item.thumbnail.endsWith('.svg')) { // Avoid SVG icons being treated as images if passed in data
+        icon = `<img src="${item.thumbnail}" class="w-full h-full object-cover rounded-[2px]"/>`
+      }
+    }
+
+    const isSelected = state.previewItem?.id === item.id || (state.previewItem?.type === 'song' && item.type === 'song' && ((item.songId && state.previewItem.songId === item.songId) || (item.id && state.previewItem.id === item.id)))
+    const isLive = state.liveItem?.id === item.id || (state.liveItem?.type === 'song' && item.type === 'song' && ((item.songId && state.liveItem.songId === item.songId) || (item.id && state.liveItem.id === item.id)))
+
+
+    // ICONS mapping (Fallback)
+    if (icon === ICONS.file) {
+      const icons: Record<string, string> = {
+        song: ICONS.music,
+        video: ICONS.video,
+        image: ICONS.image,
+        slide: ICONS.slides,
+        scripture: ICONS.book,
+        audio: ICONS.sound
+      }
+      icon = icons[item.type] || ICONS.file
+    }
+
+    if (item.type === 'video' && item.isYouTube) icon = ICONS.youtube // Legacy check
+    if (item.type === 'video' && item.settings?.isCanvaSlide) {
+      extras += '<span class="text-[0.6rem] opacity-50 ml-1">SLIDE</span>'
+      // icon = ICONS.slides // Keep thumbnail if exists
+    }
+
+    // File Size Metadata (Media)
+    if (['video', 'image', 'audio'].includes(item.type) && item.data?.size) {
+      extras += `<span class="text-[0.6rem] text-text-muted opacity-70 ml-2 border border-border-color px-1 rounded">${item.data.size}</span>`
+    }
 
     if (item.type === 'song') {
-      const song = songs.find(s => s.id === item.songId)
-      title = song ? song.title : `Song #${item.songId}`
-      icon = '🎵' // ICONS.music
+      // Logic for variations
+      let vName = 'Default'
+      let arrangement: string[] = []
 
-      if (song && song.variations && song.variations.length > 0) {
-        const selectedVar = song.variations.find(v => String(v.id) === String(item.variationId))
-        extras = `<span class="${variationBadgeClass} variation-badge" title="Click to change">${selectedVar?.name || 'Default'}</span>`
+      if (item.data && item.data.variations) {
+        const v = item.data.variations.find((v: any) => String(v.id) === String(item.variationId || item.settings?.variationId)) || item.data.variations[0]
+        if (v) {
+          vName = v.name
+          arrangement = v.arrangement || []
+        }
+      } else if (item.songId) {
+        const s = songs.find(s => s.id === item.songId)
+        const v = s?.variations?.find(v => String(v.id) === String(item.variationId)) || s?.variations?.[0]
+        if (v) {
+          vName = v.name
+          arrangement = v.arrangement || []
+        }
       }
-    } else if (item.type === 'video') {
-      title = item.name || 'Video'
-      icon = item.isYouTube ? '▶️' : '🎥'
-      if (item.settings?.isCanvaSlide) extras += '<span class="text-[0.6rem] opacity-50 ml-1">SLIDE</span>'
-    } else if (item.type === 'image') {
-      title = item.name || 'Image'
-      icon = '🖼️'
-    } else if (item.type === 'presentation') {
-      title = item.title || 'Presentation'
-      icon = '📊'
-    } else if (item.type === 'scripture') {
-      title = item.reference || 'Scripture'
-      icon = '📖'
+
+      // Render Arrangement Pills if available
+      if (arrangement.length > 0) {
+        const preview = arrangement.slice(0, 6).map(p => {
+          const map: Record<string, string> = { 'Verse 1': 'V1', 'Verse 2': 'V2', 'Chorus': 'C', 'Bridge': 'B' }
+          let label = map[p] || p.substring(0, 2).toUpperCase()
+          if (p.startsWith('Verse ')) label = 'V' + p.replace('Verse ', '')
+          if (p === 'Chorus') label = 'C'
+          if (p === 'Bridge') label = 'B'
+          return `<span class="px-[3px] text-[0.6rem] bg-bg-primary rounded text-text-secondary border border-border-color leading-tight">${label}</span>`
+        }).join('')
+        extras = `<div class="flex items-center gap-[2px] ml-2 opacity-90 variation-badge cursor-pointer" title="Variation: ${vName}">${preview}${arrangement.length > 6 ? '<span class="text-[0.6rem] text-text-muted">...</span>' : ''}</div>`
+      } else {
+        // Fallback to simple badge
+        extras = `<span class="${variationBadgeClass} variation-badge" title="Click to change">${vName}</span>`
+      }
+    }
+
+    // Slide count badge
+    if (item.type === 'slide' && item.data?.slides) {
+      extras += `<span class="text-[0.6rem] text-text-muted opacity-70 ml-2 border border-border-color px-1 rounded">${item.data.slides.length} slides</span>`
     }
 
     // Construct final classes
@@ -122,7 +171,7 @@ export function renderScheduleList(): string {
               <div class="song-item compact ${finalItemClass}" 
                       data-index="${index}"
                       draggable="true">
-                <span class="${typeIconClass}">${icon}</span>
+                <span class="${typeIconClass} ${item.type === 'video' || item.type === 'image' ? 'w-6 h-4' : ''}">${icon}</span>
                 <span class="${titleClass}">${title}</span>
                 <div class="song-meta ${metaClass}">
                    ${extras}

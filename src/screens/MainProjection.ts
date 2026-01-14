@@ -15,7 +15,7 @@ let _currentMediaElement: HTMLVideoElement | null = null
 let _mediaListeners: { [key: string]: EventListener } = {}
 let _stateUnsubscribe: (() => void) | null = null
 
-function setupMediaListeners(): void {
+export function setupMediaListeners(): void {
     // Clean up old listeners
     if (_currentMediaElement) {
         Object.entries(_mediaListeners).forEach(([event, handler]) => {
@@ -29,19 +29,21 @@ function setupMediaListeners(): void {
         _stateUnsubscribe = null
     }
 
-    const videoEl = document.querySelector('.content-overlay video') as HTMLVideoElement
-    if (!videoEl) return
+    const mediaEl = (document.querySelector('.content-overlay video') || document.querySelector('.content-overlay audio')) as HTMLMediaElement
+    if (!mediaEl) return
 
-    _currentMediaElement = videoEl
+    _currentMediaElement = mediaEl as any // Cast to any or specialized type diff if needed, but EventListener is generic
 
     // Define handlers
     const onTimeUpdate = () => {
-        const currentTime = videoEl.currentTime
-        const duration = videoEl.duration
+        const currentTime = mediaEl.currentTime
+        const duration = mediaEl.duration
         const { liveItem, liveMediaState } = state
 
-        // Canva Slide Logic
+        // Canva Slide Logic (Video specific)
         if (liveItem?.type === 'video' && liveItem.settings?.isCanvaSlide && liveItem.settings.canvaHoldPoint) {
+            const videoEl = mediaEl as HTMLVideoElement
+
             const holdPoint = liveItem.settings.canvaHoldPoint
             const isHolding = liveMediaState.isCanvaHolding
 
@@ -61,7 +63,7 @@ function setupMediaListeners(): void {
         socketService.updateMediaState({
             currentTime,
             duration,
-            isPlaying: !videoEl.paused
+            isPlaying: !mediaEl.paused
         })
     }
 
@@ -77,14 +79,14 @@ function setupMediaListeners(): void {
     }
 
     const onEnded = () => {
-        socketService.updateMediaState({ isPlaying: false, currentTime: videoEl.duration })
+        socketService.updateMediaState({ isPlaying: false, currentTime: mediaEl.duration })
     }
 
     // Attach
-    videoEl.addEventListener('timeupdate', onTimeUpdate)
-    videoEl.addEventListener('play', onPlay)
-    videoEl.addEventListener('pause', onPause)
-    videoEl.addEventListener('ended', onEnded)
+    mediaEl.addEventListener('timeupdate', onTimeUpdate)
+    mediaEl.addEventListener('play', onPlay)
+    mediaEl.addEventListener('pause', onPause)
+    mediaEl.addEventListener('ended', onEnded)
 
     // Store for cleanup
     _mediaListeners = {
@@ -110,10 +112,10 @@ function setupMediaListeners(): void {
 
         if (changes.includes('liveMediaState' as any) || changes.includes('live')) {
             const shouldBePlaying = state.liveMediaState.isPlaying
-            if (shouldBePlaying && videoEl.paused) {
-                videoEl.play().catch(() => { })
-            } else if (!shouldBePlaying && !videoEl.paused) {
-                videoEl.pause()
+            if (shouldBePlaying && mediaEl.paused) {
+                mediaEl.play().catch(() => { })
+            } else if (!shouldBePlaying && !mediaEl.paused) {
+                mediaEl.pause()
             }
         }
     })
@@ -175,14 +177,17 @@ export function buildMainProjectionHTML(): string {
                         // TODO: Robust YouTube parsing.
                         contentHTML = `<iframe class="w-full h-full" src="${liveItem.url}?autoplay=1&controls=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`
                     } else {
-                        contentHTML = `<video class="w-full h-full object-contain" src="${liveItem.url}" autoplay ${liveItem.loop ? 'loop' : ''} playsinline></video>`
+                        // Cast to any for loop property which is not on ScheduleItem interface currently
+                        contentHTML = `<video class="w-full h-full object-contain" src="${liveItem.url}" autoplay ${(liveItem as any).loop ? 'loop' : ''} playsinline></video>`
                     }
                     break
 
-                case 'presentation':
+                case 'slide':
                     // Render current slide
                     const slideIndex = (livePosition as any).index || 0
-                    const slide = liveItem.slides[slideIndex]
+                    // Cast to any because generic ProjectableItem doesn't define 'slides' array structure strictly yet
+                    const itemData = liveItem as any
+                    const slide = itemData.slides ? itemData.slides[slideIndex] : null
                     if (slide) {
                         if (slide.type === 'image') {
                             contentHTML = `<div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('${slide.content}');"></div>`
@@ -193,11 +198,12 @@ export function buildMainProjectionHTML(): string {
                     break
 
                 case 'scripture':
+                    const scripItem = liveItem as any
                     contentHTML = `
                         <div class="flex flex-col items-center justify-center h-full text-white p-20 text-center">
-                             <div class="text-4xl mb-8">${liveItem.reference}</div>
+                             <div class="text-4xl mb-8">${scripItem.reference}</div>
                              <div class="text-6xl font-serif leading-tight">
-                                "${liveItem.verses.map(v => v.text).join(' ')}"
+                                "${scripItem.verses.map((v: any) => v.text).join(' ')}"
                              </div>
                         </div>
                      `
@@ -301,19 +307,36 @@ export function updateDisplayMode(): void {
                     if (isYouTube) {
                         contentHTML = `<iframe class="w-full h-full" src="${liveItem.url}?autoplay=1&controls=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`
                     } else {
-                        contentHTML = `<video class="w-full h-full object-contain" src="${liveItem.url}" autoplay ${liveItem.loop ? 'loop' : ''} playsinline></video>`
+                        // Cast to any for loop property which is not on ScheduleItem interface currently
+                        contentHTML = `<video class="w-full h-full object-contain" src="${liveItem.url}" autoplay ${(liveItem as any).loop ? 'loop' : ''} playsinline></video>`
                     }
                     break
-                case 'presentation':
-                    const slideIndex = (livePosition as any).index || 0
-                    const slide = liveItem.slides[slideIndex]
-                    if (slide) {
-                        if (slide.type === 'image') contentHTML = `<div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('${slide.content}');"></div>`
-                        else if (slide.type === 'text') contentHTML = `<div class="flex items-center justify-center h-full text-white text-6xl font-bold p-10 text-center">${slide.content}</div>`
+                case 'slide':
+                    const slideIndex2 = (livePosition as any).index || 0
+                    const itemData2 = liveItem as any
+                    const slide2 = itemData2.slides ? itemData2.slides[slideIndex2] : null
+                    if (slide2) {
+                        if (slide2.type === 'image') contentHTML = `<div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('${slide2.content}');"></div>`
+                        else if (slide2.type === 'text') contentHTML = `<div class="flex items-center justify-center h-full text-white text-6xl font-bold p-10 text-center">${slide2.content}</div>`
                     }
                     break
                 case 'scripture':
-                    contentHTML = `<div class="flex flex-col items-center justify-center h-full text-white p-20 text-center"><div class="text-4xl mb-8">${liveItem.reference}</div><div class="text-6xl font-serif leading-tight">"${liveItem.verses.map(v => v.text).join(' ')}"</div></div>`
+                    const sItem = liveItem as any
+                    contentHTML = `<div class="flex flex-col items-center justify-center h-full text-white p-20 text-center"><div class="text-4xl mb-8">${sItem.reference}</div><div class="text-6xl font-serif leading-tight">"${sItem.verses.map((v: any) => v.text).join(' ')}"</div></div>`
+                    break
+                case 'audio':
+                    // Audio Visualization (Minimal)
+                    // Use 'sound' icon SVG inline here or from ICONS? importing ICONS in MainProjection might be nice but constants are usually available.
+                    // But MainProjection.ts doesn't import ICONS.
+                    // I'll use a generic SVG for now.
+                    const soundIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>'
+                    contentHTML = `
+                        <div class="flex flex-col items-center justify-center h-full text-white p-20 text-center">
+                             <div class="text-white/50 mb-8 animate-pulse">${soundIcon}</div>
+                             <div class="text-4xl font-bold">${liveItem.title}</div>
+                             <audio class="hidden" src="${liveItem.url}" autoplay></audio>
+                        </div>
+                     `
                     break
             }
         }
@@ -328,12 +351,29 @@ export function updateDisplayMode(): void {
 
     if (useTransition && document.startViewTransition) {
         document.documentElement.style.setProperty('--view-transition-duration', `${duration}s`)
-        document.startViewTransition(() => updateHTML(overlay, contentHTML))
+        document.startViewTransition(() => {
+            updateHTML(overlay, contentHTML)
+            setupMediaListeners() // Re-attach listeners after DOM update
+        })
     } else {
         updateHTML(overlay, contentHTML)
+        setupMediaListeners() // Re-attach listeners after DOM update
     }
 
     if (displayMode === 'logo') setupVideoAutoplay()
+}
+
+export function updateLiveContent(): void {
+    const { liveItem } = state
+    const lyricsEl = document.querySelector('.will-change-contents') as HTMLElement
+
+    // If we are showing lyrics and the new item is ALSO a song, we can try to use the optimized update
+    if (lyricsEl && liveItem?.type === 'song') {
+        updateLyricsDisplay()
+    } else {
+        // Structure changed or not a song, full rewrite
+        updateDisplayMode()
+    }
 }
 
 export function updateBackgroundVideo(): void {
@@ -420,7 +460,7 @@ export function updateLyricsDisplay(): void {
     const lyricsEl = document.querySelector('.will-change-contents') as HTMLElement
 
     if (lyricsEl && displayMode === 'lyrics' && liveSong) {
-        const lyricsText = getSlideText(liveSong, liveVariation, livePosition) || ''
+        const lyricsText = getSlideText(liveSong, liveVariation, livePosition as any) || ''
 
         const updateDOM = () => {
             const lines = lyricsText ? lyricsText.split('\n') : []

@@ -41,8 +41,8 @@
   },
   "currentSchedule": "2026-01-10",
   "layoutSettings": {
-    "songsColumnWidth": 378,
-    "scheduleSectionHeight": 399,
+    "songsColumnWidth": 418,
+    "scheduleSectionHeight": 391,
     "librarySectionHeight": null,
     "backgroundsSectionHeight": 290,
     "thumbnailSize": 210,
@@ -54,7 +54,7 @@
       "height": 768
     },
     "mainProjectionStaticMode": false,
-    "monitorColumnWidth": 422
+    "monitorColumnWidth": 370
   },
   "backgroundVideo": "/media/red_bokeh.mp4",
   "previewBackground": "/media/red_bokeh.mp4",

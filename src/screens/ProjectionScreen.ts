@@ -10,8 +10,9 @@ import { subscribeToState, StateChangeKey } from '../state'
 import {
   buildMainProjectionHTML,
   setupVideoAutoplay,
+  setupMediaListeners,
   setupMarginMarkersListener,
-  updateLyricsDisplay,
+  updateLiveContent,
   updateBackgroundVideo,
   updateDisplayMode,
   updateLyricsStyle,
@@ -52,7 +53,8 @@ export function renderProjectionScreen(screenType: ScreenType): void {
     app.innerHTML = buildMainProjectionHTML()
     setupMainProjectionUpdates()
     setupMarginMarkersListener()
-    setupVideoAutoplay() // Main screen needs autoplay more urgently
+    setupVideoAutoplay()
+    setupMediaListeners() // Initialize listeners for any starting media
   }
 
   // Setup fullscreen button
@@ -81,8 +83,9 @@ function setupMainProjectionUpdates(): void {
     if (!isInitialized) return
 
     // Update only what changed
+    // Update live content (smart switch between lyrics and others)
     if (changedKeys.includes('live') || changedKeys.includes('displayMode')) {
-      updateLyricsDisplay()
+      updateLiveContent()
     }
     if (changedKeys.includes('backgroundVideo')) {
       updateBackgroundVideo()

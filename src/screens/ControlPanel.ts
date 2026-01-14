@@ -17,7 +17,7 @@ import { toggleShortcutsModal } from '../components/modals'
 
 
 import {
-  renderSongListColumn,
+  renderLibraryColumn,
   renderProjectionControlColumn,
   renderOutputMonitorColumn,
   renderPreviewColumn,
@@ -28,7 +28,7 @@ import {
   renderLibraryList,
   initLibraryListListeners,
 
-  initSongListListeners,
+  initLibraryColumnListeners,
   initProjectionControlListeners,
   initOutputMonitorListeners,
   initPreviewListeners,
@@ -279,7 +279,7 @@ function buildControlPanelHTML(): string {
   return `
     <div class="w-full h-full flex flex-col items-stretch overflow-hidden bg-bg-primary text-text-primary control-panel no-navbar">
       <div class="flex-1 flex overflow-hidden min-h-0 cp-main" style="--song-list-width: ${activeSongListWidth}px; --monitor-column-width: ${activeMonitorColumnWidth}px;">
-        ${renderSongListColumn()}
+        ${renderLibraryColumn()}
         <div class="${resizerClass}" id="cp-resizer"></div>
         ${renderProjectionControlColumn()}
         <div class="${resizerClass}" id="cp-resizer-monitors"></div>
@@ -293,7 +293,7 @@ function buildControlPanelHTML(): string {
  * Attach event listeners to the control panel
  */
 function attachControlPanelListeners(): void {
-  initSongListListeners()
+  initLibraryColumnListeners()
   initProjectionControlListeners()
 
   // Settings button listener removed as it's now in SongListColumn

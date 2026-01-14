@@ -29,7 +29,7 @@ class SocketService {
       console.log('[Socket] Disconnected from server')
     })
 
-    this.socket.on('slide-updated', (data: SlideUpdate & { previousSong?: any, previousVariation?: number, previousPosition?: any, liveMediaState?: any }) => {
+    this.socket.on('slide-updated', (data: SlideUpdate & { previousItem?: any, previousSong?: any, previousVariation?: number, previousPosition?: any, liveMediaState?: any }) => {
       this.notifyStateUpdate({
         liveSong: data.song,
         liveVariation: data.variation,

@@ -28,9 +28,12 @@ export async function addItemToSchedule(item: ScheduleItem): Promise<void> {
  * Helper: Add a song to the schedule
  */
 export async function addSongToSchedule(songId: number, variationId: number | string = 'default'): Promise<void> {
+    const song = state.songs.find(s => s.id === songId)
     await addItemToSchedule({
         id: crypto.randomUUID(), // Generate unique ID for the schedule item itself
         type: 'song',
+        title: song ? song.title : 'Song',
+        subtitle: song?.artist,
         songId,
         variationId
     })

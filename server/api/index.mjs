@@ -4,6 +4,8 @@ import { mediaRoutes } from './media.mjs'
 import { settingsRoutes } from './settings.mjs'
 import { slidesRoutes } from './slides.mjs'
 import { scripturesRoutes } from './scriptures.mjs'
+import { libraryRoutes } from './library.mjs'
+import { uploadRoutes } from './upload.mjs'
 import { join } from 'path'
 import fs from 'fs'
 import { sanitizeFilename } from './utils.mjs'
@@ -22,7 +24,9 @@ function ensureDirs(dataDir) {
         join(dataDir, 'media', 'background_videos', 'thumbnails'),
         join(dataDir, 'media', 'content_videos'),
         join(dataDir, 'media', 'background_images'),
+        join(dataDir, 'media', 'background_images'),
         join(dataDir, 'media', 'content_images'),
+        join(dataDir, 'media', 'audio'),
         join(dataDir, 'media', 'content_videos', 'thumbnails'),
         join(dataDir, 'slides', 'local_slides'),
         join(dataDir, 'slides', 'image_slides'),
@@ -102,5 +106,7 @@ export function setupRoutes(app, __dirname) {
     app.use('/api/scriptures', scripturesRoutes(dataDir))
     app.use('/api', mediaRoutes(dataDir))
     app.use('/api', settingsRoutes(dataDir))
+    app.use('/api', libraryRoutes(dataDir))
+    app.use('/api', uploadRoutes(dataDir))
 }
 

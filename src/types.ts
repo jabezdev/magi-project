@@ -9,14 +9,19 @@ export interface TransitionSettings {
 
 // === MEDIA TYPES ===
 
-export type MediaType = 'song' | 'video' | 'image' | 'presentation' | 'scripture'
+// === MEDIA TYPES (Unified) ===
+export type MediaType = 'song' | 'video' | 'image' | 'slide' | 'scripture' | 'audio'
 
-export interface BaseMediaItem {
+export interface ProjectableItem {
   id: string
   type: MediaType
+  title: string
+  subtitle?: string
+  thumbnail?: string
+  data?: any // Type-specific original metadata
 }
 
-// Song Part Types
+// === SUPPORT TYPES ===
 export type PartType = string
 
 export interface SongPart {
@@ -39,57 +44,17 @@ export interface Song {
   variations: SongVariation[]
 }
 
-export interface SongItem extends BaseMediaItem {
-  type: 'song'
-  songId: number
-  variationId: number | string // 'default' or specific ID
-}
+// Schedule Item is essentially a ProjectableItem with potential override settings
+export interface ScheduleItem extends ProjectableItem {
+  settings?: any // Overrides (e.g. specific song key, video loop match)
 
-export interface VideoItem extends BaseMediaItem {
-  type: 'video'
-  name: string
-  url: string // Path or YouTube URL
-  isYouTube: boolean
-  thumbnail?: string
-  loop: boolean
-  settings?: {
-    isCanvaSlide?: boolean
-    canvaHoldPoint?: number // Seconds
-  }
+  // Legacy compatibility fields (optional, for migration)
+  songId?: number
+  variationId?: number | string
+  name?: string
+  url?: string
+  isYouTube?: boolean
 }
-
-export interface ImageItem extends BaseMediaItem {
-  type: 'image'
-  name: string
-  url: string
-  thumbnail?: string
-}
-
-export interface SlideContent {
-  type: 'text' | 'image' | 'video'
-  content: string // Text string or URL
-  style?: string // JSON string for styles
-}
-
-export interface PresentationItem extends BaseMediaItem {
-  type: 'presentation'
-  title: string
-  slides: SlideContent[]
-}
-
-export interface ScriptureItem extends BaseMediaItem {
-  type: 'scripture'
-  reference: string
-  translation: string
-  verses: {
-    book: string
-    chapter: number
-    verse: number
-    text: string
-  }[]
-}
-
-export type ScheduleItem = SongItem | VideoItem | ImageItem | PresentationItem | ScriptureItem
 
 // === SCHEDULE ===
 

@@ -126,6 +126,7 @@ export async function fetchScheduleList(): Promise<{ name: string; filename: str
 export async function fetchScheduleByName(name: string): Promise<Schedule | null> {
   try {
     const response = await fetch(`${getApiBaseUrl()}/schedules/${encodeURIComponent(name)}`)
+    if (response.status === 404) return null // Expected if schedule doesn't exist
     if (!response.ok) throw new Error('Failed to fetch schedule')
     return await response.json()
   } catch (error) {
@@ -237,4 +238,71 @@ export async function saveSettings(settings: Partial<ServerSettings>): Promise<v
 export async function fetchLyrics(): Promise<any> {
   console.warn('fetchLyrics is deprecated')
   return { sets: [] }
+}
+
+/**
+ * == LIBRARY FUNCTIONS ==
+ */
+
+import type { ProjectableItem } from '../types'
+
+export async function fetchLibrary(): Promise<ProjectableItem[]> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/library`)
+    if (!response.ok) throw new Error('Failed to fetch library')
+    return await response.json()
+  } catch (error) {
+    console.error('API Error - fetchLibrary:', error)
+    return []
+  }
+}
+
+export async function searchLibrary(query: string): Promise<ProjectableItem[]> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/library/search?q=${encodeURIComponent(query)}`)
+    if (!response.ok) throw new Error('Failed to search library')
+    return await response.json()
+  } catch (error) {
+    console.error('API Error - searchLibrary:', error)
+    return []
+  }
+}
+
+/**
+ * Upload a file
+ */
+export async function uploadFile(file: File, target: string): Promise<{ success: boolean; filename: string } | null> {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('target', target)
+
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/upload`, {
+      method: 'POST',
+      body: formData
+    })
+    if (!response.ok) throw new Error('Failed to upload file')
+    return await response.json()
+  } catch (error) {
+    console.error('API Error - uploadFile:', error)
+    return null
+  }
+}
+
+/**
+ * Add a YouTube Link
+ */
+export async function addYouTubeLink(url: string): Promise<{ success: boolean; item?: any } | null> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/media/youtube`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    })
+    if (!response.ok) throw new Error('Failed to add YouTube link')
+    return await response.json()
+  } catch (error) {
+    console.error('API Error - addYouTubeLink:', error)
+    return null
+  }
 }

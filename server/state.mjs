@@ -12,15 +12,18 @@ const savedSettings = loadSettingsFromFile()
 
 // ============ SHARED STATE ============
 // This state is synchronized across all connected clients
-// ============ SHARED STATE ============
-// This state is synchronized across all connected clients
 export const sharedState = {
-    // Generic Item State
+    // Generic Item State (Pointers from Schedule)
     liveItem: null, // ScheduleItem
     previewItem: null, // ScheduleItem
     previousLiveItem: null, // ScheduleItem
 
-    // Song Specific State (Hydrated if item is song)
+    // Active Content State (Hydrated)
+    liveItemId: null,
+    liveItemType: null,
+    liveContent: null, // The full hydrated object (Song, Video, etc.)
+
+    // Song Specific State (Legacy/Deprecated - kept for fallback)
     liveSong: null,
     liveVariation: 0,
     livePosition: { partIndex: 0, slideIndex: 0 },

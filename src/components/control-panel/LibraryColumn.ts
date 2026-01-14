@@ -1,16 +1,8 @@
 import { renderScheduleList, initScheduleListListeners } from './ScheduleList'
-import { renderLibraryList, initLibraryListListeners } from './SongsTab'
-import { renderMediaLibraryList, initMediaLibraryListeners } from './MediaTab'
-import { renderScripturePicker, initScripturePickerListeners } from './BibleTab'
-import { renderPresentationsTab, initPresentationsTabListeners } from './PresentationsTab'
-import { ICONS } from '../../constants'
-
+import { renderUnifiedLibrary, initUnifiedLibraryListeners } from './UnifiedLibrary'
 import { state, saveLayoutSettings } from '../../state'
 
-// Track active tab
-let activeTab = localStorage.getItem('magi_active_library_tab') || 'songs'
-
-export function renderSongListColumn(): string {
+export function renderLibraryColumn(): string {
   // Inline Tailwind Classes
   const columnClass = "flex flex-col bg-bg-primary overflow-hidden min-w-0 cp-songs"
   const columnBodyClass = "flex-1 overflow-y-auto p-0 flex flex-col"
@@ -23,20 +15,8 @@ export function renderSongListColumn(): string {
         <div class="${resizerClass}" data-resize="schedule-library"></div>
         
         <div class="flex flex-col flex-1 min-h-0 library-wrapper" id="library-wrapper">
-             ${renderTabsHeader()}
-             <div class="flex-1 min-h-0 relative bg-bg-tertiary/30">
-                <div class="absolute inset-0 ${activeTab === 'songs' ? '' : 'hidden'} tab-content" id="tab-songs">
-                    ${renderLibraryList()}
-                </div>
-                <div class="absolute inset-0 ${activeTab === 'media' ? '' : 'hidden'} tab-content" id="tab-media">
-                    ${renderMediaLibraryList()}
-                </div>
-                <div class="absolute inset-0 ${activeTab === 'presentations' ? '' : 'hidden'} tab-content" id="tab-presentations">
-                    ${renderPresentationsTab()}
-                </div>
-                <div class="absolute inset-0 ${activeTab === 'bible' ? '' : 'hidden'} tab-content" id="tab-bible">
-                    ${renderScripturePicker()}
-                </div>
+             <div class="flex-1 min-h-0 relative library-content-area">
+                ${renderUnifiedLibrary()}
              </div>
         </div>
       </div>
@@ -44,80 +24,11 @@ export function renderSongListColumn(): string {
   `
 }
 
-function renderTabsHeader(): string {
-  const tabs = [
-    { id: 'songs', icon: ICONS.music, label: 'Songs' },
-    { id: 'media', icon: ICONS.video, label: 'Media' },
-    { id: 'presentations', icon: ICONS.screen, label: 'Presentations' },
-    { id: 'bible', icon: ICONS.book, label: 'Bible' }
-  ]
-
-  const headerClass = "flex items-center justify-between bg-bg-secondary border-b border-border-color h-[40px] px-2 shrink-0 select-none gap-2"
-  // Use button style like Display Controls (rounded, icon center)
-  const tabClass = "flex-1 h-[28px] max-w-[60px] flex items-center justify-center rounded text-text-muted hover:bg-bg-hover hover:text-text-primary transition-all cursor-pointer border border-transparent"
-  const activeClass = "bg-accent-primary text-white hover:bg-accent-primary hover:text-white border-accent-primary shadow-sm"
-
-  return `
-        <div class="${headerClass}">
-            <div class="flex items-center justify-center gap-1 w-full">
-            ${tabs.map(t => `
-                <div class="${tabClass} ${activeTab === t.id ? activeClass : ''} library-tab" data-tab="${t.id}" title="${t.label}">
-                    <span class="w-[16px] h-[16px]">${t.icon}</span>
-                </div>
-            `).join('')}
-            </div>
-        </div>
-    `
-}
-
-export function initSongListListeners(): void {
+export function initLibraryColumnListeners(): void {
   initScheduleListListeners()
-
-  // Init all sub-components
-  initLibraryListListeners()
-  initMediaLibraryListeners()
-  initScripturePickerListeners()
-  initPresentationsTabListeners()
-
-  // Tabs
-  initTabsListeners()
-
+  initUnifiedLibraryListeners()
   initSectionResizers()
   applySavedLayoutSettings()
-}
-
-function initTabsListeners(): void {
-  const tabs = document.querySelectorAll('.library-tab')
-
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      const tabId = tab.getAttribute('data-tab') || 'songs'
-      setActiveTab(tabId)
-    })
-  })
-}
-
-function setActiveTab(tabId: string): void {
-  activeTab = tabId
-  localStorage.setItem('magi_active_library_tab', tabId)
-
-  // Update Header
-  const activeClassTokens = ['bg-accent-primary', 'text-white', 'hover:bg-accent-primary', 'hover:text-white', 'border-accent-primary', 'shadow-sm']
-
-  document.querySelectorAll('.library-tab').forEach(t => {
-    const id = t.getAttribute('data-tab')
-    if (id === tabId) {
-      t.classList.add(...activeClassTokens)
-    } else {
-      t.classList.remove(...activeClassTokens)
-    }
-  })
-
-  // Update Content
-  document.querySelectorAll('.tab-content').forEach(c => {
-    c.classList.add('hidden')
-  })
-  document.getElementById(`tab-${tabId}`)?.classList.remove('hidden')
 }
 
 function applySavedLayoutSettings(): void {
@@ -145,7 +56,6 @@ function saveCurrentLayout(): void {
   saveLayoutSettings({
     ...state.layoutSettings,
     scheduleSectionHeight: scheduleSection?.offsetHeight || null,
-    // we don't save library height as it's flex-1
   })
 }
 
@@ -198,40 +108,16 @@ function initSectionResizers(): void {
   })
 }
 
-/**
- * Update the selection state in the song lists without full re-render
- */
+// UI Helpers (Legacy stub or updated?)
+// The UnifiedLibrary handles its own selection UI classes if needed. 
+// But if global state changes selection, we might need these.
+// For now, let's keep them as no-ops or simple compat.
+
 export function updateSongSelectionUI(): void {
-  const selectedId = state.previewSong?.id
-
-  // Tailwind classes for selected state
-  const selectedClasses = ['border-accent-primary', 'bg-indigo-500/10']
-
-  document.querySelectorAll('.song-item').forEach(el => {
-    const id = parseInt(el.getAttribute('data-song-id') || '0')
-    if (id === selectedId) {
-      el.classList.add('selected', ...selectedClasses)
-    } else {
-      el.classList.remove('selected', ...selectedClasses)
-    }
-  })
+  // TODO: Implement for unified library
 }
 
-/**
- * Update the live state in the song lists without full re-render
- */
 export function updateLiveStatusUI(): void {
-  const liveId = state.liveSong?.id
-
-  // Tailwind classes for live state
-  const liveClasses = ['border-live-red', 'bg-red-600/10']
-
-  document.querySelectorAll('.song-item').forEach(el => {
-    const id = parseInt(el.getAttribute('data-song-id') || '0')
-    if (id === liveId) {
-      el.classList.add('live', ...liveClasses)
-    } else {
-      el.classList.remove('live', ...liveClasses)
-    }
-  })
+  // TODO: Implement for unified library
 }
+

@@ -22,7 +22,7 @@ function autoResize(textarea: HTMLTextAreaElement): void {
     textarea.style.height = Math.max(100, textarea.scrollHeight) + 'px'
 }
 
-export async function openSongEditor(songId?: number): Promise<void> {
+export async function openSongEditor(songId?: number, onSave?: () => void): Promise<void> {
     // Load song data if editing, else create new
     let song: Song
     if (songId) {
@@ -672,6 +672,7 @@ export async function openSongEditor(songId?: number): Promise<void> {
             updateState({ songs })
 
             setTimeout(closeModal, 800)
+            if (onSave) onSave()
         } catch (e) {
             status.textContent = 'Error saving song. Please try again.'
             status.className = 'text-center text-xs h-4 mt-1 text-danger'
