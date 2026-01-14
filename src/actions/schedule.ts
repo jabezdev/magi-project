@@ -19,6 +19,8 @@ export async function addItemToSchedule(item: ScheduleItem): Promise<void> {
     try {
         updateState({ schedule: newSchedule })
         await saveSchedule(newSchedule, scheduleName)
+        // Dispatch event for UI auto-scroll
+        window.dispatchEvent(new CustomEvent('schedule-item-added'))
     } catch (e) {
         console.error('Failed to add to schedule', e)
     }
@@ -29,13 +31,27 @@ export async function addItemToSchedule(item: ScheduleItem): Promise<void> {
  */
 export async function addSongToSchedule(songId: number, variationId: number | string = 'default'): Promise<void> {
     const song = state.songs.find(s => s.id === songId)
+    // Resolve variation ID
+    let resolvedVariationId: number = 0
+    if (typeof variationId === 'number') {
+        resolvedVariationId = variationId
+    } else {
+        // Default to first variation or find one named 'Default' 
+        // For now, if string 'default' or unknown, use 0 or the first one available
+        if (song?.variations && song.variations.length > 0) {
+            resolvedVariationId = song.variations[0].id
+        } else {
+            resolvedVariationId = 0
+        }
+    }
+
     await addItemToSchedule({
         id: crypto.randomUUID(), // Generate unique ID for the schedule item itself
         type: 'song',
         title: song ? song.title : 'Song',
         subtitle: song?.artist,
         songId,
-        variationId
+        variationId: resolvedVariationId
     })
 }
 
@@ -72,7 +88,7 @@ export async function updateScheduleItem(index: number, updates: Partial<Schedul
     if (index < 0 || index >= currentSchedule.items.length) return
 
     const newItems = [...currentSchedule.items]
-    newItems[index] = { ...newItems[index], ...updates }
+    newItems[index] = { ...newItems[index], ...updates } as ScheduleItem
 
     const newSchedule: Schedule = {
         ...currentSchedule,

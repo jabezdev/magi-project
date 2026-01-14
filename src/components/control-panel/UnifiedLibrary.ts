@@ -1,7 +1,8 @@
 
 import { ICONS } from '../../constants'
 import { state } from '../../state'
-import { openSongEditor, openSlideDeckEditor } from '../modals'
+import { showToast } from '../common/Toast'
+import { openSongEditor, openSlideDeckEditor, openVideoEditor, openImageEditor } from '../modals'
 import { searchLibrary, fetchLibrary, uploadFile, uploadFiles, addYouTubeLink } from '../../services/api'
 import { addItemToSchedule } from '../../actions'
 import type { ProjectableItem, MediaType } from '../../types'
@@ -574,6 +575,7 @@ function attachListListeners(container: HTMLElement) {
                 const scheduleItem = { ...item }
                 // @ts-ignore
                 addItemToSchedule(scheduleItem)
+                showToast('Added to schedule')
             }
 
         })
@@ -592,6 +594,18 @@ function attachListListeners(container: HTMLElement) {
                     })
                 } else if (item.type === 'slide') {
                     openSlideDeckEditor(item, async () => {
+                        const items = await fetchLibrary()
+                        libraryItems = items
+                        updateListDOM()
+                    })
+                } else if (item.type === 'video') {
+                    openVideoEditor(item as import('../../types').VideoItem, async () => {
+                        const items = await fetchLibrary()
+                        libraryItems = items
+                        updateListDOM()
+                    })
+                } else if (item.type === 'image') {
+                    openImageEditor(item as import('../../types').ImageItem, async () => {
                         const items = await fetchLibrary()
                         libraryItems = items
                         updateListDOM()

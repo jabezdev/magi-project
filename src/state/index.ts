@@ -5,7 +5,7 @@
  * Components can subscribe to specific state changes instead of full re-renders.
  */
 
-import type { AppState, DisplaySettings, ConfidenceMonitorSettings, LayoutSettings, Song, PartColorSettings } from '../types'
+import type { AppState, DisplaySettings, ConfidenceMonitorSettings, LayoutSettings, PartColorSettings } from '../types'
 import { DEFAULT_DISPLAY_SETTINGS, DEFAULT_CONFIDENCE_MONITOR_SETTINGS, DEFAULT_LAYOUT_SETTINGS, DEFAULT_BACKGROUND_VIDEO, DEFAULT_LOGO_MEDIA, STORAGE_KEYS, DEFAULT_PART_COLORS } from '../constants'
 import { socketService, saveSettings as saveSettingsToServer, fetchSettings } from '../services'
 
@@ -89,14 +89,6 @@ export const state: AppState = {
   previousContent: [],
   previousPosition: 0,
 
-  // Legacy song state (backward compatibility - TODO: remove after screen migration)
-  liveSong: null,
-  liveVariation: 0,
-  previewSong: null,
-  previewVariation: 0,
-  previousLiveSong: null,
-  previousLiveVariation: 0,
-
   backgroundVideo: DEFAULT_BACKGROUND_VIDEO,
   previewBackground: DEFAULT_BACKGROUND_VIDEO,
   availableVideos: [],
@@ -149,8 +141,8 @@ function getChangedGroups(updatedKeys: Array<keyof AppState>): StateChangeKey[] 
   const groups: StateChangeKey[] = [...updatedKeys]
 
   // Include both new unified keys and legacy keys for backward compatibility
-  const previewKeys: Array<keyof AppState> = ['previewItem', 'previewContent', 'previewPosition', 'previewSong', 'previewVariation']
-  const liveKeys: Array<keyof AppState> = ['liveItem', 'liveContent', 'livePosition', 'liveSong', 'liveVariation', 'previousItem', 'previousContent', 'previousPosition', 'previousLiveSong', 'previousLiveVariation']
+  const previewKeys: Array<keyof AppState> = ['previewItem', 'previewContent', 'previewPosition']
+  const liveKeys: Array<keyof AppState> = ['liveItem', 'liveContent', 'livePosition', 'previousItem', 'previousContent', 'previousPosition']
   const displayKeys: Array<keyof AppState> = ['displayMode', 'displaySettings', 'backgroundVideo', 'previewBackground', 'logoMedia']
   const dataKeys: Array<keyof AppState> = ['songs', 'schedule', 'lyricsData']
 
@@ -212,16 +204,8 @@ export function updateState(newState: Partial<AppState>, skipRender = false): vo
     // Custom equality checks
     let hasChanged = false
 
-    // Check for Songs (compare by ID)
-    if ((k === 'liveSong' || k === 'previewSong') && value && currentValue) {
-      const newSong = value as Song
-      const oldSong = currentValue as Song
-      if (newSong.id !== oldSong.id) {
-        hasChanged = true
-      }
-    }
     // Check for Layout settings (deep compare simplified)
-    else if (k === 'layoutSettings' && value && currentValue) {
+    if (k === 'layoutSettings' && value && currentValue) {
       if (JSON.stringify(value) !== JSON.stringify(currentValue)) {
         hasChanged = true
       }
@@ -295,7 +279,7 @@ export function savePartColors(settings: PartColorSettings): void {
   saveSettingsToServer({ partColors: settings } as any).catch(console.error)
 }
 
-export function saveCurrentScheduleName(name: string): void {
+export function saveCurrentScheduleName(_name: string): void {
   // Session only, not persisted to server anymore
 }
 

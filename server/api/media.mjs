@@ -289,7 +289,48 @@ export function mediaRoutes(dataDir) {
         }
     })
 
+    // Update Media Metadata
+    router.put('/media/:type/:filename/metadata', (req, res) => {
+        try {
+            const { type, filename } = req.params
+            const { metadata } = req.body
 
+            if (!metadata) return res.status(400).json({ error: 'Metadata required' })
+
+            const dir = join(dataDir, 'media', type)
+            const filePath = join(dir, filename)
+
+            if (fs.existsSync(filePath)) {
+                const metaPath = filePath + '.json'
+
+                // Merge if exists
+                let current = {}
+                if (fs.existsSync(metaPath)) {
+                    try { current = JSON.parse(fs.readFileSync(metaPath, 'utf-8')) } catch { }
+                }
+
+                const newMeta = { ...current, ...metadata }
+                fs.writeFileSync(metaPath, JSON.stringify(newMeta, null, 2))
+
+                // Refresh state
+                const items = Scanners.scanMedia(dataDir, type)
+                const stateKey = type.replace(/_([a-z])/g, g => g[1].toUpperCase())
+                if (sharedState.availableMedia[stateKey] !== undefined) {
+                    sharedState.availableMedia[stateKey] = items
+                }
+                if (type === 'background_videos') {
+                    sharedState.availableVideos = items
+                }
+
+                res.json({ success: true, metadata: newMeta })
+            } else {
+                res.status(404).json({ error: 'Media file not found' })
+            }
+        } catch (error) {
+            console.error('Metadata update failed:', error)
+            res.status(500).json({ error: 'Metadata update failed' })
+        }
+    })
 
     return router
 }

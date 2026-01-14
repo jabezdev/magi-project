@@ -6,19 +6,13 @@
  * Settings are stored locally in the browser's localStorage.
  */
 
-import type { LowerThirdsSettings, Song, SlidePosition } from '../types'
-import { DEFAULT_LOWER_THIRDS_SETTINGS, STORAGE_KEYS } from '../constants'
-import { socketService } from '../services'
-import { getSlideText } from '../utils'
+import { state, subscribeToState } from '../state'
+import type { LowerThirdsSettings } from '../types'
+import { STORAGE_KEYS, DEFAULT_LOWER_THIRDS_SETTINGS } from '../constants'
 
-// Local state for lower thirds
+// Local state for settings
 let settings: LowerThirdsSettings = loadSettings()
 let isSettingsPanelOpen = false
-
-// Live lyrics state (synced from server)
-let liveSong: Song | null = null
-let liveVariation: number = 0
-let livePosition: SlidePosition = { partIndex: 0, slideIndex: 0 }
 
 /**
  * Load settings from localStorage
@@ -90,11 +84,12 @@ function toggleSettingsPanel(): void {
 }
 
 /**
- * Get the current lyrics text from live state
+ * Get the current text from live state
  */
-function getCurrentLyricsText(): string {
-  if (!liveSong) return ''
-  return getSlideText(liveSong, liveVariation, livePosition) || ''
+function getCurrentContentText(): string {
+  const slide = state.liveContent[state.livePosition]
+  if (!slide || slide.type !== 'text') return ''
+  return slide.content || ''
 }
 
 /**
@@ -121,7 +116,7 @@ function buildLowerThirdHTML(): string {
     animationDuration
   } = settings
 
-  const lyricsText = getCurrentLyricsText()
+  const text = getCurrentContentText()
 
   const positionStyle = position === 'bottom'
     ? `bottom: ${marginBottom}%; top: auto;`
@@ -133,8 +128,8 @@ function buildLowerThirdHTML(): string {
     right: ${marginRight}%;
     padding: ${paddingVertical}px ${paddingHorizontal}px;
     background-color: ${backgroundColor};
-    opacity: ${visible && lyricsText ? backgroundOpacity : 0};
-    transform: translateX(${visible && lyricsText ? '0' : '-100%'});
+    opacity: ${visible && text ? backgroundOpacity : 0};
+    transform: translateX(${visible && text ? '0' : '-100%'});
     transition: opacity ${animationDuration}s ease, transform ${animationDuration}s ease;
     text-align: ${textAlign};
   `
@@ -148,8 +143,8 @@ function buildLowerThirdHTML(): string {
     text-transform: ${allCaps ? 'uppercase' : 'none'};
   `
 
-  // Format lyrics text - replace newlines with <br>
-  const formattedText = lyricsText
+  // Format text - replace newlines with <br>
+  const formattedText = text
     .split('\n')
     .map(line => `<span class="lyric-line">${escapeHtml(line)}</span>`)
     .join('<br>')
@@ -422,7 +417,7 @@ function updateLowerThirdDisplay(): void {
     animationDuration
   } = settings
 
-  const lyricsText = getCurrentLyricsText()
+  const text = getCurrentContentText()
 
   // Update container styles
   const positionStyle = position === 'bottom'
@@ -435,8 +430,8 @@ function updateLowerThirdDisplay(): void {
     right: ${marginRight}%;
     padding: ${paddingVertical}px ${paddingHorizontal}px;
     background-color: ${backgroundColor};
-    opacity: ${visible && lyricsText ? backgroundOpacity : 0};
-    transform: translateX(${visible && lyricsText ? '0' : '-100%'});
+    opacity: ${visible && text ? backgroundOpacity : 0};
+    transform: translateX(${visible && text ? '0' : '-100%'});
     transition: opacity ${animationDuration}s ease, transform ${animationDuration}s ease;
     text-align: ${textAlign};
   `
@@ -444,8 +439,8 @@ function updateLowerThirdDisplay(): void {
   // Update text
   const textEl = container.querySelector('.lower-third-text') as HTMLElement
   if (textEl) {
-    // Format lyrics text - replace newlines with <br>
-    const formattedText = lyricsText
+    // Format text - replace newlines with <br>
+    const formattedText = text
       .split('\n')
       .map(line => `<span class="lyric-line">${escapeHtml(line)}</span>`)
       .join('<br>')
@@ -480,26 +475,11 @@ function updateVisibilityButton(): void {
 }
 
 /**
- * Setup socket listeners for live lyrics updates
+ * Setup state subscription for updates
  */
-function setupSocketListeners(): void {
-  socketService.onStateUpdate((state) => {
-    let needsUpdate = false
-
-    if (state.liveSong !== undefined) {
-      liveSong = state.liveSong
-      needsUpdate = true
-    }
-    if (state.liveVariation !== undefined) {
-      liveVariation = state.liveVariation
-      needsUpdate = true
-    }
-    if (state.livePosition !== undefined) {
-      livePosition = state.livePosition
-      needsUpdate = true
-    }
-
-    if (needsUpdate) {
+function setupStateSubscription(): void {
+  subscribeToState((changes) => {
+    if (changes.includes('live' as any) || changes.includes('livePosition') || changes.includes('liveContent')) {
       updateLowerThirdDisplay()
     }
   })
@@ -634,5 +614,5 @@ export function renderLowerThirdsScreen(): void {
 
   app.innerHTML = buildScreenHTML()
   setupEventListeners()
-  setupSocketListeners()
+  setupStateSubscription()
 }

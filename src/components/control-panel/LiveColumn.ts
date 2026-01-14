@@ -1,7 +1,6 @@
 import { state } from '../../state'
 import { ICONS } from '../../constants/icons'
-import type { Song, SongPart, PartType, DisplayMode, SlidePosition, SlideItem, SimplePosition } from '../../types'
-import { getNextPosition, getPrevPosition } from '../../utils/slides'
+import type { DisplayMode } from '../../types'
 import {
   goLiveWithPosition,
   prevSlide,
@@ -9,16 +8,6 @@ import {
   setDisplayMode
 } from '../../actions/controlPanel'
 import { updateDisabled } from '../../utils/dom'
-
-function getArrangementParts(song: Song, variationIndex: number): Array<{ part: SongPart; partIndex: number; partId: PartType }> {
-  const variation = song.variations[variationIndex]
-  if (!variation) return []
-
-  return variation.arrangement.map((partId, partIndex) => {
-    const part = song.parts.find(p => p.id === partId)
-    return { part: part!, partIndex, partId }
-  }).filter(item => item.part)
-}
 
 export function renderLiveColumn(): string {
   const item = state.liveItem
@@ -48,11 +37,7 @@ export function renderLiveColumn(): string {
   let headerSubtitle = ''
   if (item) {
     headerTitle = item.title
-    if (item.type === 'song' && state.liveSong) {
-      headerSubtitle = state.liveSong.variations[state.liveVariation]?.name || 'Default'
-    } else {
-      headerSubtitle = item.subtitle || item.type.toUpperCase()
-    }
+    headerSubtitle = item.subtitle || item.type.toUpperCase()
   }
 
   return `
@@ -111,25 +96,7 @@ function renderLiveContent(): string {
         `
   }
 
-  // Use unified content if available, fall back to legacy rendering
-  if (state.liveContent.length > 0) {
-    return renderUnifiedContent()
-  }
-
-  // Legacy type-specific rendering (TODO: remove after full migration)
-  if (item.type === 'song') return renderSongLive()
-  if (item.type === 'video') return renderVideoLive()
-  if (item.type === 'image') return renderImageLive()
-  if (item.type === 'audio') return renderAudioLive()
-  if (item.type === 'slide') return renderSlideLive()
-  if (item.type === 'scripture') return renderScriptureLive()
-
-  return `
-            <div class="flex flex-col items-center justify-center h-full text-text-muted gap-4">
-                <span class="w-16 h-16 opacity-20">${ICONS.file}</span>
-                <p>Preview not available for ${item.type}</p>
-            </div>
-        `
+  return renderUnifiedContent()
 }
 
 /**
@@ -144,11 +111,12 @@ function renderUnifiedContent(): string {
     return `<div class="p-4 text-center text-text-muted">No content</div>`
   }
 
-  // For single-slide items (video, image, audio), render media-specific UI
+  // Handle media-specific large previews if requested or if single slide
+  // (Optional: we can keep these for single-slide items)
   if (content.length === 1 && item) {
-    if (item.type === 'video') return renderVideoLive()
-    if (item.type === 'image') return renderImageLive()
-    if (item.type === 'audio') return renderAudioLive()
+    if (item.type === 'video') return renderMediaPlaceholder(item, ICONS.video)
+    if (item.type === 'image') return renderMediaPlaceholder(item, ICONS.image)
+    if (item.type === 'audio') return renderMediaPlaceholder(item, ICONS.sound)
   }
 
   // For multi-slide content (songs, slides, scriptures), render slide list
@@ -160,6 +128,24 @@ function renderUnifiedContent(): string {
   } else {
     return renderFlatContent(content, currentPosition)
   }
+}
+
+function renderMediaPlaceholder(item: any, icon: string): string {
+  return `
+        <div class="flex flex-col items-center justify-center h-full p-4 gap-4">
+             <div class="relative w-full aspect-video bg-black rounded overflow-hidden flex items-center justify-center">
+                 ${item.thumbnail ? `<img src="${item.thumbnail}" class="w-full h-full object-contain"/>` : `<div class="w-full h-full flex items-center justify-center text-white/10 scale-[2]">${icon}</div>`}
+                 <div class="absolute inset-0 flex items-center justify-center">
+                    <div class="w-12 h-12 rounded-full bg-black/50 flex items-center justify-center backdrop-blur text-white">
+                        ${state.liveMediaState.isPlaying ? ICONS.play : (item.type === 'audio' ? ICONS.sound : '||')}
+                    </div>
+                 </div>
+             </div>
+             <div class="text-[0.7rem] font-bold text-live-red tracking-widest animate-pulse">
+                ${state.liveMediaState.isPlaying ? 'ACTIVE' : 'READY'}
+             </div>
+        </div>
+    `
 }
 
 /**
@@ -238,179 +224,6 @@ function renderFlatContent(content: import('../../types').ContentSlide[], curren
   `
 }
 
-function renderScriptureLive(): string {
-  const item = state.liveItem
-  if (!item || item.type !== 'scripture') return ''
-
-  const scriptureItem = item as import('../../types').ScriptureItem
-
-  return `
-    <div class="flex flex-col gap-2 p-2 pb-8">
-        <div class="text-sm font-bold text-text-muted mb-2">${scriptureItem.reference}</div>
-        ${scriptureItem.verses.map((verse, index) => {
-    const isActive = index === state.livePosition
-    return `
-            <button class="w-full flex items-start gap-3 p-2 text-left bg-bg-tertiary border border-border-color rounded hover:bg-bg-hover transition-colors slide-btn ${isActive ? 'active live bg-red-600/10 border-live-red' : ''}"
-                    data-index="${index}">
-                <div class="text-[0.65rem] font-bold text-text-muted w-4 text-center ${isActive ? 'text-live-red' : ''}">${verse.number}</div>
-                <div class="flex-1 text-sm ${isActive ? 'text-white font-medium' : 'text-text-secondary'}">
-                    ${verse.text}
-                </div>
-            </button>
-          `
-  }).join('')}
-    </div>
-  `
-}
-
-function renderSongLive(): string {
-  const song = state.liveSong
-  if (!song) return '' // Should handle error state?
-
-  const arrangementParts = getArrangementParts(song, state.liveVariation)
-
-  return `
-    <div class="flex flex-col gap-2 pb-8">
-    ${arrangementParts.map(({ part, partIndex, partId }) => `
-        <div class="lyrics-part" data-part-index="${partIndex}">
-        <div class="text-[0.65rem] font-bold text-text-muted uppercase mb-1 flex items-center gap-2 part-${partId}">${part.label}</div>
-        <div class="flex flex-col gap-[1px]">
-            ${part.slides.map((slideText, slideIndex) => {
-    const isActive = 'partIndex' in state.livePosition &&
-      state.livePosition.partIndex === partIndex &&
-      state.livePosition.slideIndex === slideIndex
-
-    const slideBtnClass = "group relative flex items-start gap-4 w-full p-2 pl-3 bg-bg-tertiary border-l-[3px] border-transparent cursor-pointer transition-all duration-100 min-h-[48px] text-left hover:bg-bg-hover focus:outline-none"
-    const slideBtnActiveClass = "bg-red-600/10 border-l-live-red active live"
-    const numClass = "text-[0.7rem] font-bold text-text-muted mt-[0.15rem] w-3 flex justify-center group-hover:text-text-secondary"
-    const textClass = "flex-1 text-sm leading-[1.4] text-text-secondary font-medium whitespace-pre-wrap group-hover:text-text-primary"
-    const activeTextClass = "text-white"
-
-    return `
-                <button class="${slideBtnClass} ${isActive ? slideBtnActiveClass : ''} slide-btn" 
-                        data-part="${partIndex}" 
-                        data-slide="${slideIndex}"
-                        data-context="live">
-                    <span class="slide-num ${numClass} ${isActive ? 'text-live-red' : ''}">${slideIndex + 1}</span>
-                    <span class="${textClass} ${isActive ? activeTextClass : ''} slide-text">${slideText.replace(/\n/g, '<br>')}</span>
-                </button>
-                `
-  }).join('')}
-        </div>
-        </div>
-    `).join('')}
-    </div>
-  `
-}
-
-function renderVideoLive(): string {
-  const item = state.liveItem
-  if (!item || item.type !== 'video') return ''
-
-  // Show thumbnail and playback status?
-  // Since this is generic video, we might not have 'slides' unless it's a Canva slide.
-  // If it has 'isCanvaSlide' setting:
-  if (item.settings?.isCanvaSlide) {
-    // Render simple placeholder or custom controls?
-    // For now:
-    return `<div class="p-4 text-center">Video Slide Active</div>`
-  }
-
-  // Standard Video
-  return `
-        <div class="flex flex-col items-center justify-center h-full gap-4">
-            <div class="relative w-full aspect-video bg-black rounded overflow-hidden">
-                 ${item.thumbnail ? `<img src="${item.thumbnail}" class="w-full h-full object-contain"/>` : `<div class="w-full h-full flex items-center justify-center text-white/20">${ICONS.video}</div>`}
-                 <div class="absolute inset-0 flex items-center justify-center">
-                    <div class="w-12 h-12 rounded-full bg-black/50 flex items-center justify-center backdrop-blur text-white">
-                        ${state.liveMediaState.isPlaying ? ICONS.play : 'II'}
-                    </div>
-                 </div>
-            </div>
-            <div class="text-sm text-text-muted">
-                ${state.liveMediaState.isPlaying ? 'Playing' : 'Paused'}
-            </div>
-        </div>
-    `
-}
-
-function renderImageLive(): string {
-  const item = state.liveItem
-  if (!item) return ''
-  return `
-        <div class="flex flex-col items-center justify-center h-full p-4">
-             <div class="relative w-full h-full max-h-[300px] flex items-center justify-center">
-                 ${item.thumbnail ? `<img src="${item.thumbnail}" class="max-w-full max-h-full object-contain rounded shadow-lg"/>` : `<span class="text-4xl opacity-20">${ICONS.image}</span>`}
-             </div>
-        </div>
-    `
-}
-
-function renderAudioLive(): string {
-  const item = state.liveItem
-  if (!item || item.type !== 'audio') return ''
-
-  return `
-        <div class="flex flex-col items-center justify-center h-full gap-4 p-4">
-             <div class="w-24 h-24 rounded-full bg-bg-tertiary flex items-center justify-center border border-border-color shadow-lg relative overflow-hidden">
-                  <div class="absolute inset-0 bg-accent-primary/10 animate-pulse"></div>
-                  <div class="relative w-12 h-12 text-accent-primary">
-                       ${ICONS.sound}
-                  </div>
-             </div>
-             <div class="flex flex-col items-center gap-1">
-                 <div class="text-xl font-bold text-text-primary text-center">${item.title}</div>
-                 <div class="text-sm font-medium text-live-red animate-pulse flex items-center gap-1">
-                     ${ICONS.live} NOW PLAYING
-                 </div>
-             </div>
-             
-             <!-- Playback Controls (Synced via liveMediaState) -->
-             <div class="flex items-center gap-4 mt-2">
-                 <div class="flex items-center justify-center w-10 h-10 rounded-full bg-bg-tertiary text-text-primary font-bold">
-                    ${state.liveMediaState.isPlaying ? ICONS.play : '||'}
-                 </div>
-                 <div class="text-xs text-text-muted">
-                    ${state.liveMediaState.isPlaying ? 'Broadcasting Audio' : 'Paused'}
-                 </div>
-             </div>
-        </div>
-    `
-}
-
-
-function renderSlideLive(): string {
-  const item = state.liveItem
-  if (!item || item.type !== 'slide') return ''
-
-  const slideItem = item as SlideItem
-  const slides = slideItem.slides || []
-  const currentIndex = (state.livePosition as SimplePosition).index || 0
-
-  return `
-    <div class="flex flex-col gap-2 p-2 pb-8">
-        ${slides.map((slide: any, index: number) => {
-    const isActive = index === currentIndex
-    const thumbHTML = slide.type === 'image'
-      ? `<div class="w-10 h-8 bg-black rounded overflow-hidden shrink-0"><img src="${slide.path || slide.content}" class="w-full h-full object-cover"></div>`
-      : `<div class="w-10 h-8 bg-bg-tertiary rounded flex items-center justify-center shrink-0 border border-border-color text-[8px] text-text-muted">TXT</div>`
-
-    const content = slide.type === 'image' ? (slide.path ? slide.path.split('/').pop() : 'Image Slide') : slide.content
-
-    return `
-                <button class="w-full flex items-center gap-3 p-2 text-left bg-bg-tertiary border border-border-color rounded hover:bg-bg-hover transition-colors slide-btn ${isActive ? 'active live bg-red-600/10 border-live-red' : ''}"
-                        data-index="${index}">
-                    <div class="text-[0.65rem] font-bold text-text-muted w-4 text-center ${isActive ? 'text-live-red' : ''} slide-num">${index + 1}</div>
-                    ${thumbHTML}
-                    <div class="flex-1 min-w-0 text-sm truncate ${isActive ? 'text-white font-medium' : 'text-text-secondary'}">
-                        ${content}
-                    </div>
-                </button>
-            `
-  }).join('')}
-    </div>
-  `
-}
 
 export function initLiveListeners(): void {
   // Live navigation

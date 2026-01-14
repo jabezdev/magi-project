@@ -98,12 +98,13 @@ export function flattenSongToSlides(song: Song, variationId: number): ContentSli
 /**
  * Convert SlideItem's slides to ContentSlide[]
  */
-function hydrateSlides(item: SlideItem): ContentSlide[] {
+export function hydrateSlides(item: SlideItem): ContentSlide[] {
     return item.slides.map((slide, index) => ({
         id: slide.id || `slide-${index}`,
         index,
         type: slide.type,
         content: slide.type === 'image' ? (slide.path || slide.content) : slide.content,
+        label: slide.type === 'text' ? (slide.content.split('\n')[0].substring(0, 20) + '...') : undefined,
         thumbnail: slide.type === 'image' ? (slide.path || slide.content) : undefined
     }))
 }
@@ -179,7 +180,7 @@ export function getNextSlideIndex(content: ContentSlide[], currentIndex: number)
 /**
  * Helper: Find the previous slide index, respecting content bounds  
  */
-export function getPrevSlideIndex(content: ContentSlide[], currentIndex: number): number | null {
+export function getPrevSlideIndex(_content: ContentSlide[], currentIndex: number): number | null {
     if (currentIndex > 0) {
         return currentIndex - 1
     }

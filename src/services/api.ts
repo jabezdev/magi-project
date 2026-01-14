@@ -387,3 +387,35 @@ export async function uploadSlideImage(type: string, group: string, file: File):
   }
 }
 
+/**
+ * Update media metadata (Video/Image settings)
+ */
+export async function updateMediaMetadata(id: string, metadata: any): Promise<{ success: boolean; metadata?: any } | null> {
+  // Extract type and filename from ID/URL
+  // ID format: /media/<type>/<filename> or /media/<type>/items/<filename>
+  // Example: /media/content_videos/myvideo.mp4
+
+  try {
+    const parts = id.split('/')
+    const filename = parts.pop()
+    const type = parts.pop()
+
+    if (!filename || !type) throw new Error('Invalid ID format')
+
+    // Handle "thumbnails" case if ID was pointing to a thumbnail for some reason, but usually ID points to main file
+    // The ID in types.ts is the URL.
+
+    const response = await fetch(`${getApiBaseUrl()}/media/${type}/${encodeURIComponent(filename)}/metadata`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ metadata })
+    })
+
+    if (!response.ok) throw new Error('Failed to update metadata')
+    return await response.json()
+  } catch (error) {
+    console.error('API Error - updateMediaMetadata:', error)
+    return null
+  }
+}
+

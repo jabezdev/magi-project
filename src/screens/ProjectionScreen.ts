@@ -84,7 +84,7 @@ function setupMainProjectionUpdates(): void {
 
     // Update only what changed
     // Update live content (smart switch between lyrics and others)
-    if (changedKeys.includes('live') || changedKeys.includes('displayMode')) {
+    if (changedKeys.includes('live' as any) || changedKeys.includes('livePosition') || changedKeys.includes('liveContent') || changedKeys.includes('displayMode')) {
       updateLiveContent()
     }
     if (changedKeys.includes('backgroundVideo')) {
@@ -110,7 +110,15 @@ function setupConfidenceMonitorUpdates(): void {
     if (!isInitialized) return
 
     // Update teleprompter content when live state OR preview state changes
-    if (changedKeys.includes('live') || changedKeys.includes('preview') || changedKeys.includes('displayMode')) {
+    if (
+      changedKeys.includes('live' as any) ||
+      changedKeys.includes('livePosition') ||
+      changedKeys.includes('liveContent') ||
+      changedKeys.includes('preview' as any) ||
+      changedKeys.includes('previewPosition') ||
+      changedKeys.includes('previewContent') ||
+      changedKeys.includes('displayMode')
+    ) {
       updateTeleprompterContent()
     }
 

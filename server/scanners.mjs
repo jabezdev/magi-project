@@ -129,28 +129,41 @@ export const Scanners = {
                 size = formatSize(stats.size)
             } catch { }
 
+            // Check for metadata sidecar
+            let metadata = {}
+            const metaPath = file.path + '.json'
+            if (fs.existsSync(metaPath)) {
+                try {
+                    metadata = JSON.parse(fs.readFileSync(metaPath, 'utf-8'))
+                } catch (e) {
+                    console.warn('Failed to parse metadata for', file.name)
+                }
+            }
+
             if (isVideo) {
                 // VideoItem
                 return {
                     id: urlPath,
                     type: 'video',
-                    title: file.filename,
-                    subtitle: size,
+                    title: metadata.title || file.filename,
+                    subtitle: metadata.subtitle || size,
                     thumbnail: thumbnail,
                     url: urlPath,
-                    duration: null, // Could be extracted with ffprobe
+                    duration: metadata.duration || null,
                     isYouTube: false,
-                    loop: subpath.includes('background') // Background videos loop by default
+                    loop: metadata.loop !== undefined ? metadata.loop : subpath.includes('background'),
+                    settings: metadata.settings
                 }
             } else {
                 // ImageItem
                 return {
                     id: urlPath,
                     type: 'image',
-                    title: file.filename,
-                    subtitle: size,
+                    title: metadata.title || file.filename,
+                    subtitle: metadata.subtitle || size,
                     thumbnail: thumbnail,
-                    url: urlPath
+                    url: urlPath,
+                    settings: metadata.settings
                 }
             }
         })

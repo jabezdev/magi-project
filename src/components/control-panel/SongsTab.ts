@@ -124,7 +124,7 @@ function renderSongItems(songs: SongSummary[], searchTerm: string): string {
             }
         }
 
-        const isSelected = state.previewSong?.id === song.id
+        const isSelected = state.previewItem?.type === 'song' && (state.previewItem as any).songId === song.id
         const finalItemClass = `${itemClass} ${isSelected ? selectedClass : ''}`
 
         return `

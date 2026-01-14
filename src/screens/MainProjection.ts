@@ -1,6 +1,5 @@
 import { state, subscribeToState } from '../state'
-import type { DisplaySettings, SlideItem, VideoItem, ImageItem, ScriptureItem, SimplePosition } from '../types'
-import { getSlideText } from '../utils'
+import type { DisplaySettings } from '../types'
 import { updateHTML } from '../utils'
 import { socketService } from '../services'
 
@@ -122,7 +121,7 @@ export function setupMediaListeners(): void {
 }
 
 export function buildMainProjectionHTML(): string {
-    const { displayMode, liveItem, liveSong, liveVariation, livePosition, backgroundVideo, logoMedia, displaySettings, availableVideos } = state
+    const { displayMode, liveItem, backgroundVideo, logoMedia, displaySettings } = state
     const staticMode = isStaticMode()
 
     // --- Content Generation ---
@@ -137,73 +136,42 @@ export function buildMainProjectionHTML(): string {
         contentHTML = '' // Just background
     } else {
         // 2. Handle Live Item Content
-        if (liveItem) {
-            switch (liveItem.type) {
-                case 'song':
-                    // existing lyrics logic
-                    let lyricsText = ''
-                    if (liveSong) {
-                        lyricsText = getSlideText(liveSong, liveVariation, livePosition as any) || ''
-                    }
+        const slide = state.liveContent[state.livePosition]
+        if (slide) {
+            switch (slide.type) {
+                case 'text':
                     const lyricsStyle = buildLyricsStyleString(displaySettings)
                     contentHTML = `
                         <div class="flex flex-col items-center justify-center text-center text-white w-full h-full box-border will-change-contents" style="${lyricsStyle}">
-                          ${formatLyricsText(lyricsText)}
+                          ${formatLyricsText(slide.content)}
                         </div>
                     `
                     break
 
                 case 'image':
                     contentHTML = `
-                        <div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('${liveItem.url}');"></div>
+                        <div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('${slide.content}');"></div>
                     `
                     break
 
                 case 'video':
-                    // Video is typically handled as a "background" but for specific video items, we render it as content 
-                    // OR we force the background video to match this item. 
-                    // For the unified system, let's render it as a full-screen video element in the content layer if it's the main item,
-                    // but usually, video players want to be in the background layer to allow overlays?
-                    // Actually, if it's a "User Video", it might be the only thing. 
-                    // Let's use the background layer for performance/consistency if possible, OR a dedicated video tag here.
-                    // Given existing background architecture, let's render nothing in content and ensure the background handles it.
-                    // BUT: We need to handle audio? The background video is currently muted.
-                    // If this is a generic video item, it might need sound.
-                    // For MVP: Let's assume user videos are rendered in the content layer to separate them from "Background Loops".
-                    const isYouTube = liveItem.isYouTube
+                    // If it's a YouTube link, the content might be the URL. 
+                    // ContentSlide doesn't explicitly have isYouTube, but we can check the URL or the liveItem.
+                    const isYouTube = liveItem?.type === 'video' && liveItem.isYouTube
                     if (isYouTube) {
-                        // Simple iframe embed for MVP
-                        // Extract ID? usually url is full.
-                        // TODO: Robust YouTube parsing.
-                        contentHTML = `<iframe class="w-full h-full" src="${liveItem.url}?autoplay=1&controls=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`
+                        contentHTML = `<iframe class="w-full h-full" src="${slide.content}?autoplay=1&controls=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`
                     } else {
-                        // Cast to any for loop property which is not on ScheduleItem interface currently
-                        contentHTML = `<video class="w-full h-full object-contain" src="${liveItem.url}" autoplay ${(liveItem as any).loop ? 'loop' : ''} playsinline></video>`
+                        contentHTML = `<video class="w-full h-full object-contain" src="${slide.content}" autoplay ${(liveItem as any)?.loop ? 'loop' : ''} playsinline></video>`
                     }
                     break
 
-                case 'slide':
-                    // Render current slide
-                    const slideIndex = (livePosition as SimplePosition).index || 0
-                    const slideItem = liveItem as SlideItem
-                    const slide = slideItem.slides?.[slideIndex]
-                    if (slide) {
-                        if (slide.type === 'image') {
-                            contentHTML = `<div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('${slide.path || slide.content}');"></div>`
-                        } else if (slide.type === 'text') {
-                            contentHTML = `<div class="flex items-center justify-center h-full text-white text-6xl font-bold p-10 text-center">${slide.content}</div>`
-                        }
-                    }
-                    break
-
-                case 'scripture':
-                    const scripItem = liveItem as any
+                case 'audio':
+                    const soundIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>'
                     contentHTML = `
                         <div class="flex flex-col items-center justify-center h-full text-white p-20 text-center">
-                             <div class="text-4xl mb-8">${scripItem.reference}</div>
-                             <div class="text-6xl font-serif leading-tight">
-                                "${scripItem.verses.map((v: any) => v.text).join(' ')}"
-                             </div>
+                             <div class="text-white/50 mb-8 animate-pulse">${soundIcon}</div>
+                             <div class="text-4xl font-bold">${liveItem?.title || 'Audio'}</div>
+                             <audio class="hidden" src="${slide.content}" autoplay></audio>
                         </div>
                      `
                     break
@@ -277,9 +245,8 @@ export function updateDisplayMode(): void {
 
     // We simply rebuild the whole screen to catch all `liveItem` cases? 
     // No, that replaces the background video DOM nodes and restarts the video! 
-    // We must ONLY update the overlay.
-
-    const { displayMode, liveItem, liveSong, liveVariation, livePosition, displaySettings, logoMedia } = state
+    // 3. Select content to render (Unified)
+    const { displayMode, liveItem, displaySettings, logoMedia } = state
 
     // ... Copy-paste content logic from above ...
     let contentHTML = ''
@@ -290,50 +257,31 @@ export function updateDisplayMode(): void {
     } else if (displayMode === 'clear') {
         contentHTML = ''
     } else {
-        if (liveItem) {
-            switch (liveItem.type) {
-                case 'song':
-                    let lyricsText = ''
-                    if (liveSong) lyricsText = getSlideText(liveSong, liveVariation, livePosition as any) || ''
+        const slide = state.liveContent[state.livePosition]
+        if (slide) {
+            switch (slide.type) {
+                case 'text':
                     const lyricsStyle = buildLyricsStyleString(displaySettings)
-                    contentHTML = `<div class="flex flex-col items-center justify-center text-center text-white w-full h-full box-border will-change-contents" style="${lyricsStyle}">${formatLyricsText(lyricsText)}</div>`
+                    contentHTML = `<div class="flex flex-col items-center justify-center text-center text-white w-full h-full box-border will-change-contents" style="${lyricsStyle}">${formatLyricsText(slide.content)}</div>`
                     break
                 case 'image':
-                    contentHTML = `<div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('${liveItem.url}');"></div>`
+                    contentHTML = `<div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('${slide.content}');"></div>`
                     break
                 case 'video':
-                    const isYouTube = liveItem.isYouTube
+                    const isYouTube = liveItem?.type === 'video' && liveItem.isYouTube
                     if (isYouTube) {
-                        contentHTML = `<iframe class="w-full h-full" src="${liveItem.url}?autoplay=1&controls=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`
+                        contentHTML = `<iframe class="w-full h-full" src="${slide.content}?autoplay=1&controls=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`
                     } else {
-                        // Cast to any for loop property which is not on ScheduleItem interface currently
-                        contentHTML = `<video class="w-full h-full object-contain" src="${liveItem.url}" autoplay ${(liveItem as any).loop ? 'loop' : ''} playsinline></video>`
+                        contentHTML = `<video class="w-full h-full object-contain" src="${slide.content}" autoplay ${(liveItem as any)?.loop ? 'loop' : ''} playsinline></video>`
                     }
-                    break
-                case 'slide':
-                    const slideIndex2 = (livePosition as SimplePosition).index || 0
-                    const slideItem2 = liveItem as SlideItem
-                    const slide2 = slideItem2.slides?.[slideIndex2]
-                    if (slide2) {
-                        if (slide2.type === 'image') contentHTML = `<div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('${slide2.path || slide2.content}');"></div>`
-                        else if (slide2.type === 'text') contentHTML = `<div class="flex items-center justify-center h-full text-white text-6xl font-bold p-10 text-center">${slide2.content}</div>`
-                    }
-                    break
-                case 'scripture':
-                    const scriptureItem = liveItem as ScriptureItem
-                    contentHTML = `<div class="flex flex-col items-center justify-center h-full text-white p-20 text-center"><div class="text-4xl mb-8">${scriptureItem.reference}</div><div class="text-6xl font-serif leading-tight">"${scriptureItem.verses.map(v => v.text).join(' ')}"</div></div>`
                     break
                 case 'audio':
-                    // Audio Visualization (Minimal)
-                    // Use 'sound' icon SVG inline here or from ICONS? importing ICONS in MainProjection might be nice but constants are usually available.
-                    // But MainProjection.ts doesn't import ICONS.
-                    // I'll use a generic SVG for now.
                     const soundIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>'
                     contentHTML = `
                         <div class="flex flex-col items-center justify-center h-full text-white p-20 text-center">
                              <div class="text-white/50 mb-8 animate-pulse">${soundIcon}</div>
-                             <div class="text-4xl font-bold">${liveItem.title}</div>
-                             <audio class="hidden" src="${liveItem.url}" autoplay></audio>
+                             <div class="text-4xl font-bold">${liveItem?.title || 'Audio'}</div>
+                             <audio class="hidden" src="${slide.content}" autoplay></audio>
                         </div>
                      `
                     break
@@ -363,14 +311,14 @@ export function updateDisplayMode(): void {
 }
 
 export function updateLiveContent(): void {
-    const { liveItem } = state
     const lyricsEl = document.querySelector('.will-change-contents') as HTMLElement
 
-    // If we are showing lyrics and the new item is ALSO a song, we can try to use the optimized update
-    if (lyricsEl && liveItem?.type === 'song') {
+    // Optimized update for text-type slides
+    const currentSlide = state.liveContent[state.livePosition]
+    if (lyricsEl && currentSlide?.type === 'text') {
         updateLyricsDisplay()
     } else {
-        // Structure changed or not a song, full rewrite
+        // Structure changed or not text, full rewrite
         updateDisplayMode()
     }
 }
@@ -455,11 +403,12 @@ export function updateBackgroundVideo(): void {
 }
 
 export function updateLyricsDisplay(): void {
-    const { displayMode, liveSong, liveVariation, livePosition } = state
+    const { displayMode, liveContent, livePosition } = state
     const lyricsEl = document.querySelector('.will-change-contents') as HTMLElement
 
-    if (lyricsEl && displayMode === 'lyrics' && liveSong) {
-        const lyricsText = getSlideText(liveSong, liveVariation, livePosition as any) || ''
+    if (lyricsEl && displayMode === 'lyrics' && liveContent.length > 0) {
+        const slide = liveContent[livePosition]
+        const lyricsText = (slide?.type === 'text' ? slide.content : '') || ''
 
         const updateDOM = () => {
             const lines = lyricsText ? lyricsText.split('\n') : []

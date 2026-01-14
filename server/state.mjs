@@ -18,23 +18,28 @@ export const sharedState = {
     previewItem: null, // ScheduleItem
     previousLiveItem: null, // ScheduleItem
 
+    // Unified Position State (Simple 0-based index)
+    livePosition: 0,
+    previewPosition: 0,
+    previousLivePosition: 0,
+
     // Active Content State (Hydrated)
     liveItemId: null,
     liveItemType: null,
-    liveContent: null, // The full hydrated object (Song, Video, etc.)
+    liveContent: [], // The full hydrated array of ContentSlide
 
     // Song Specific State (Legacy/Deprecated - kept for fallback)
     liveSong: null,
     liveVariation: 0,
-    livePosition: { partIndex: 0, slideIndex: 0 },
+    // livePosition removed (replaced by numeric livePosition above)
 
     previousLiveSong: null,
     previousLiveVariation: 0,
-    previousLivePosition: { partIndex: 0, slideIndex: 0 },
+    // previousLivePosition removed
 
     previewSong: null,
     previewVariation: 0,
-    previewPosition: { partIndex: 0, slideIndex: 0 },
+    // previewPosition removed
 
     // Media Playback State
     liveMediaState: {

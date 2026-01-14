@@ -11,6 +11,23 @@ export interface TransitionSettings {
 
 export type MediaType = 'song' | 'video' | 'image' | 'slide' | 'scripture' | 'audio'
 
+export type AspectRatioMode = 'fit' | 'fill' | 'stretch'
+
+export interface MediaSettings {
+  aspectRatioMode?: AspectRatioMode
+}
+
+export interface VideoSettings extends MediaSettings {
+  startTime?: number // seconds
+  endTime?: number // seconds
+  muted?: boolean
+  loop?: boolean // Default loop setting
+}
+
+export interface ImageSettings extends MediaSettings {
+  duration?: number // Default duration in seconds
+}
+
 // === BASE ITEM INTERFACE ===
 // Common fields for all projectable items
 interface BaseProjectableItem {
@@ -36,12 +53,14 @@ export interface VideoItem extends BaseProjectableItem {
   url: string
   duration?: number // seconds
   isYouTube?: boolean
+  settings?: VideoSettings
   loop?: boolean
 }
 
 export interface ImageItem extends BaseProjectableItem {
   type: 'image'
   url: string
+  settings?: ImageSettings
 }
 
 export interface AudioItem extends BaseProjectableItem {
@@ -102,12 +121,15 @@ export type ProjectableItem =
 
 // === SCHEDULE ITEM ===
 // Schedule items are ProjectableItems with optional override settings
-export interface ItemSettings {
-  loop?: boolean
+export interface ItemSettings extends VideoSettings, ImageSettings {
+  // Common
   autoAdvance?: boolean
-  holdTime?: number // For Canva slides (seconds)
   transitionOverride?: TransitionSettings
+
+  // Specific
   isCanvaSlide?: boolean // Special handling for Canva embed slides
+  canvaHoldPoint?: number // Video timestamp to hold at (seconds)
+  holdTime?: number
 }
 
 export type ScheduleItem = ProjectableItem & {
@@ -221,16 +243,9 @@ export interface LayoutSettings {
   mainProjectionStaticMode?: boolean
 }
 
-// Represents the current slide position
-export interface SlidePosition {
-  partIndex: number // Index in the arrangement
-  slideIndex: number // Index within the part's slides
-}
-
-// Generic position for non-song items (e.g., presentation slides)
-export interface SimplePosition {
-  index: number
-}
+// Represents a unified slide position (0-based index)
+export type SlidePosition = number
+export type SimplePosition = SlidePosition
 
 export interface LiveMediaState {
   isPlaying: boolean
@@ -255,15 +270,6 @@ export interface AppState {
   previousItem: ScheduleItem | null
   previousContent: ContentSlide[]
   previousPosition: number
-
-  // Legacy song state (kept for backward compatibility with screens)
-  // TODO: Remove after migrating all screens to use liveContent
-  liveSong: Song | null
-  liveVariation: number
-  previewSong: Song | null
-  previewVariation: number
-  previousLiveSong: Song | null
-  previousLiveVariation: number
 
   // Display settings
   previewBackground: string
@@ -297,9 +303,8 @@ export interface VideoFile {
 
 export interface SlideUpdate {
   item: ScheduleItem | null
-  song: Song | null
-  variation?: number
-  position: SlidePosition | SimplePosition
+  content?: ContentSlide[] // New: include hydrated content in updates
+  position: number // Changed from SlidePosition | SimplePosition
 }
 
 export interface VideoUpdate {

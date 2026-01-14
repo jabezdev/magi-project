@@ -5,11 +5,9 @@
  * Uses efficient state updates that skip full re-renders when possible.
  */
 
-import type { Song, SlidePosition, DisplayMode, ScheduleItem, SongItem, SlideItem, SimplePosition, ContentSlide } from '../types'
+import type { Song, DisplayMode, ScheduleItem, SongItem } from '../types'
 import { state, updateState } from '../state'
 import { socketService } from '../services/socket'
-import { fetchSongById } from '../services/api'
-import { getNextPosition, getPrevPosition } from '../utils/slides'
 import { hydrateContent, flattenSongToSlides, getNextSlideIndex, getPrevSlideIndex } from '../utils/content'
 
 /**
@@ -23,10 +21,7 @@ export async function selectItemForPreview(item: ScheduleItem): Promise<void> {
   updateState({
     previewItem: item,
     previewContent: content,
-    previewPosition: 0,
-    // Legacy: also set previewSong for backward compatibility
-    previewSong: item.type === 'song' ? await fetchSongById((item as SongItem).songId) : null,
-    previewVariation: item.type === 'song' ? 0 : 0
+    previewPosition: 0
   }, true)
 
   socketService.emit('update-preview', {
@@ -40,35 +35,31 @@ export async function selectItemForPreview(item: ScheduleItem): Promise<void> {
  * Select a song for preview (legacy compatibility + unified)
  */
 export async function selectSongForPreview(song: Song, variationIndex = 0, sourceItem?: ScheduleItem): Promise<void> {
+  const variationId = song.variations[variationIndex]?.id || 0
+
   // Create a transient item if not provided (e.g. from Library directly)
   const item: ScheduleItem = sourceItem || {
-    id: 'preview-temp',
+    id: `temp-${Date.now()}`,
     type: 'song',
     title: song.title,
     subtitle: song.artist,
     songId: song.id,
-    variationId: song.variations[variationIndex]?.id || 0
+    variationId: variationId
   } as SongItem
 
   // Flatten song to content slides
-  const content = flattenSongToSlides(song, item.variationId as number)
+  const content = flattenSongToSlides(song, variationId)
 
   updateState({
     previewItem: item,
     previewContent: content,
-    previewPosition: 0,
-    // Legacy compatibility
-    previewSong: song,
-    previewVariation: variationIndex
+    previewPosition: 0
   }, true)
 
   socketService.emit('update-preview', {
     item,
     content,
-    position: 0,
-    // Legacy
-    song,
-    variation: variationIndex
+    position: 0
   })
 }
 
@@ -89,25 +80,24 @@ export function selectPreviewPosition(position: number): void {
 /**
  * Select a variation for the preview song (re-hydrates content)
  */
-export function selectPreviewVariation(index: number): void {
-  if (!state.previewSong) return
+export async function selectPreviewVariation(variationId: number): Promise<void> {
+  const item = state.previewItem
+  if (!item || item.type !== 'song') return
 
-  // Update the preview item's variation ID to match
-  const newVarId = state.previewSong.variations[index].id
-  const newItem = state.previewItem && state.previewItem.type === 'song'
-    ? { ...state.previewItem, variationId: newVarId } as SongItem
-    : { id: 'preview-temp', type: 'song' as const, title: state.previewSong.title, songId: state.previewSong.id, variationId: newVarId } as SongItem
-
-  // Re-flatten content with new variation
-  const content = flattenSongToSlides(state.previewSong, newVarId)
+  const newItem = { ...item, variationId } as SongItem
+  const content = await hydrateContent(newItem)
 
   updateState({
     previewItem: newItem,
     previewContent: content,
-    previewPosition: 0,
-    // Legacy
-    previewVariation: index
+    previewPosition: 0
   }, true)
+
+  socketService.emit('update-preview', {
+    item: newItem,
+    content,
+    position: 0
+  })
 }
 
 /**
@@ -125,10 +115,7 @@ export async function goLive(): Promise<void> {
   const previousState = state.liveItem ? {
     previousItem: state.liveItem,
     previousContent: state.liveContent,
-    previousPosition: state.livePosition,
-    // Legacy
-    previousLiveSong: state.liveSong,
-    previousLiveVariation: state.liveVariation
+    previousPosition: state.livePosition
   } : {}
 
   const newLiveState = {
@@ -137,9 +124,6 @@ export async function goLive(): Promise<void> {
     liveItem: state.previewItem,
     liveContent: state.previewContent,
     livePosition: state.previewPosition,
-    // Legacy compatibility
-    liveSong: state.previewSong,
-    liveVariation: state.previewVariation,
     // Reset media state for new item
     liveMediaState: {
       isPlaying: state.previewItem.type === 'video', // Auto-play videos
@@ -156,10 +140,7 @@ export async function goLive(): Promise<void> {
   socketService.updateSlide({
     item: newLiveState.liveItem,
     content: newLiveState.liveContent,
-    position: newLiveState.livePosition,
-    // Legacy
-    song: newLiveState.liveSong,
-    variation: newLiveState.liveVariation
+    position: newLiveState.livePosition
   })
 
 
@@ -190,10 +171,7 @@ export function goLiveWithPosition(position: number): void {
   socketService.updateSlide({
     item: state.liveItem,
     content: state.liveContent,
-    position: position,
-    // Legacy
-    song: state.liveSong,
-    variation: state.liveVariation
+    position: position
   })
 }
 

@@ -89,7 +89,7 @@ function setupEfficientUpdates(): void {
       updatePreviewNavButtons()
     }
 
-    if (changedKeys.includes('previewSong') || changedKeys.includes('previewVariation')) {
+    if (changedKeys.includes('preview' as any) || changedKeys.includes('previewContent')) {
       handlePreviewChange()
     }
 
@@ -101,7 +101,7 @@ function setupEfficientUpdates(): void {
       updatePreviewSlideSelection()
     }
 
-    if (changedKeys.includes('liveSong') || changedKeys.includes('liveVariation')) {
+    if (changedKeys.includes('live' as any) || changedKeys.includes('liveContent')) {
       handleLiveChange()
     }
 
@@ -120,7 +120,7 @@ function setupEfficientUpdates(): void {
       handleScheduleChange()
     }
 
-    if (changedKeys.includes('songs')) {
+    if (changedKeys.includes('songs') || changedKeys.includes('data' as any)) {
       handleDataChange()
     }
   })

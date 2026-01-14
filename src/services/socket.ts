@@ -29,18 +29,15 @@ class SocketService {
       console.log('[Socket] Disconnected from server')
     })
 
-    this.socket.on('slide-updated', (data: SlideUpdate & { previousItem?: any, previousSong?: any, previousVariation?: number, previousPosition?: any, liveMediaState?: any }) => {
+    this.socket.on('slide-updated', (data: SlideUpdate & { previousItem?: any, previousPosition?: number, liveMediaState?: any }) => {
       this.notifyStateUpdate({
-        liveSong: data.song,
-        liveVariation: data.variation,
+        liveItem: data.item,
+        liveContent: data.content ?? [],
         livePosition: data.position,
-        liveItem: data.item, // New: Sync generic item
-        liveMediaState: data.liveMediaState, // New: Sync media state
+        liveMediaState: data.liveMediaState,
 
-        previousLiveItem: data.previousItem ?? null, // New
-        previousLiveSong: data.previousSong ?? null,
-        previousLiveVariation: data.previousVariation ?? 0,
-        previousLivePosition: data.previousPosition ?? { partIndex: 0, slideIndex: 0 }
+        previousItem: data.previousItem ?? null,
+        previousPosition: data.previousPosition ?? 0
       })
     })
 
@@ -80,10 +77,10 @@ class SocketService {
       })
     })
 
-    this.socket.on('preview-updated', (data: { song: any, variation: number, position: any }) => {
+    this.socket.on('preview-updated', (data: { item: any, content: import('../types').ContentSlide[], position: number }) => {
       this.notifyStateUpdate({
-        previewSong: data.song,
-        previewVariation: data.variation,
+        previewItem: data.item,
+        previewContent: data.content ?? [],
         previewPosition: data.position
       })
     })

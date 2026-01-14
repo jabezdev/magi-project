@@ -1,6 +1,6 @@
 import { state } from '../state'
 
-import { getAllSlides } from '../utils'
+
 import { updateHTML } from '../utils'
 
 let clockInterval: number | null = null
@@ -41,28 +41,25 @@ export function buildConfidenceMonitorHTML(): string {
 }
 
 function buildTeleprompterContent(): string {
-    const { displayMode, liveItem, liveSong, liveVariation, livePosition, previousLiveSong, previousLiveItem, previewItem, previewSong, previewVariation, previewPosition, liveMediaState } = state
+    const { liveItem, previousItem, liveContent, previousContent, liveMediaState } = state
 
-    // 1. Handle overrides
+    // 1. Handle Overrides
     let modeOverlay = ''
-    if (!liveItem && !previousLiveItem) {
-        // ... (existing overlay logic for no-item state) ...
-    }
-
-    if (!liveItem && !previousLiveItem) {
+    if (!liveItem && !previousItem && liveContent.length === 0 && previousContent.length === 0) {
         return modeOverlay + '<div class="flex items-center justify-center flex-1 text-xl text-text-muted cm-empty">No content loaded</div>'
     }
 
-    // DISPATCH BASED ON LIVE ITEM TYPE
-    // Note: Previous Item logic is tricky with non-songs. For now, only Songs support "Previous Item" continuity in the teleprompter.
-    // Use existing logic if it's a song.
+    // DISPATCH BASED ON CONTENT
+    // We prioritize showing the live content in a teleprompter style (multi-slide scrolling)
+    // For single-slide media (video/image), we show a special view.
 
-    if (liveItem?.type === 'song' || (!liveItem && previousLiveItem?.type === 'song')) {
-        // --- SONG MODE (Existing Teleprompter) ---
-        return buildSongTeleprompter()
+    const isMultiSlide = liveContent.length > 1 || (liveContent.length === 1 && liveItem?.type === 'song')
+
+    if (isMultiSlide) {
+        return buildUnifiedTeleprompter()
     }
 
-    // --- NON-SONG MODES ---
+    // --- SINGLE-SLIDE MEDIA VIEWS ---
     let contentHTML = ''
 
     if (liveItem) {
@@ -73,7 +70,7 @@ function buildTeleprompterContent(): string {
                 contentHTML = `
                     <div class="flex flex-col items-center justify-center flex-1 h-full text-center">
                         <div class="text-6xl mb-4">🎥</div>
-                        <div class="text-4xl text-white font-bold mb-2">${liveItem.name || 'Video'}</div>
+                        <div class="text-4xl text-white font-bold mb-2">${liveItem.title || 'Video'}</div>
                         <div class="text-2xl text-text-muted font-mono mb-8">${formatTime(liveMediaState.currentTime)} / ${formatTime(liveMediaState.duration)}</div>
                         <div class="text-3xl">${holdText}</div>
                     </div>
@@ -83,40 +80,35 @@ function buildTeleprompterContent(): string {
             case 'image':
                 contentHTML = `
                     <div class="flex items-center justify-center flex-1 h-full w-full p-4">
-                        <img src="${liveItem.url}" class="max-w-full max-h-full object-contain rounded-lg shadow-lg border border-border-color" />
+                        <img src="${liveItem.url || (liveContent[0]?.content)}" class="max-w-full max-h-full object-contain rounded-lg shadow-lg border border-border-color" />
                     </div>
                  `
                 break
 
-            case 'presentation':
-                // Show Current Slide + Next Slide Preview
-                const slideIndex = (livePosition as any).index || 0
-                const currentSlide = liveItem.slides[slideIndex]
-                const nextSlide = liveItem.slides[slideIndex + 1]
-
+            case 'audio':
                 contentHTML = `
-                    <div class="flex flex-col h-full p-4 gap-4">
-                        <div class="flex-1 flex flex-col items-center justify-center bg-bg-secondary rounded-lg border-2 border-accent-primary p-4 relative">
-                            <span class="absolute top-2 left-2 text-xs uppercase tracking-widest text-accent-primary font-bold">Current</span>
-                             ${renderSlideContent(currentSlide)}
-                        </div>
-                        <div class="h-1/3 flex flex-col items-center justify-center bg-bg-tertiary rounded-lg border border-border-color p-4 relative opacity-60">
-                            <span class="absolute top-2 left-2 text-xs uppercase tracking-widest text-text-muted font-bold">Next</span>
-                             ${nextSlide ? renderSlideContent(nextSlide) : '<span class="text-text-muted italic">End of presentation</span>'}
-                        </div>
+                    <div class="flex flex-col items-center justify-center flex-1 h-full text-center gap-4">
+                        <div class="text-6xl">🎵</div>
+                        <div class="text-4xl text-white font-bold">${liveItem.title || 'Audio'}</div>
+                        <div class="text-2xl text-text-muted font-mono">${formatTime(liveMediaState.currentTime)} / ${formatTime(liveMediaState.duration)}</div>
                     </div>
-                 `
+                `
                 break
 
             case 'scripture':
-                contentHTML = `
-                    <div class="flex flex-col items-center justify-center flex-1 h-full p-8 text-center">
-                        <div class="text-3xl text-accent-primary mb-6 font-bold">${liveItem.reference}</div>
-                        <div class="text-5xl text-white leading-relaxed font-serif">
-                             "${liveItem.verses.map(v => v.text).join(' ')}"
+            case 'slide':
+                // Even if single slide, we can use teleprompter or a focused view
+                const slide = liveContent[0]
+                if (slide) {
+                    contentHTML = `
+                        <div class="flex flex-col items-center justify-center flex-1 h-full p-8 text-center">
+                            <div class="text-2xl text-accent-primary mb-6 font-bold">${liveItem.title || ''}</div>
+                             <div class="text-5xl text-white leading-relaxed">
+                                 ${slide.content}
+                             </div>
                         </div>
-                    </div>
-                 `
+                     `
+                }
                 break
         }
     }
@@ -129,92 +121,78 @@ function buildTeleprompterContent(): string {
     `
 }
 
-// Helper to extract old logic but wrapped for dispatch
-function buildSongTeleprompter(): string {
-    const { displayMode, liveSong, liveVariation, livePosition, previousLiveSong, previousLiveVariation, previousLivePosition, previewSong, previewVariation, previewPosition } = state
-
-    // ... (Existing logic for songs: Previous, Live, Preview) ...
-    // To save complexity in this diff, I will rely on the fact that I am REPLACING the whole function.
-    // I should copy the existing logic here.
+/**
+ * Unified Teleprompter - Handles Songs, Scripture Lists, and Presentations
+ */
+function buildUnifiedTeleprompter(): string {
+    const { liveItem, liveContent, previousItem, previousContent, previewItem, previewContent, livePosition, previousPosition, previewPosition } = state
 
     let htmlParts: string[] = []
     let currentGlobalIndex = -1
     let slideCounter = 0
 
-    // 1. Previous Song
-    if (previousLiveSong && (!liveSong || previousLiveSong.id !== liveSong.id)) {
-        const prevSlides = getAllSlides(previousLiveSong, previousLiveVariation)
-        if (prevSlides.length > 0) {
-            let prevStartIndex = 0
-            let prevEndIndex = prevSlides.length
-            if (previousLivePosition) {
-                const activePartIndex = (previousLivePosition as any).partIndex
-                let foundStart = false
-                for (let i = 0; i < prevSlides.length; i++) {
-                    if (prevSlides[i].position.partIndex === activePartIndex) {
-                        if (!foundStart) { prevStartIndex = i; foundStart = true }
-                    } else if (foundStart) { prevEndIndex = i; break }
-                }
-            }
-            const prevHtml = prevSlides.map((slide, index) => {
-                const idx = slideCounter++
-                const isHidden = index < prevStartIndex || index >= prevEndIndex
-                const hiddenClass = isHidden ? ' hidden' : ''
-                const styleClass = isHidden ? 'past' : ''
-                const newPart = index > 0 && prevSlides[index - 1].partLabel !== slide.partLabel
-                return renderSlide(slide, idx, `tp-slide ${styleClass}${hiddenClass}`, newPart)
-            }).join('')
-            htmlParts.push(prevHtml)
-            htmlParts.push('<div class="w-full my-8 shrink-0 tp-divider" style="height: var(--cm-divider-height, 2px); background: var(--cm-divider-color, rgba(255, 255, 255, 0.2));"></div>')
+    // 1. Previous Content (Show current active block)
+    if (previousContent.length > 0 && (!liveItem || previousItem?.id !== liveItem?.id)) {
+        // Find range to show (only show the active part/block if it's a song)
+        let startIndex = 0
+        let endIndex = previousContent.length
+
+        const activeSlide = previousContent[previousPosition]
+        if (activeSlide?.partId) {
+            // Show all slides from this part
+            startIndex = previousContent.findIndex(s => s.partId === activeSlide.partId)
+            endIndex = previousContent.findLastIndex((s: any) => s.partId === activeSlide.partId) + 1
         }
+
+        const prevHtml = previousContent.map((slide, index) => {
+            const idx = slideCounter++
+            const isHidden = index < startIndex || index >= endIndex
+            const hiddenClass = isHidden ? ' hidden' : ''
+            const styleClass = isHidden ? 'past' : ''
+            const newPart = index > 0 && previousContent[index - 1].partId !== slide.partId
+            return renderSlide(slide, idx, `tp-slide ${styleClass}${hiddenClass}`, newPart)
+        }).join('')
+
+        htmlParts.push(prevHtml)
+        htmlParts.push('<div class="w-full my-8 shrink-0 tp-divider" style="height: var(--cm-divider-height, 2px); background: var(--cm-divider-color, rgba(255, 255, 255, 0.2));"></div>')
     }
 
-    // 2. Live Song
-    if (liveSong) {
-        const liveSlides = getAllSlides(liveSong, liveVariation)
-        let localCurrentIndex = 0
-        for (let i = 0; i < liveSlides.length; i++) {
-            if (liveSlides[i].position.partIndex === (livePosition as any).partIndex &&
-                liveSlides[i].position.slideIndex === (livePosition as any).slideIndex) {
-                localCurrentIndex = i
-                break
-            }
-        }
-        const liveHtml = liveSlides.map((slide, index) => {
+    // 2. Live Content
+    if (liveContent.length > 0) {
+        const liveHtml = liveContent.map((slide, index) => {
             const globalIdx = slideCounter++
             let slideClass = 'tp-slide'
-            if (index < localCurrentIndex) slideClass += ' past'
-            else if (index === localCurrentIndex) { slideClass += ' current'; currentGlobalIndex = globalIdx }
+            if (index < livePosition) slideClass += ' past'
+            else if (index === livePosition) { slideClass += ' current'; currentGlobalIndex = globalIdx }
             else slideClass += ' future'
-            return renderSlide(slide, globalIdx, slideClass, index > 0 && liveSlides[index - 1].partLabel !== slide.partLabel)
+
+            const newPart = index > 0 && liveContent[index - 1].partId !== slide.partId
+            return renderSlide(slide, globalIdx, slideClass, newPart)
         }).join('')
         htmlParts.push(liveHtml)
     }
 
-    // 3. Preview Song
-    if (previewSong && previewSong.id !== liveSong?.id) {
+    // 3. Preview Content (Medley support)
+    if (previewContent.length > 0 && previewItem?.id !== liveItem?.id) {
         htmlParts.push('<div class="w-full my-8 shrink-0 tp-divider" style="height: var(--cm-divider-height, 2px); background: var(--cm-divider-color, rgba(255, 255, 255, 0.2));"></div>')
-        const previewSlides = getAllSlides(previewSong, previewVariation)
-        let previewStartIndex = 0
-        for (let i = 0; i < previewSlides.length; i++) {
-            if (previewSlides[i].position.partIndex === (previewPosition as any).partIndex &&
-                previewSlides[i].position.slideIndex === (previewPosition as any).slideIndex) {
-                previewStartIndex = i
-                break
-            }
-        }
-        const previewHtml = previewSlides.map((slide, index) => {
+
+        const previewHtml = previewContent.map((slide, index) => {
             const globalIdx = slideCounter++
-            const isHidden = index < previewStartIndex
+            const isHidden = index < previewPosition
             const hiddenClass = isHidden ? ' hidden' : ''
-            const newPart = index > 0 && previewSlides[index - 1].partLabel !== slide.partLabel
+            const newPart = index > 0 && previewContent[index - 1].partId !== slide.partId
             return renderSlide(slide, globalIdx, `tp-slide preview${hiddenClass}`, newPart)
         }).join('')
         htmlParts.push(previewHtml)
     }
 
     return `
-        <div class="flex flex-col items-stretch w-full will-change-transform transition-transform duration-[400ms] ease-out teleprompter-scroll" data-current-index="${currentGlobalIndex}" data-song-id="${liveSong?.id}" data-prev-song-id="${previousLiveSong?.id || ''}" data-preview-song-id="${previewSong?.id || ''}" data-preview-position="${(previewPosition as any).partIndex}-${(previewPosition as any).slideIndex}">
+        <div class="flex flex-col items-stretch w-full will-change-transform transition-transform duration-[400ms] ease-out teleprompter-scroll" 
+             data-current-index="${currentGlobalIndex}" 
+             data-item-id="${liveItem?.id || ''}" 
+             data-prev-item-id="${previousItem?.id || ''}" 
+             data-preview-item-id="${previewItem?.id || ''}" 
+             data-preview-position="${previewPosition}">
             <div class="shrink-0 h-[40vh] tp-spacer-top"></div>
             ${htmlParts.join('')}
             <div class="shrink-0 h-[40vh] tp-spacer-bottom"></div>
@@ -222,12 +200,7 @@ function buildSongTeleprompter(): string {
     `
 }
 
-function renderSlideContent(slide: any): string {
-    if (!slide) return ''
-    if (slide.type === 'text') return `<div class="text-4xl text-white text-center font-medium">${slide.content}</div>`
-    if (slide.type === 'image') return `<img src="${slide.content}" class="max-w-full max-h-full object-contain" />`
-    return ''
-}
+
 
 function formatTime(seconds: number): string {
     const mins = Math.floor(seconds / 60)
@@ -246,14 +219,15 @@ function renderSlide(slide: any, index: number, className: string, newPart: bool
 
     const textStyle = `font-size: var(--cm-font-size, 2.5rem); line-height: var(--cm-line-height, 1.4); font-family: var(--cm-font-family, system-ui);`
     const isCurrent = className.includes('current')
+    const label = slide.label || ''
 
     return `
         <div class="flex items-stretch w-full transition-all duration-500 ease-in-out py-6 ${className}" data-index="${index}" id="tp-slide-${index}" style="${style} margin-bottom: var(--cm-slide-gap, 0);">
             <div class="flex items-center justify-center w-10 shrink-0 relative tp-part-indicator">
-                <span class="absolute whitespace-nowrap text-[0.7rem] font-bold uppercase tracking-[2px] rotate-[-90deg] ${isCurrent ? 'text-accent-primary' : 'text-text-muted'}">${slide.partLabel}</span>
+                <span class="absolute whitespace-nowrap text-[0.7rem] font-bold uppercase tracking-[2px] rotate-[-90deg] ${isCurrent ? 'text-accent-primary' : 'text-text-muted'}">${label}</span>
             </div>
             <div class="flex-1 flex items-center pl-4 tp-content">
-                <div class="tp-text ${isCurrent ? 'text-text-primary font-medium' : 'text-text-secondary'}" style="${textStyle}">${slide.text.replace(/\n/g, '<br>')}</div>
+                <div class="tp-text ${isCurrent ? 'text-text-primary font-medium' : 'text-text-secondary'}" style="${textStyle}">${(slide.content || '').replace(/\n/g, '<br>')}</div>
             </div>
         </div>
     `
@@ -291,72 +265,68 @@ export function stopClock(): void {
 }
 
 export function updateTeleprompterContent(): void {
-    const { displayMode, liveSong } = state
+    const { displayMode, liveItem, previousItem, previewItem, previewPosition } = state
     const teleprompter = document.querySelector('.cm-teleprompter')
     const existingScroll = teleprompter?.querySelector('.teleprompter-scroll')
 
     if (!teleprompter) return
 
-    // Check if song changed - need full rebuild of lyrics
-    const currentSongId = existingScroll?.getAttribute('data-song-id')
-    const newSongId = liveSong?.id?.toString() || ''
-    const songChanged = !existingScroll || currentSongId !== newSongId
+    // Check if item changed - need full rebuild
+    const currentItemId = existingScroll?.getAttribute('data-item-id')
+    const newItemId = liveItem?.id?.toString() || ''
+    const itemChanged = !existingScroll || currentItemId !== newItemId
 
-    // Also track previous/preview song IDs to detect structure changes
-    const currentPrevSongId = existingScroll?.getAttribute('data-prev-song-id') || ''
-    const currentPreviewSongId = existingScroll?.getAttribute('data-preview-song-id') || ''
+    // Also track previous/preview item IDs to detect structure changes
+    const currentPrevItemId = existingScroll?.getAttribute('data-prev-item-id') || ''
+    const currentPreviewItemId = existingScroll?.getAttribute('data-preview-item-id') || ''
     const currentPreviewPosition = existingScroll?.getAttribute('data-preview-position') || ''
-    const newPrevSongId = state.previousLiveSong?.id?.toString() || ''
-    const newPreviewSongId = state.previewSong?.id?.toString() || ''
-    const newPreviewPosition = `${state.previewPosition.partIndex}-${state.previewPosition.slideIndex}`
+
+    const newPrevItemId = previousItem?.id?.toString() || ''
+    const newPreviewItemId = previewItem?.id?.toString() || ''
+    const newPreviewPosition = previewPosition.toString()
 
     // Core structure changes (require full rebuild)
-    const coreStructureChanged = songChanged || currentPrevSongId !== newPrevSongId
+    const coreStructureChanged = itemChanged || currentPrevItemId !== newPrevItemId
 
     // Preview-only change (can rebuild without jarring scroll reset)
     const previewOnlyChange = !coreStructureChanged && (
-        currentPreviewSongId !== newPreviewSongId ||
+        currentPreviewItemId !== newPreviewItemId ||
         currentPreviewPosition !== newPreviewPosition
     )
 
     const structureChanged = coreStructureChanged || previewOnlyChange
 
-    // Save current scroll transform before any DOM changes (only used for preview-only changes)
+    // Save current scroll transform before any DOM changes
     const savedTransform = (existingScroll as HTMLElement)?.style?.transform || ''
 
-    // Always update mode overlay
     const doUpdate = () => {
         updateModeOverlay(teleprompter, displayMode)
         if (structureChanged) {
-            // Full rebuild when song structure changes
+            // Full rebuild when content structure changes
             updateHTML(teleprompter, buildTeleprompterContent())
 
             const newScrollContainer = teleprompter.querySelector('.teleprompter-scroll') as HTMLElement
             if (newScrollContainer) {
                 if (previewOnlyChange) {
-                    // For preview-only changes: preserve scroll position
                     newScrollContainer.style.transition = 'none'
                     newScrollContainer.style.transform = savedTransform
                     void newScrollContainer.offsetHeight
                     newScrollContainer.style.transition = ''
-                    // Smooth scroll to current slide (should be same position)
                     scrollToSlide(parseInt(newScrollContainer.getAttribute('data-current-index') || '0'), false)
                 } else {
-                    // For song changes: instant scroll to new position
-                    scrollToCurrentSlide(true) // true = instant
+                    scrollToCurrentSlide(true)
                 }
             }
         } else {
-            // Efficient update: just update CSS classes (scroll is handled inside updateSlideClasses)
+            // Efficient update: just update CSS classes
             updateSlideClasses()
         }
     }
 
     // Determine transition settings
     const { type, duration } = state.confidenceMonitorSettings.transitions || { type: 'crossfade', duration: 0.5 }
-    const useTransition = type !== 'none' && (songChanged || displayMode !== (teleprompter.getAttribute('data-prev-mode') || ''))
+    const useTransition = type !== 'none' && (itemChanged || displayMode !== (teleprompter.getAttribute('data-prev-mode') || ''))
 
-    // Update previous mode tracker
     teleprompter.setAttribute('data-prev-mode', displayMode)
 
     if (useTransition && document.startViewTransition) {
@@ -375,16 +345,14 @@ function updateModeOverlay(teleprompter: Element, displayMode: string): void {
     }
 
     // Only add overlay if NO song is loaded and NOT in lyrics mode
-    const { liveSong, previousLiveSong } = state
-    if (liveSong || previousLiveSong) return
+    const { liveItem, previousItem } = state
+    if (liveItem || previousItem) return
 
     // Add new overlay if not in lyrics mode
     const overlayClass = "absolute inset-0 flex items-center justify-center w-full h-full z-[10] mode-overlay";
     if (displayMode === 'black') {
         teleprompter.insertAdjacentHTML('afterbegin', `<div class="${overlayClass} bg-black text-[#333]"></div>`)
-    } else if (displayMode === 'clear') {
-        teleprompter.insertAdjacentHTML('afterbegin', `<div class="${overlayClass} bg-transparent"></div>`)
-    } else if (displayMode === 'logo') {
+    } else if (displayMode === 'clear' || displayMode === 'logo') {
         teleprompter.insertAdjacentHTML('afterbegin', `<div class="${overlayClass} bg-transparent"></div>`)
     }
 }
@@ -394,32 +362,12 @@ function updateModeOverlay(teleprompter: Element, displayMode: string): void {
  * This is used when only the position changes within the same song structure.
  */
 function updateSlideClasses(): void {
-    const { liveSong, liveVariation, livePosition, previousLiveSong, previousLiveVariation } = state
-    if (!liveSong) return
+    const { liveContent, livePosition, previousContent } = state
+    if (liveContent.length === 0) return
 
-    // Calculate the offset from previous song slides (full song for continuous medley)
-    let previousSlidesCount = 0
-    if (previousLiveSong && previousLiveSong.id !== liveSong.id) {
-        const prevSlides = getAllSlides(previousLiveSong, previousLiveVariation)
-        previousSlidesCount = prevSlides.length
-    }
+    const previousSlidesCount = previousContent.length > 0 ? previousContent.length : 0
+    const globalCurrentIndex = previousSlidesCount + livePosition
 
-    const liveSlides = getAllSlides(liveSong, liveVariation)
-
-    // Find current slide index within live song
-    let localCurrentIndex = 0
-    for (let i = 0; i < liveSlides.length; i++) {
-        if (liveSlides[i].position.partIndex === livePosition.partIndex &&
-            liveSlides[i].position.slideIndex === livePosition.slideIndex) {
-            localCurrentIndex = i
-            break
-        }
-    }
-
-    // The global index accounts for previous song slides
-    const globalCurrentIndex = previousSlidesCount + localCurrentIndex
-
-    // Update all slide classes
     document.querySelectorAll('.tp-slide').forEach((slide, index) => {
         slide.classList.remove('past', 'current', 'future')
         const indicator = slide.querySelector('.tp-part-indicator span')
@@ -429,33 +377,26 @@ function updateSlideClasses(): void {
         if (text) text.className = 'tp-text text-text-secondary';
         (slide as HTMLElement).style.opacity = 'var(--cm-prev-next-opacity, 0.35)';
 
-        // Previous song slides are always "past"
         if (index < previousSlidesCount) {
             slide.classList.add('past')
-        } else {
-            // Live song slides
+        } else if (index < previousSlidesCount + liveContent.length) {
             const liveIndex = index - previousSlidesCount
-            if (liveIndex < liveSlides.length) {
-                if (liveIndex < localCurrentIndex) {
-                    slide.classList.add('past')
-                } else if (liveIndex === localCurrentIndex) {
-                    slide.classList.add('current')
-                    if (indicator) indicator.className = 'absolute whitespace-nowrap text-[0.7rem] font-bold uppercase tracking-[2px] rotate-[-90deg] text-accent-primary';
-                    if (text) text.className = 'tp-text text-text-primary font-medium';
-                    (slide as HTMLElement).style.opacity = '1';
-                } else {
-                    slide.classList.add('future')
-                }
+            if (liveIndex < livePosition) {
+                slide.classList.add('past')
+            } else if (liveIndex === livePosition) {
+                slide.classList.add('current')
+                if (indicator) indicator.className = 'absolute whitespace-nowrap text-[0.7rem] font-bold uppercase tracking-[2px] rotate-[-90deg] text-accent-primary';
+                if (text) text.className = 'tp-text text-text-primary font-medium';
+                (slide as HTMLElement).style.opacity = '1';
+            } else {
+                slide.classList.add('future')
             }
-            // Preview song slides keep their tp-preview class (opacity handled by CSS)
         }
     })
 
-    // Update data attribute and scroll to center the current slide
     const scrollContainer = document.querySelector('.teleprompter-scroll') as HTMLElement
     if (scrollContainer) {
         scrollContainer.setAttribute('data-current-index', String(globalCurrentIndex))
-        // Directly call scroll with the calculated index
         scrollToSlide(globalCurrentIndex)
     }
 }

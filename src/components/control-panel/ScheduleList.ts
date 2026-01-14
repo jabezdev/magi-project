@@ -2,7 +2,7 @@ import { state, updateState, saveCurrentScheduleName } from '../../state'
 import { ICONS } from '../../constants'
 import { selectItemForPreview, removeFromSchedule, updateScheduleItem, moveScheduleItem } from '../../actions'
 import { saveSchedule, fetchScheduleList, fetchScheduleByName, createSchedule } from '../../services'
-import { openScheduleNameModal } from '../modals'
+import { openScheduleNameModal, openScheduleItemSettings } from '../modals'
 import type { SongItem, SlideItem } from '../../types'
 
 // Track current schedule name - session only
@@ -39,7 +39,8 @@ export function renderScheduleList(): string {
   const variationBadgeClass = "text-[0.65rem] text-text-secondary bg-bg-primary px-[0.4rem] py-[0.15rem] rounded-sm cursor-pointer transition-all duration-150 border border-border-color hover:bg-bg-hover hover:text-accent-primary hover:border-accent-primary"
   const typeIconClass = "text-[0.65rem] opacity-50 mr-1"
 
-  const removeBtnClass = "absolute -right-6 opacity-0 transition-all duration-150 ease-out flex items-center justify-center w-[22px] h-[22px] bg-transparent border-none rounded-[3px] text-text-muted cursor-pointer hover:text-live-red hover:bg-red-600/10 group-hover:opacity-100 group-hover:-right-6"
+  const removeBtnClass = "opacity-0 transition-opacity duration-150 flex items-center justify-center w-[22px] h-[22px] bg-transparent border-none rounded-[3px] text-text-muted cursor-pointer hover:text-live-red hover:bg-red-600/10 group-hover:opacity-100"
+  const settingsBtnClass = "opacity-0 transition-opacity duration-150 flex items-center justify-center w-[22px] h-[22px] bg-transparent border-none rounded-[3px] text-text-muted cursor-pointer hover:text-accent-primary hover:bg-indigo-500/10 group-hover:opacity-100"
 
 
   if (!schedule || schedule.items.length === 0) {
@@ -172,7 +173,11 @@ export function renderScheduleList(): string {
                 <span class="${titleClass}">${title}</span>
                 <div class="song-meta ${metaClass}">
                    ${extras}
-                   <button class="icon-btn-sm remove-schedule-btn icon-btn-sm ${removeBtnClass}" data-index="${index}" title="Remove">${ICONS.trash}</button>
+                   ${extras}
+                   <div class="flex items-center gap-1 absolute right-0 bg-gradient-to-l from-bg-tertiary via-bg-tertiary to-transparent pl-4">
+                        <button class="icon-btn-sm settings-schedule-btn ${settingsBtnClass}" data-index="${index}" title="Settings">${ICONS.settings || '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>'}</button>
+                        <button class="icon-btn-sm remove-schedule-btn ${removeBtnClass}" data-index="${index}" title="Remove">${ICONS.trash}</button>
+                   </div>
                 </div>
               </div>
             `
@@ -251,11 +256,22 @@ export function initScheduleListListeners(): void {
   // Initialize drag and drop
   initDragAndDrop(section)
 
+  // Auto-scroll on item add
+  window.addEventListener('schedule-item-added', () => {
+    const body = section.querySelector('.cp-section-body')
+    if (body) {
+      setTimeout(() => {
+        body.scrollTop = body.scrollHeight
+      }, 50)
+    }
+  })
+
   section.querySelectorAll('.song-item').forEach(el => {
     el.addEventListener('click', async (e) => {
       // Prevent if clicking interactive elements
       if ((e.target as HTMLElement).closest('.variation-badge') ||
-        (e.target as HTMLElement).closest('.remove-schedule-btn')) {
+        (e.target as HTMLElement).closest('.remove-schedule-btn') ||
+        (e.target as HTMLElement).closest('.settings-schedule-btn')) {
         return
       }
 
@@ -292,6 +308,20 @@ export function initScheduleListListeners(): void {
         if (state.previewItem?.id === item.id) {
           selectItemForPreview({ ...item, variationId: nextVariation.id })
         }
+      }
+    })
+  })
+
+  // Settings buttons
+  section.querySelectorAll('.settings-schedule-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      const index = parseInt(btn.getAttribute('data-index') || '0')
+      const item = state.schedule.items[index]
+      if (item) {
+        openScheduleItemSettings(item, (newSettings) => {
+          updateScheduleItem(index, { settings: newSettings })
+        })
       }
     })
   })
@@ -337,14 +367,20 @@ function initDragAndDrop(section: Element): void {
 
       const rect = (item as HTMLElement).getBoundingClientRect()
       const midY = rect.top + rect.height / 2
+      const isTop = event.clientY < midY
 
-      // Remove previous classes
+      // Reset styles first
       item.classList.remove('border-t-2', 'border-t-accent-primary', '-mt-[1px]', 'border-b-2', 'border-b-accent-primary', '-mb-[1px]')
 
-      if (event.clientY < midY) {
-        item.classList.add('border-t-2', 'border-t-accent-primary', '-mt-[1px]') // drag-over-top
+      // Add Drop Indicator Line
+      // We'll use a pseudo-element logic or just helper classes if possible. 
+      // Given existing CSS limitations, border is the easiest but let's make it cleaner.
+      // Use standard border logic but ensure it's visible.
+
+      if (isTop) {
+        item.classList.add('border-t-2', 'border-t-accent-primary', '-mt-[1px]')
       } else {
-        item.classList.add('border-b-2', 'border-b-accent-primary', '-mb-[1px]') // drag-over-bottom
+        item.classList.add('border-b-2', 'border-b-accent-primary', '-mb-[1px]')
       }
     })
 
@@ -355,6 +391,11 @@ function initDragAndDrop(section: Element): void {
     item.addEventListener('drop', async (e) => {
       e.preventDefault()
       const event = e as DragEvent
+
+      // Cleanup visual indicators immediately
+      section.querySelectorAll('.song-item').forEach(el => {
+        el.classList.remove('border-t-2', 'border-t-accent-primary', '-mt-[1px]', 'border-b-2', 'border-b-accent-primary', '-mb-[1px]')
+      })
 
       const fromIndex = draggedIndex
       if (fromIndex === null) return
@@ -367,24 +408,30 @@ function initDragAndDrop(section: Element): void {
       let finalToIndex = toIndex
 
       if (event.clientY < midY) {
-        // Dropping above this item
+        // Dropping above
         finalToIndex = toIndex
       } else {
-        // Dropping below this item
+        // Dropping below
         finalToIndex = toIndex + 1
       }
 
-      // Adjust for moving down
+      // Adjust logic: if we move an item from index 2 to index 4 (below 3), 
+      // the array shifts. 
+      // Rule: If moving DOWN, we insert AFTER target, so index increases.
+      // But if we insert at 4, the old item at 2 is removed, so everything shifts up.
+      // The `moveScheduleItem` action usually handles (from, to) where 'to' is the index BEFORE ensuring shift.
+      // Let's rely on standard array splice logic:
+      // remove from 'from', then insert at 'to'.
+      // If 'to' > 'from', we must decrease 'to' by 1 because removal happened before insertion point.
+
       if (fromIndex < finalToIndex) {
         finalToIndex--
       }
 
       if (fromIndex !== finalToIndex) {
+        // Optimistic UI updates are handled by state refresh, but we can do a quick check
         await moveScheduleItem(fromIndex, finalToIndex)
       }
-
-      // Cleanup
-      item.classList.remove('border-t-2', 'border-t-accent-primary', '-mt-[1px]', 'border-b-2', 'border-b-accent-primary', '-mb-[1px]')
     })
   })
 }

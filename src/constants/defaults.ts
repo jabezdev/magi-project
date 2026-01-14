@@ -88,10 +88,7 @@ export const DEFAULT_LOWER_THIRDS_SETTINGS: LowerThirdsSettings = {
   animationDuration: 0.5
 }
 
-export const DEFAULT_POSITION: SlidePosition = {
-  partIndex: 0,
-  slideIndex: 0
-}
+export const DEFAULT_POSITION: SlidePosition = 0
 
 export const DEFAULT_BACKGROUND_VIDEO = ''
 export const DEFAULT_LOGO_MEDIA = ''

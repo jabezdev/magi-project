@@ -40,7 +40,7 @@
     }
   },
   "layoutSettings": {
-    "songsColumnWidth": 418,
+    "songsColumnWidth": 426,
     "scheduleSectionHeight": 391,
     "librarySectionHeight": null,
     "backgroundsSectionHeight": 290,
@@ -53,7 +53,7 @@
       "height": 768
     },
     "mainProjectionStaticMode": false,
-    "monitorColumnWidth": 370
+    "monitorColumnWidth": 450
   },
   "logoMedia": "",
   "partColors": {

@@ -13,7 +13,6 @@ import type { ContentSlide } from '../../types'
 
 export function renderPreviewColumn(): string {
   const item = state.previewItem
-  const song = state.previewSong
 
   // Inline Tailwind Classes
   const columnClass = "flex flex-col bg-bg-primary overflow-hidden min-w-0 min-w-[200px] cp-preview"
@@ -35,13 +34,16 @@ export function renderPreviewColumn(): string {
 
   let headerContent = ''
   if (item) {
-    if (item.type === 'song' && song) {
+    if (item.type === 'song') {
+      const songSummary = state.songs.find(s => s.id === item.songId)
+      const variations = songSummary?.variations || []
+
       headerContent = `
             <div class="${infoStackClass}">
-                 <span class="${titleClass}">${song.title}</span>
+                 <span class="${titleClass}">${item.title}</span>
                  <select class="${variationSelectClass}" id="preview-variation" style="text-align-last: center;">
-                    ${song.variations.map((v: any, i: number) => `
-                    <option value="${i}" ${i === state.previewVariation ? 'selected' : ''}>${v.name}</option>
+                    ${variations.map((v: any, i: number) => `
+                    <option value="${i}" ${i === item.variationId ? 'selected' : ''}>${v.name}</option>
                     `).join('')}
                  </select>
             </div>
@@ -92,20 +94,15 @@ function renderPreviewContent(): string {
         `
   }
 
-  // Use unified content if available
+  // Mandatory hydration check - all items MUST have content slides now
   if (state.previewContent.length > 0) {
     return renderUnifiedContent()
   }
 
-  // Fallback for single-slide items or implement-pending types
-  if (item.type === 'video') return renderVideoPreview()
-  if (item.type === 'image') return renderImagePreview()
-  if (item.type === 'audio') return renderAudioPreview()
-
   return `
             <div class="${emptyStateClass}">
                 <span class="w-16 h-16 opacity-20">${ICONS.file}</span>
-                <p>Preview for ${item.type} not implemented</p>
+                <p>Loading preview...</p>
             </div>
         `
 }
@@ -122,15 +119,15 @@ function renderUnifiedContent(): string {
     return `<div class="p-4 text-center text-text-muted">No content</div>`
   }
 
-  // For single-slide items (video, image, audio), render media-specific UI
+  // Group by partId if present (songs)
+  const hasGroups = content.some((s: ContentSlide) => s.partId)
+
+  // Specific media type overrides for single-slide items within the grid
   if (content.length === 1 && item) {
     if (item.type === 'video') return renderVideoPreview()
     if (item.type === 'image') return renderImagePreview()
     if (item.type === 'audio') return renderAudioPreview()
   }
-
-  // Group by partId if present (songs)
-  const hasGroups = content.some((s: ContentSlide) => s.partId)
 
   if (hasGroups) {
     return renderGroupedContent(content, currentPosition)
