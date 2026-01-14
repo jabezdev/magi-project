@@ -13,7 +13,9 @@ export function uploadRoutes(dataDir) {
         'video_content': join(dataDir, 'media/content_videos'),
         'image_bg': join(dataDir, 'media/background_images'),
         'image_content': join(dataDir, 'media/content_images'),
-        'bible': join(dataDir, 'scriptures') // Assuming direct upload for now
+        'image_slides': join(dataDir, 'slides/image_slides'),
+        'canva_slides': join(dataDir, 'slides/canva_slides'),
+        'bible': join(dataDir, 'scriptures')
     }
 
     // Ensure dirs exist
@@ -24,23 +26,30 @@ export function uploadRoutes(dataDir) {
     const storage = multer.diskStorage({
         destination: (req, file, cb) => {
             const targetKey = req.body.target
-            const dest = targets[targetKey] || join(dataDir, 'uploads') // Fallback
+            let dest = targets[targetKey] || join(dataDir, 'uploads')
+
+            // Subfolder support
+            if (req.body.subfolder) {
+                const safeSub = req.body.subfolder.replace(/[^a-z0-9 _-]/gi, '').trim()
+                if (safeSub) dest = join(dest, safeSub)
+            }
+
             if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true })
             cb(null, dest)
         },
         filename: (req, file, cb) => {
-            // Keep original name but sanitize?
             cb(null, file.originalname)
         }
     })
 
     const upload = multer({ storage })
 
-    router.post('/upload', upload.single('file'), (req, res) => {
-        if (!req.file) return res.status(400).json({ error: 'No file uploaded' })
+    router.post('/upload', upload.any(), (req, res) => {
+        const files = req.files || (req.file ? [req.file] : [])
+        if (files.length === 0) return res.status(400).json({ error: 'No files uploaded' })
 
-        console.log(`[UPLOAD] Uploaded ${req.file.originalname} to ${req.body.target}`)
-        res.json({ success: true, filename: req.file.originalname })
+        console.log(`[UPLOAD] Uploaded ${files.length} files to ${req.body.target}${req.body.subfolder ? '/' + req.body.subfolder : ''}`)
+        res.json({ success: true, count: files.length })
     })
 
     return router

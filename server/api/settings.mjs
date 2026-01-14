@@ -3,7 +3,7 @@ import fs from 'fs'
 import { join } from 'path'
 import { connectedClients, sharedState } from '../state.mjs'
 
-export function settingsRoutes(dataDir) {
+export function settingsRoutes(publicDir) {
     const router = Router()
 
     router.get('/config', (req, res) => {
@@ -23,7 +23,7 @@ export function settingsRoutes(dataDir) {
 
     router.get('/settings', (req, res) => {
         try {
-            const settingsPath = join(dataDir, 'settings.json')
+            const settingsPath = join(publicDir, 'settings.json')
             if (fs.existsSync(settingsPath)) {
                 res.json(JSON.parse(fs.readFileSync(settingsPath, 'utf-8')))
             } else {
@@ -37,7 +37,7 @@ export function settingsRoutes(dataDir) {
 
     router.post('/settings', (req, res) => {
         try {
-            const settingsPath = join(dataDir, 'settings.json')
+            const settingsPath = join(publicDir, 'settings.json')
             let existing = {}
             if (fs.existsSync(settingsPath)) {
                 existing = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))

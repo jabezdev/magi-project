@@ -6,82 +6,77 @@
  */
 
 import type { AppState, DisplaySettings, ConfidenceMonitorSettings, LayoutSettings, Song, PartColorSettings } from '../types'
-import { DEFAULT_DISPLAY_SETTINGS, DEFAULT_CONFIDENCE_MONITOR_SETTINGS, DEFAULT_LAYOUT_SETTINGS, DEFAULT_POSITION, DEFAULT_BACKGROUND_VIDEO, DEFAULT_LOGO_MEDIA, STORAGE_KEYS, DEFAULT_PART_COLORS } from '../constants'
+import { DEFAULT_DISPLAY_SETTINGS, DEFAULT_CONFIDENCE_MONITOR_SETTINGS, DEFAULT_LAYOUT_SETTINGS, DEFAULT_BACKGROUND_VIDEO, DEFAULT_LOGO_MEDIA, STORAGE_KEYS, DEFAULT_PART_COLORS } from '../constants'
 import { socketService, saveSettings as saveSettingsToServer, fetchSettings } from '../services'
 
-// Load saved settings from localStorage (fallback)
-function loadSavedTheme(): 'light' | 'dark' {
+/**
+ * LOCAL CACHE FUNCTIONS
+ * localStorage is used as a temporary cache for fast initial render.
+ * Server (settings.json) is the source of truth - always overrides on load.
+ */
+
+function getCachedTheme(): 'light' | 'dark' {
   return (localStorage.getItem(STORAGE_KEYS.THEME) as 'light' | 'dark') || 'dark'
 }
 
-function loadSavedDisplaySettings(): DisplaySettings {
-  const saved = localStorage.getItem(STORAGE_KEYS.DISPLAY_SETTINGS)
-  if (saved) {
-    try {
-      return { ...DEFAULT_DISPLAY_SETTINGS, ...JSON.parse(saved) }
-    } catch {
-      return DEFAULT_DISPLAY_SETTINGS
-    }
+function getCachedDisplaySettings(): DisplaySettings {
+  try {
+    const cached = localStorage.getItem(STORAGE_KEYS.DISPLAY_SETTINGS)
+    return cached ? { ...DEFAULT_DISPLAY_SETTINGS, ...JSON.parse(cached) } : DEFAULT_DISPLAY_SETTINGS
+  } catch {
+    return DEFAULT_DISPLAY_SETTINGS
   }
-  return DEFAULT_DISPLAY_SETTINGS
 }
 
-function loadSavedConfidenceMonitorSettings(): ConfidenceMonitorSettings {
-  const saved = localStorage.getItem(STORAGE_KEYS.CONFIDENCE_MONITOR_SETTINGS)
-  if (saved) {
-    try {
-      return { ...DEFAULT_CONFIDENCE_MONITOR_SETTINGS, ...JSON.parse(saved) }
-    } catch {
-      return DEFAULT_CONFIDENCE_MONITOR_SETTINGS
-    }
+function getCachedConfidenceMonitorSettings(): ConfidenceMonitorSettings {
+  try {
+    const cached = localStorage.getItem(STORAGE_KEYS.CONFIDENCE_MONITOR_SETTINGS)
+    return cached ? { ...DEFAULT_CONFIDENCE_MONITOR_SETTINGS, ...JSON.parse(cached) } : DEFAULT_CONFIDENCE_MONITOR_SETTINGS
+  } catch {
+    return DEFAULT_CONFIDENCE_MONITOR_SETTINGS
   }
-  return DEFAULT_CONFIDENCE_MONITOR_SETTINGS
 }
 
-function loadSavedLayoutSettings(): LayoutSettings {
-  const saved = localStorage.getItem(STORAGE_KEYS.LAYOUT_SETTINGS)
-  if (saved) {
-    try {
-      return { ...DEFAULT_LAYOUT_SETTINGS, ...JSON.parse(saved) }
-    } catch {
-      return DEFAULT_LAYOUT_SETTINGS
-    }
+function getCachedLayoutSettings(): LayoutSettings {
+  try {
+    const cached = localStorage.getItem(STORAGE_KEYS.LAYOUT_SETTINGS)
+    return cached ? { ...DEFAULT_LAYOUT_SETTINGS, ...JSON.parse(cached) } : DEFAULT_LAYOUT_SETTINGS
+  } catch {
+    return DEFAULT_LAYOUT_SETTINGS
   }
-  return DEFAULT_LAYOUT_SETTINGS
 }
 
-function loadSavedPartColors(): PartColorSettings {
-  const saved = localStorage.getItem(STORAGE_KEYS.PART_COLORS)
-  if (saved) {
-    try {
-      return { ...DEFAULT_PART_COLORS, ...JSON.parse(saved) }
-    } catch {
-      return DEFAULT_PART_COLORS
-    }
+function getCachedPartColors(): PartColorSettings {
+  try {
+    const cached = localStorage.getItem(STORAGE_KEYS.PART_COLORS)
+    return cached ? { ...DEFAULT_PART_COLORS, ...JSON.parse(cached) } : DEFAULT_PART_COLORS
+  } catch {
+    return DEFAULT_PART_COLORS
   }
-  return DEFAULT_PART_COLORS
 }
 
-function loadSavedCurrentSchedule(): string {
-  return localStorage.getItem(STORAGE_KEYS.CURRENT_SCHEDULE) || 'current'
-}
-
-// Load saved preview background
-function loadSavedPreviewBackground(): string {
-  return localStorage.getItem(STORAGE_KEYS.PREVIEW_BACKGROUND) || DEFAULT_BACKGROUND_VIDEO
+/**
+ * Update cache (called when saving or after server sync)
+ */
+function updateCache(key: string, value: any): void {
+  try {
+    localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value))
+  } catch (e) {
+    console.warn('Failed to update cache:', e)
+  }
 }
 
 // Application state singleton
 export const state: AppState = {
+  // Preview state (unified)
   previewItem: null,
-  previewSong: null,
-  previewVariation: 0,
-  previewPosition: { ...DEFAULT_POSITION },
+  previewContent: [],
+  previewPosition: 0,
 
+  // Live state (unified)
   liveItem: null,
-  liveSong: null,
-  liveVariation: 0,
-  livePosition: { ...DEFAULT_POSITION },
+  liveContent: [],
+  livePosition: 0,
   liveMediaState: {
     isPlaying: false,
     currentTime: 0,
@@ -89,13 +84,21 @@ export const state: AppState = {
     isCanvaHolding: false
   },
 
-  previousLiveItem: null,
+  // Previous state (for transitions)
+  previousItem: null,
+  previousContent: [],
+  previousPosition: 0,
+
+  // Legacy song state (backward compatibility - TODO: remove after screen migration)
+  liveSong: null,
+  liveVariation: 0,
+  previewSong: null,
+  previewVariation: 0,
   previousLiveSong: null,
   previousLiveVariation: 0,
-  previousLivePosition: { ...DEFAULT_POSITION },
 
   backgroundVideo: DEFAULT_BACKGROUND_VIDEO,
-  previewBackground: loadSavedPreviewBackground(),
+  previewBackground: DEFAULT_BACKGROUND_VIDEO,
   availableVideos: [],
   logoMedia: DEFAULT_LOGO_MEDIA,
   displayMode: 'logo',
@@ -104,11 +107,12 @@ export const state: AppState = {
   schedule: { date: new Date().toISOString(), items: [] },
   lyricsData: null,
 
-  theme: loadSavedTheme(),
-  displaySettings: loadSavedDisplaySettings(),
-  confidenceMonitorSettings: loadSavedConfidenceMonitorSettings(),
-  layoutSettings: loadSavedLayoutSettings(),
-  partColors: loadSavedPartColors()
+  // Settings - use cache for fast initial render (server will override)
+  theme: getCachedTheme(),
+  displaySettings: getCachedDisplaySettings(),
+  confidenceMonitorSettings: getCachedConfidenceMonitorSettings(),
+  layoutSettings: getCachedLayoutSettings(),
+  partColors: getCachedPartColors()
 }
 
 // Types for state change notifications
@@ -144,8 +148,9 @@ export function subscribeToState(callback: StateSubscriber): () => void {
 function getChangedGroups(updatedKeys: Array<keyof AppState>): StateChangeKey[] {
   const groups: StateChangeKey[] = [...updatedKeys]
 
-  const previewKeys: Array<keyof AppState> = ['previewSong', 'previewVariation', 'previewPosition']
-  const liveKeys: Array<keyof AppState> = ['liveSong', 'liveVariation', 'livePosition', 'previousLiveSong', 'previousLiveVariation', 'previousLivePosition']
+  // Include both new unified keys and legacy keys for backward compatibility
+  const previewKeys: Array<keyof AppState> = ['previewItem', 'previewContent', 'previewPosition', 'previewSong', 'previewVariation']
+  const liveKeys: Array<keyof AppState> = ['liveItem', 'liveContent', 'livePosition', 'liveSong', 'liveVariation', 'previousItem', 'previousContent', 'previousPosition', 'previousLiveSong', 'previousLiveVariation']
   const displayKeys: Array<keyof AppState> = ['displayMode', 'displaySettings', 'backgroundVideo', 'previewBackground', 'logoMedia']
   const dataKeys: Array<keyof AppState> = ['songs', 'schedule', 'lyricsData']
 
@@ -253,76 +258,56 @@ export function updateState(newState: Partial<AppState>, skipRender = false): vo
 }
 
 /**
- * Save theme to localStorage and server
+ * SAVE FUNCTIONS
+ * Save to state + server (source of truth) + cache (for fast reload)
  */
+
 export function saveTheme(theme: 'light' | 'dark'): void {
   state.theme = theme
-  localStorage.setItem(STORAGE_KEYS.THEME, theme)
+  updateCache(STORAGE_KEYS.THEME, theme)
   document.body.setAttribute('data-theme', theme)
-  // Save to server (fire and forget)
   saveSettingsToServer({ theme }).catch(console.error)
 }
 
-/**
- * Save display settings to localStorage and server (Main Screen)
- */
 export function saveDisplaySettings(settings: DisplaySettings): void {
   state.displaySettings = settings
-  localStorage.setItem(STORAGE_KEYS.DISPLAY_SETTINGS, JSON.stringify(settings))
+  updateCache(STORAGE_KEYS.DISPLAY_SETTINGS, settings)
   socketService.updateDisplaySettings(settings)
-  // Save to server (fire and forget)
   saveSettingsToServer({ displaySettings: settings }).catch(console.error)
 }
 
-/**
- * Save confidence monitor settings to localStorage and server
- */
 export function saveConfidenceMonitorSettings(settings: ConfidenceMonitorSettings): void {
   state.confidenceMonitorSettings = settings
-  localStorage.setItem(STORAGE_KEYS.CONFIDENCE_MONITOR_SETTINGS, JSON.stringify(settings))
+  updateCache(STORAGE_KEYS.CONFIDENCE_MONITOR_SETTINGS, settings)
   socketService.updateConfidenceMonitorSettings(settings)
-  // Save to server (fire and forget)
   saveSettingsToServer({ confidenceMonitorSettings: settings }).catch(console.error)
 }
 
-/**
- * Save layout settings to localStorage and server
- */
 export function saveLayoutSettings(settings: LayoutSettings): void {
   state.layoutSettings = settings
-  localStorage.setItem(STORAGE_KEYS.LAYOUT_SETTINGS, JSON.stringify(settings))
-  // Save to server (fire and forget)
+  updateCache(STORAGE_KEYS.LAYOUT_SETTINGS, settings)
   saveSettingsToServer({ layoutSettings: settings }).catch(console.error)
 }
 
-/**
- * Save part colors to localStorage and server
- */
 export function savePartColors(settings: PartColorSettings): void {
   state.partColors = settings
-  localStorage.setItem(STORAGE_KEYS.PART_COLORS, JSON.stringify(settings))
-  // Save to server (fire and forget)
+  updateCache(STORAGE_KEYS.PART_COLORS, settings)
   saveSettingsToServer({ partColors: settings } as any).catch(console.error)
 }
 
-/**
- * Save current schedule name
- */
 export function saveCurrentScheduleName(name: string): void {
-  localStorage.setItem(STORAGE_KEYS.CURRENT_SCHEDULE, name)
-  // Save to server (fire and forget)
-  saveSettingsToServer({ currentSchedule: name }).catch(console.error)
+  // Session only, not persisted to server anymore
 }
 
 /**
- * Get the saved current schedule name
+ * Get the current schedule name (session only)
  */
 export function getSavedCurrentSchedule(): string {
-  return loadSavedCurrentSchedule()
+  return '' // Start fresh every time
 }
 
 /**
- * Load settings from server and merge with local
+ * Load settings from server (source of truth) and update cache
  */
 export async function loadSettingsFromServer(): Promise<void> {
   try {
@@ -332,36 +317,32 @@ export async function loadSettingsFromServer(): Promise<void> {
 
     if (serverSettings.theme) {
       updates.theme = serverSettings.theme
-      localStorage.setItem(STORAGE_KEYS.THEME, serverSettings.theme)
+      updateCache(STORAGE_KEYS.THEME, serverSettings.theme)
       document.body.setAttribute('data-theme', serverSettings.theme)
     }
 
     if (serverSettings.displaySettings) {
       const merged = { ...DEFAULT_DISPLAY_SETTINGS, ...serverSettings.displaySettings } as DisplaySettings
       updates.displaySettings = merged
-      localStorage.setItem(STORAGE_KEYS.DISPLAY_SETTINGS, JSON.stringify(merged))
+      updateCache(STORAGE_KEYS.DISPLAY_SETTINGS, merged)
     }
 
     if (serverSettings.confidenceMonitorSettings) {
       const merged = { ...DEFAULT_CONFIDENCE_MONITOR_SETTINGS, ...serverSettings.confidenceMonitorSettings } as ConfidenceMonitorSettings
       updates.confidenceMonitorSettings = merged
-      localStorage.setItem(STORAGE_KEYS.CONFIDENCE_MONITOR_SETTINGS, JSON.stringify(merged))
+      updateCache(STORAGE_KEYS.CONFIDENCE_MONITOR_SETTINGS, merged)
     }
 
     if (serverSettings.layoutSettings) {
       const merged = { ...DEFAULT_LAYOUT_SETTINGS, ...serverSettings.layoutSettings } as LayoutSettings
       updates.layoutSettings = merged
-      localStorage.setItem(STORAGE_KEYS.LAYOUT_SETTINGS, JSON.stringify(merged))
+      updateCache(STORAGE_KEYS.LAYOUT_SETTINGS, merged)
     }
 
     if (serverSettings.partColors) {
       const merged = { ...DEFAULT_PART_COLORS, ...serverSettings.partColors }
       updates.partColors = merged
-      localStorage.setItem(STORAGE_KEYS.PART_COLORS, JSON.stringify(merged))
-    }
-
-    if (serverSettings.currentSchedule) {
-      localStorage.setItem(STORAGE_KEYS.CURRENT_SCHEDULE, serverSettings.currentSchedule)
+      updateCache(STORAGE_KEYS.PART_COLORS, merged)
     }
 
     if (serverSettings.logoMedia) {
@@ -370,11 +351,6 @@ export async function loadSettingsFromServer(): Promise<void> {
 
     if (serverSettings.backgroundVideo) {
       updates.backgroundVideo = serverSettings.backgroundVideo
-    }
-
-    if (serverSettings.previewBackground) {
-      updates.previewBackground = serverSettings.previewBackground
-      localStorage.setItem(STORAGE_KEYS.PREVIEW_BACKGROUND, serverSettings.previewBackground)
     }
 
     // Apply all updates and notify subscribers

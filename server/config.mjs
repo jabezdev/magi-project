@@ -42,7 +42,7 @@ export function loadSettingsFromFile(customDir) {
     try {
         // Allow injecting dir for flexibility, default to relative path from this file
         const baseDir = customDir || join(__dirname, '..')
-        const settingsPath = join(baseDir, 'data', 'settings.json')
+        const settingsPath = join(baseDir, 'public', 'settings.json')
         if (fs.existsSync(settingsPath)) {
             const data = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
             return data

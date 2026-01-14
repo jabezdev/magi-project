@@ -215,5 +215,33 @@ export function slidesRoutes(dataDir) {
         }
     })
 
+    // Update Slide Group Data (Slides, Title, Settings)
+    router.put('/:type/:name', (req, res) => {
+        try {
+            const { type, name } = req.params
+            const { slides, title } = req.body
+
+            const targetDir = join(slidesDir, type, name)
+            const dataPath = join(targetDir, 'data.json')
+
+            if (!fs.existsSync(dataPath)) {
+                return res.status(404).json({ error: 'Slide deck not found' })
+            }
+
+            const data = JSON.parse(fs.readFileSync(dataPath, 'utf-8'))
+
+            if (title) data.title = title
+            if (slides) data.slides = slides
+
+            fs.writeFileSync(dataPath, JSON.stringify(data, null, 2))
+
+            refreshSlides()
+            res.json({ success: true })
+        } catch (error) {
+            console.error('Failed to update slide deck:', error)
+            res.status(500).json({ error: 'Failed to update slide deck' })
+        }
+    })
+
     return router
 }

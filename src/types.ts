@@ -9,16 +9,109 @@ export interface TransitionSettings {
 
 // === MEDIA TYPES ===
 
-// === MEDIA TYPES (Unified) ===
 export type MediaType = 'song' | 'video' | 'image' | 'slide' | 'scripture' | 'audio'
 
-export interface ProjectableItem {
+// === BASE ITEM INTERFACE ===
+// Common fields for all projectable items
+interface BaseProjectableItem {
   id: string
-  type: MediaType
   title: string
   subtitle?: string
   thumbnail?: string
-  data?: any // Type-specific original metadata
+}
+
+// === TYPE-SPECIFIC ITEM INTERFACES ===
+
+export interface SongItem extends BaseProjectableItem {
+  type: 'song'
+  songId: number
+  variationId: number
+  artist?: string
+  // Hydrated data (loaded on demand)
+  searchContent?: string
+}
+
+export interface VideoItem extends BaseProjectableItem {
+  type: 'video'
+  url: string
+  duration?: number // seconds
+  isYouTube?: boolean
+  loop?: boolean
+}
+
+export interface ImageItem extends BaseProjectableItem {
+  type: 'image'
+  url: string
+}
+
+export interface AudioItem extends BaseProjectableItem {
+  type: 'audio'
+  url: string
+  duration?: number // seconds
+}
+
+export interface SlideContent {
+  id: string
+  type: 'text' | 'image'
+  content: string // Text content or image path
+  path?: string   // Alias for image path
+}
+
+// === UNIFIED CONTENT SLIDE ===
+// All projectable items have their content normalized into ContentSlide[]
+export interface ContentSlide {
+  id: string           // Unique ID within the item
+  index: number        // Flat index (0-based)
+  type: 'text' | 'image' | 'video' | 'audio' | 'embed'
+
+  // Content
+  content: string      // Text content, URL, or embed code
+
+  // Metadata (optional)
+  label?: string       // e.g., "CHORUS", "Verse 1", "Genesis 1:1"
+  partId?: string      // Song part ID for grouping
+  thumbnail?: string   // Preview image for videos/images
+}
+
+export interface SlideItem extends BaseProjectableItem {
+  type: 'slide'
+  slides: SlideContent[]
+  slideType: 'local' | 'image' | 'canva'
+}
+
+export interface ScriptureVerse {
+  number: number
+  text: string
+}
+
+export interface ScriptureItem extends BaseProjectableItem {
+  type: 'scripture'
+  reference: string
+  translation: string
+  verses: ScriptureVerse[]
+}
+
+// === UNIFIED PROJECTABLE ITEM (Discriminated Union) ===
+export type ProjectableItem =
+  | SongItem
+  | VideoItem
+  | ImageItem
+  | AudioItem
+  | SlideItem
+  | ScriptureItem
+
+// === SCHEDULE ITEM ===
+// Schedule items are ProjectableItems with optional override settings
+export interface ItemSettings {
+  loop?: boolean
+  autoAdvance?: boolean
+  holdTime?: number // For Canva slides (seconds)
+  transitionOverride?: TransitionSettings
+  isCanvaSlide?: boolean // Special handling for Canva embed slides
+}
+
+export type ScheduleItem = ProjectableItem & {
+  settings?: ItemSettings
 }
 
 // === SUPPORT TYPES ===
@@ -44,18 +137,6 @@ export interface Song {
   variations: SongVariation[]
 }
 
-// Schedule Item is essentially a ProjectableItem with potential override settings
-export interface ScheduleItem extends ProjectableItem {
-  settings?: any // Overrides (e.g. specific song key, video loop match)
-
-  // Legacy compatibility fields (optional, for migration)
-  songId?: number
-  variationId?: number | string
-  name?: string
-  url?: string
-  isYouTube?: boolean
-}
-
 // === SCHEDULE ===
 
 export interface Schedule {
@@ -63,6 +144,7 @@ export interface Schedule {
   items: ScheduleItem[]
 }
 
+// Song summary for library listing (lighter than full Song)
 export interface SongSummary {
   id: number
   title: string
@@ -158,24 +240,30 @@ export interface LiveMediaState {
 }
 
 export interface AppState {
-  // Preview state
+  // Preview state (unified)
   previewItem: ScheduleItem | null
-  previewSong: Song | null // Hydrated song data if previewItem is a song
-  previewVariation: number
-  previewPosition: SlidePosition | SimplePosition
+  previewContent: ContentSlide[]  // Hydrated content slides
+  previewPosition: number         // Simple 0-based index
 
-  // Live state
+  // Live state (unified)
   liveItem: ScheduleItem | null
-  liveSong: Song | null // Hydrated song data if liveItem is a song
-  liveVariation: number
-  livePosition: SlidePosition | SimplePosition
+  liveContent: ContentSlide[]     // Hydrated content slides  
+  livePosition: number            // Simple 0-based index
   liveMediaState: LiveMediaState
 
   // Previous Live state (for transition context)
-  previousLiveItem: ScheduleItem | null
+  previousItem: ScheduleItem | null
+  previousContent: ContentSlide[]
+  previousPosition: number
+
+  // Legacy song state (kept for backward compatibility with screens)
+  // TODO: Remove after migrating all screens to use liveContent
+  liveSong: Song | null
+  liveVariation: number
+  previewSong: Song | null
+  previewVariation: number
   previousLiveSong: Song | null
   previousLiveVariation: number
-  previousLivePosition: SlidePosition | SimplePosition
 
   // Display settings
   previewBackground: string

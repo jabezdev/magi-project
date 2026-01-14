@@ -39,7 +39,6 @@
       "duration": 0.3
     }
   },
-  "currentSchedule": "2026-01-10",
   "layoutSettings": {
     "songsColumnWidth": 418,
     "scheduleSectionHeight": 391,
@@ -56,9 +55,7 @@
     "mainProjectionStaticMode": false,
     "monitorColumnWidth": 370
   },
-  "backgroundVideo": "/media/red_bokeh.mp4",
-  "previewBackground": "/media/red_bokeh.mp4",
-  "logoMedia": "/media/logo.mp4",
+  "logoMedia": "",
   "partColors": {
     "V": "#007bff",
     "CH": "#ef4444",

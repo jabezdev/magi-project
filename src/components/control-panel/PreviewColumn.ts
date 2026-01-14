@@ -1,7 +1,5 @@
 import { state } from '../../state'
 import { ICONS } from '../../constants/icons'
-import type { Song, SongPart, PartType } from '../../types'
-import { getNextPosition, getPrevPosition } from '../../utils/slides'
 import {
   selectPreviewVariation,
   selectPreviewPosition,
@@ -9,17 +7,9 @@ import {
   nextPreviewSlide,
   goLive
 } from '../../actions/controlPanel'
-import { toggleClass, updateDisabled } from '../../utils/dom'
-
-function getArrangementParts(song: Song, variationIndex: number): Array<{ part: SongPart; partIndex: number; partId: PartType }> {
-  const variation = song.variations[variationIndex]
-  if (!variation) return []
-
-  return variation.arrangement.map((partId, partIndex) => {
-    const part = song.parts.find(p => p.id === partId)
-    return { part: part!, partIndex, partId }
-  }).filter(item => item.part)
-}
+import { updateDisabled } from '../../utils/dom'
+import { getNextSlideIndex, getPrevSlideIndex } from '../../utils/content'
+import type { ContentSlide } from '../../types'
 
 export function renderPreviewColumn(): string {
   const item = state.previewItem
@@ -50,7 +40,7 @@ export function renderPreviewColumn(): string {
             <div class="${infoStackClass}">
                  <span class="${titleClass}">${song.title}</span>
                  <select class="${variationSelectClass}" id="preview-variation" style="text-align-last: center;">
-                    ${song.variations.map((v, i) => `
+                    ${song.variations.map((v: any, i: number) => `
                     <option value="${i}" ${i === state.previewVariation ? 'selected' : ''}>${v.name}</option>
                     `).join('')}
                  </select>
@@ -102,7 +92,12 @@ function renderPreviewContent(): string {
         `
   }
 
-  if (item.type === 'song') return renderSongPreview()
+  // Use unified content if available
+  if (state.previewContent.length > 0) {
+    return renderUnifiedContent()
+  }
+
+  // Fallback for single-slide items or implement-pending types
   if (item.type === 'video') return renderVideoPreview()
   if (item.type === 'image') return renderImagePreview()
   if (item.type === 'audio') return renderAudioPreview()
@@ -115,58 +110,122 @@ function renderPreviewContent(): string {
         `
 }
 
-function renderSongPreview(): string {
-  const song = state.previewSong
-  if (!song) return ''
-  const arrangementParts = getArrangementParts(song, state.previewVariation)
+/**
+ * Unified content rendering - renders any type using ContentSlide[]
+ */
+function renderUnifiedContent(): string {
+  const content = state.previewContent
+  const currentPosition = state.previewPosition
+  const item = state.previewItem
+
+  if (content.length === 0) {
+    return `<div class="p-4 text-center text-text-muted">No content</div>`
+  }
+
+  // For single-slide items (video, image, audio), render media-specific UI
+  if (content.length === 1 && item) {
+    if (item.type === 'video') return renderVideoPreview()
+    if (item.type === 'image') return renderImagePreview()
+    if (item.type === 'audio') return renderAudioPreview()
+  }
+
+  // Group by partId if present (songs)
+  const hasGroups = content.some((s: ContentSlide) => s.partId)
+
+  if (hasGroups) {
+    return renderGroupedContent(content, currentPosition)
+  } else {
+    return renderFlatContent(content, currentPosition)
+  }
+}
+
+function renderGroupedContent(content: ContentSlide[], currentPosition: number): string {
+  const groups: Map<string, { label: string, slides: ContentSlide[] }> = new Map()
+
+  for (const slide of content) {
+    const key = slide.partId || '_default'
+    if (!groups.has(key)) {
+      groups.set(key, { label: slide.label || key, slides: [] })
+    }
+    groups.get(key)!.slides.push(slide)
+  }
+
+  // Check if preview item matches live item to show "live" highlights
+  const isSelectedLive = state.liveItem && state.previewItem && (
+    (state.liveItem.type === 'song' && state.previewItem.type === 'song' && (state.liveItem as any).songId === (state.previewItem as any).songId) ||
+    state.liveItem.id === state.previewItem.id
+  )
 
   return `
-        <div class="flex flex-col gap-2 pb-8">
-        ${arrangementParts.map(({ part, partIndex, partId }) => `
-            <div class="lyrics-part" data-part-index="${partIndex}">
-            <div class="text-[0.65rem] font-bold text-text-muted uppercase mb-1 flex items-center gap-2 part-${partId}">${part.label}</div>
-            <div class="flex flex-col gap-[1px]">
-                ${part.slides.map((slideText, slideIndex) => {
-    const isActive = 'partIndex' in state.previewPosition &&
-      state.previewPosition.partIndex === partIndex &&
-      state.previewPosition.slideIndex === slideIndex
-    const isLive = state.liveSong?.id === song.id &&
-      state.liveVariation === state.previewVariation &&
-      'partIndex' in state.livePosition &&
-      state.livePosition.partIndex === partIndex &&
-      state.livePosition.slideIndex === slideIndex
+    <div class="flex flex-col gap-2 pb-8">
+    ${Array.from(groups.entries()).map(([partId, group]) => `
+        <div class="lyrics-part" data-part-id="${partId}">
+        <div class="text-[0.65rem] font-bold text-text-muted uppercase mb-1 flex items-center gap-2 part-${partId}">${group.label}</div>
+        <div class="flex flex-col gap-[1px]">
+            ${group.slides.map(slide => {
+    const isActive = slide.index === currentPosition
+    const isLive = isSelectedLive && slide.index === state.livePosition
 
-    const slideBtnClass = "group relative flex items-start gap-4 w-full p-2 pl-3 bg-bg-tertiary border-l-[3px] border-transparent cursor-pointer transition-all duration-100 min-h-[48px] text-left hover:bg-bg-hover"
-    const slideBtnActiveClass = "bg-indigo-500/10 border-l-accent-primary"
-    const slideBtnLiveClass = "bg-red-600/10 border-l-live-red"
-    const numClass = "text-[0.7rem] font-bold text-text-muted mt-[0.15rem] w-3 flex justify-center group-hover:text-text-secondary slide-num"
-    const textClass = "flex-1 text-sm leading-[1.4] text-text-secondary font-medium whitespace-pre-wrap group-hover:text-text-primary slide-text"
+    const slideBtnClass = "group relative flex items-start gap-4 w-full p-2 pl-3 bg-bg-tertiary border-l-[3px] border-transparent cursor-pointer transition-all duration-100 min-h-[48px] text-left hover:bg-bg-hover focus:outline-none"
+    const slideBtnActiveClass = "bg-indigo-500/10 border-l-accent-primary active"
+    const slideBtnLiveClass = "bg-red-600/10 border-l-live-red live"
+    const numClass = "text-[0.7rem] font-bold text-text-muted mt-[0.15rem] w-3 flex justify-center group-hover:text-text-secondary"
+    const textClass = "flex-1 text-sm leading-[1.4] text-text-secondary font-medium whitespace-pre-wrap group-hover:text-text-primary"
 
-    // Construct final classes dynamically
-    let finalBtnClass = slideBtnClass
-    if (isActive) finalBtnClass += ' active ' + slideBtnActiveClass
-    if (isLive) finalBtnClass += ' live ' + slideBtnLiveClass
-    finalBtnClass += ' slide-btn'
+    let finalClass = slideBtnClass
+    if (isActive) finalClass += ` ${slideBtnActiveClass}`
+    if (isLive) finalClass += ` ${slideBtnLiveClass}`
 
     return `
-                    <button class="${finalBtnClass}" 
-                            data-part="${partIndex}" 
-                            data-slide="${slideIndex}"
-                            data-context="preview">
-                    <span class="${numClass} ${isActive ? 'text-accent-primary' : ''} ${isLive ? 'text-live-red' : ''}">${slideIndex + 1}</span>
-                    <span class="${textClass} ${isActive || isLive ? 'text-text-primary' : ''}">${slideText.replace(/\n/g, '<br>')}</span>
-                    </button>
-                `
+                <button class="${finalClass} slide-btn" 
+                        data-index="${slide.index}"
+                        data-context="preview">
+                    <span class="slide-num ${numClass} ${isActive ? 'text-accent-primary' : ''} ${isLive ? 'text-live-red' : ''}">${slide.index + 1}</span>
+                    <span class="${textClass} ${isActive || isLive ? 'text-text-primary' : ''} slide-text">${slide.content.replace(/\n/g, '<br>')}</span>
+                </button>
+              `
   }).join('')}
-            </div>
-            </div>
-        `).join('')}
         </div>
-    `
+        </div>
+    `).join('')}
+    </div>
+  `
+}
+
+function renderFlatContent(content: ContentSlide[], currentPosition: number): string {
+  const isSelectedLive = state.liveItem && state.previewItem && state.liveItem.id === state.previewItem.id
+
+  return `
+    <div class="flex flex-col gap-2 p-2 pb-8">
+        ${content.map(slide => {
+    const isActive = slide.index === currentPosition
+    const isLive = isSelectedLive && slide.index === state.livePosition
+
+    const thumbHTML = slide.type === 'image'
+      ? `<div class="w-10 h-8 bg-black rounded overflow-hidden shrink-0"><img src="${slide.content}" class="w-full h-full object-cover"></div>`
+      : `<div class="w-10 h-8 bg-bg-tertiary rounded flex items-center justify-center shrink-0 border border-border-color text-[8px] text-text-muted">TXT</div>`
+
+    const displayContent = slide.type === 'image'
+      ? (slide.content.split('/').pop() || 'Image')
+      : slide.content
+
+    return `
+                <button class="w-full flex items-center gap-3 p-2 text-left bg-bg-tertiary border border-border-color rounded hover:bg-bg-hover transition-colors slide-btn ${isActive ? 'active bg-indigo-500/10 border-accent-primary' : ''} ${isLive ? 'live bg-red-600/10 border-live-red' : ''}"
+                        data-index="${slide.index}">
+                    <div class="text-[0.65rem] font-bold text-text-muted w-4 text-center ${isActive ? 'text-accent-primary' : ''} ${isLive ? 'text-live-red' : ''} slide-num">${slide.index + 1}</div>
+                    ${thumbHTML}
+                    <div class="flex-1 min-w-0 text-sm truncate ${isActive || isLive ? 'text-white font-medium' : 'text-text-secondary'}">
+                        ${displayContent}
+                    </div>
+                </button>
+            `
+  }).join('')}
+    </div>
+  `
 }
 
 function renderVideoPreview(): string {
-  const item = state.previewItem
+  const item = state.previewItem as any
   if (!item) return ''
 
   return `
@@ -186,7 +245,7 @@ function renderVideoPreview(): string {
 }
 
 function renderImagePreview(): string {
-  const item = state.previewItem
+  const item = state.previewItem as any
   if (!item) return ''
   return `
          <div class="flex flex-col justify-start h-full gap-4 pt-4">
@@ -201,7 +260,7 @@ function renderImagePreview(): string {
 }
 
 function renderAudioPreview(): string {
-  const item = state.previewItem
+  const item = state.previewItem as any
   if (!item) return ''
   return `
          <div class="flex flex-col justify-start h-full gap-4 pt-4 px-4">
@@ -234,41 +293,33 @@ export function initPreviewListeners(): void {
     selectPreviewVariation(parseInt((e.target as HTMLSelectElement).value))
   })
 
-  // Slide selection
+  // Slide selection (Unified index)
   document.querySelectorAll('.cp-preview .slide-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const partIndex = parseInt(btn.getAttribute('data-part') || '0')
-      const slideIndex = parseInt(btn.getAttribute('data-slide') || '0')
-      selectPreviewPosition({ partIndex, slideIndex })
+      const index = parseInt(btn.getAttribute('data-index') || '0')
+      selectPreviewPosition(index)
     })
   })
 }
 
 export function updatePreviewSlideSelection(): void {
-  // Song only
-  if (state.previewItem?.type !== 'song') return
-
   const previewButtons = document.querySelectorAll('.cp-preview .slide-btn')
-  const { previewPosition, liveSong, previewSong, livePosition } = state
+  const { previewPosition, livePosition } = state
+
+  // Check if preview item matches live item to show "live" highlights
+  const isSelectedLive = state.liveItem && state.previewItem && (
+    (state.liveItem.type === 'song' && state.previewItem.type === 'song' && (state.liveItem as any).songId === (state.previewItem as any).songId) ||
+    state.liveItem.id === state.previewItem.id
+  )
 
   // Classes to toggle
   const activeClasses = ['active', 'bg-indigo-500/10', 'border-l-accent-primary']
   const liveClasses = ['live', 'bg-red-600/10', 'border-l-live-red']
 
   previewButtons.forEach(btn => {
-    const partIndex = parseInt(btn.getAttribute('data-part') || '0')
-    const slideIndex = parseInt(btn.getAttribute('data-slide') || '0')
-
-    // Careful with missing partIndex in SimplePosition if reused
-    const isActive = 'partIndex' in previewPosition && previewPosition.partIndex === partIndex &&
-      previewPosition.slideIndex === slideIndex
-
-    // Check if THIS slide matches the LIVE slide
-    const isLive = liveSong?.id === previewSong?.id &&
-      state.liveVariation === state.previewVariation &&
-      'partIndex' in livePosition &&
-      livePosition.partIndex === partIndex &&
-      livePosition.slideIndex === slideIndex
+    const index = parseInt(btn.getAttribute('data-index') || '0')
+    const isActive = index === previewPosition
+    const isLive = isSelectedLive && index === livePosition
 
     const numSpan = btn.querySelector('.slide-num')
     const textSpan = btn.querySelector('.slide-text')
@@ -297,16 +348,12 @@ export function updatePreviewSlideSelection(): void {
 }
 
 export function updatePreviewNavButtons(): void {
-  // Song only
-  if (state.previewItem?.type !== 'song' || !state.previewSong) return
-
-  const { previewSong, previewVariation, previewPosition } = state
-  // Check if position is valid for song navigation
-  if (!('partIndex' in previewPosition)) return
+  const content = state.previewContent
+  if (content.length === 0) return
 
   const prevBtn = document.getElementById('prev-preview') as HTMLButtonElement
   const nextBtn = document.getElementById('next-preview') as HTMLButtonElement
 
-  updateDisabled(prevBtn, !getPrevPosition(previewSong, previewVariation, previewPosition))
-  updateDisabled(nextBtn, !getNextPosition(previewSong, previewVariation, previewPosition))
+  updateDisabled(prevBtn, getPrevSlideIndex(content, state.previewPosition) === null)
+  updateDisabled(nextBtn, getNextSlideIndex(content, state.previewPosition) === null)
 }

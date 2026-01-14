@@ -41,6 +41,7 @@ function getSubdirectories(dir) {
 
 export const Scanners = {
     // --- SONGS ---
+    // Returns: SongItem[]
     scanSongs(dataDir) {
         const dir = join(dataDir, 'songs')
         const files = getFiles(dir, ['.json'])
@@ -48,21 +49,26 @@ export const Scanners = {
         return files.map(file => {
             try {
                 const content = JSON.parse(fs.readFileSync(file.path, 'utf-8'))
+                const defaultVariation = content.variations?.[0]?.id || 0
+
+                // Build search content from parts
+                const searchContent = [
+                    content.artist || '',
+                    ...(content.parts || []).map(p => p.slides.join(' '))
+                ].join(' ')
+
                 return {
-                    id: content.id,
-                    type: 'song',
+                    // Base fields
+                    id: String(content.id),
                     title: content.title,
                     subtitle: content.artist || '',
                     thumbnail: null,
-                    data: {
-                        artist: content.artist,
-                        variations: content.variations || [],
-                        searchContent: [
-                            content.artist || '',
-                            ...(content.parts || []).map(p => p.slides.join(' '))
-                        ].join(' '),
-                        filename: file.filename
-                    }
+                    // SongItem specific
+                    type: 'song',
+                    songId: content.id,
+                    variationId: defaultVariation,
+                    artist: content.artist || '',
+                    searchContent: searchContent
                 }
             } catch (e) {
                 console.warn(`Failed to parse song ${file.filename}`, e)
@@ -92,6 +98,7 @@ export const Scanners = {
     },
 
     // --- MEDIA (Generic) ---
+    // Returns: (VideoItem | ImageItem)[]
     scanMedia(dataDir, subpath, mountPath = '/media') {
         const dir = join(dataDir, 'media', subpath)
         // Common extensions for images and videos
@@ -103,14 +110,16 @@ export const Scanners = {
             const isVideo = ['.mp4', '.webm', '.mov', '.avi', '.mkv'].some(ext => file.filename.toLowerCase().endsWith(ext))
             const urlPath = `${mountPath}/${subpath}/${file.filename}`
 
-            let thumbnail = urlPath // Default to self
+            let thumbnail = urlPath // Default to self for images
 
             if (isVideo) {
-                // Check for thumb
+                // Check for thumbnail
                 const thumbDir = join(dir, 'thumbnails')
                 const thumbName = `${file.filename}.jpg`
                 if (fs.existsSync(join(thumbDir, thumbName))) {
                     thumbnail = `${mountPath}/${subpath}/thumbnails/${thumbName}`
+                } else {
+                    thumbnail = null // No thumbnail for video
                 }
             }
 
@@ -120,26 +129,43 @@ export const Scanners = {
                 size = formatSize(stats.size)
             } catch { }
 
-            return {
-                id: urlPath, // Use web path as ID for static media
-                type: isVideo ? 'video' : 'image',
-                title: file.filename,
-                subtitle: size, // Show size in subtitle
-                thumbnail: thumbnail,
-                data: {
-                    path: urlPath,
-                    filename: file.filename,
-                    subpath: subpath,
-                    size: size
+            if (isVideo) {
+                // VideoItem
+                return {
+                    id: urlPath,
+                    type: 'video',
+                    title: file.filename,
+                    subtitle: size,
+                    thumbnail: thumbnail,
+                    url: urlPath,
+                    duration: null, // Could be extracted with ffprobe
+                    isYouTube: false,
+                    loop: subpath.includes('background') // Background videos loop by default
+                }
+            } else {
+                // ImageItem
+                return {
+                    id: urlPath,
+                    type: 'image',
+                    title: file.filename,
+                    subtitle: size,
+                    thumbnail: thumbnail,
+                    url: urlPath
                 }
             }
         })
     },
 
     // --- SLIDES ---
+    // Returns: SlideItem[]
     scanSlides(dataDir) {
         const slidesDir = join(dataDir, 'slides')
-        const types = ['local_slides', 'image_slides', 'canva_slides']
+        const typeMapping = {
+            'local_slides': 'local',
+            'image_slides': 'image',
+            'canva_slides': 'canva'
+        }
+        const types = Object.keys(typeMapping)
         let allSlides = []
 
         types.forEach(type => {
@@ -151,10 +177,23 @@ export const Scanners = {
                 if (fs.existsSync(dataPath)) {
                     try {
                         const data = JSON.parse(fs.readFileSync(dataPath, 'utf-8'))
+
+                        // Normalize slides array
+                        const normalizedSlides = (data.slides || []).map((slide, idx) => ({
+                            id: slide.id || `slide-${idx}`,
+                            type: slide.type || 'text',
+                            content: slide.content || slide.text || '',
+                            path: slide.path || slide.content || null
+                        }))
+
                         allSlides.push({
-                            ...data,
-                            _path: set.path, // Internal server path
-                            _typeSubfolder: type // e.g. 'local_slides'
+                            id: data.id || `slide-${set.name}`,
+                            type: 'slide',
+                            title: data.title || set.name,
+                            subtitle: `${normalizedSlides.length} slides`,
+                            thumbnail: normalizedSlides[0]?.type === 'image' ? normalizedSlides[0].path : null,
+                            slides: normalizedSlides,
+                            slideType: typeMapping[type]
                         })
                     } catch (e) {
                         console.warn(`Failed to parse slide meta for ${set.name}`, e)
@@ -163,17 +202,11 @@ export const Scanners = {
             })
         })
 
-        return allSlides.map(s => ({
-            id: s.id || `slide-${s.name}`,
-            type: 'slide',
-            title: s.name,
-            subtitle: s._typeSubfolder,
-            thumbnail: null,
-            data: s
-        }))
+        return allSlides
     },
 
     // --- SCRIPTURES ---
+    // Returns: ScriptureItem[]
     scanScriptures(dataDir) {
         const dir = join(dataDir, 'scriptures')
         const files = getFiles(dir, ['.json'])
@@ -184,12 +217,12 @@ export const Scanners = {
                 return {
                     id: content.id || file.filename.replace('.json', ''),
                     type: 'scripture',
-                    title: content.name,
-                    subtitle: 'Scripture',
+                    title: content.name || 'Scripture',
+                    subtitle: content.abbreviation || 'Bible',
                     thumbnail: null,
-                    data: {
-                        filename: file.filename
-                    }
+                    reference: '', // Will be set when specific passage is selected
+                    translation: content.name || 'Unknown',
+                    verses: [] // Will be populated when passage is selected
                 }
             } catch {
                 return null
@@ -198,6 +231,7 @@ export const Scanners = {
     },
 
     // --- AUDIO ---
+    // Returns: AudioItem[]
     scanAudio(dataDir) {
         const dir = join(dataDir, 'media', 'audio')
         const extensions = ['.mp3', '.wav', '.ogg', '.m4a']
@@ -218,16 +252,14 @@ export const Scanners = {
                 title: file.filename,
                 subtitle: size || 'Audio',
                 thumbnail: null,
-                data: {
-                    path: urlPath,
-                    filename: file.filename,
-                    size: size
-                }
+                url: urlPath,
+                duration: null // Could be extracted with audio metadata library
             }
         })
     },
 
     // --- YOUTUBE ---
+    // Returns: VideoItem[]
     scanYouTube(dataDir) {
         const dbPath = join(dataDir, 'media', 'youtube_links.json')
         if (!fs.existsSync(dbPath)) return []
@@ -239,12 +271,11 @@ export const Scanners = {
                 type: 'video',
                 title: link.title || link.url,
                 subtitle: 'YouTube',
-                thumbnail: link.localThumbnail || link.thumbnail,
-                data: {
-                    isYouTube: true,
-                    path: link.url, // For YT, path is the URL
-                    thumbnail: link.localThumbnail || link.thumbnail
-                }
+                thumbnail: link.localThumbnail || link.thumbnail || null,
+                url: link.url,
+                duration: link.duration || null,
+                isYouTube: true,
+                loop: false
             }))
         } catch (e) {
             console.warn('Failed to scan YouTube links', e)

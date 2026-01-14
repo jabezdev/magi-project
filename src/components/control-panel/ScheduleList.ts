@@ -1,12 +1,12 @@
-import { state, updateState, getSavedCurrentSchedule, saveCurrentScheduleName } from '../../state'
+import { state, updateState, saveCurrentScheduleName } from '../../state'
 import { ICONS } from '../../constants'
 import { selectItemForPreview, removeFromSchedule, updateScheduleItem, moveScheduleItem } from '../../actions'
-import { fetchSongById, saveSchedule, fetchScheduleList, fetchScheduleByName, createSchedule } from '../../services'
+import { saveSchedule, fetchScheduleList, fetchScheduleByName, createSchedule } from '../../services'
 import { openScheduleNameModal } from '../modals'
-import type { ScheduleItem } from '../../types'
+import type { SongItem, SlideItem } from '../../types'
 
-// Track current schedule name - initialize from saved value
-let currentScheduleName = getSavedCurrentSchedule()
+// Track current schedule name - session only
+let currentScheduleName = ''
 
 export function renderScheduleList(): string {
   const schedule = state.schedule
@@ -52,7 +52,7 @@ export function renderScheduleList(): string {
             </div>
             <div class="${headerCenterClass}">
                 <button class="${selectorBtnClass} schedule-selector-btn" title="Select Schedule">
-                  <span class="${selectorTextClass} current-schedule-name">${currentScheduleName}</span>
+                  <span class="${selectorTextClass} current-schedule-name">${currentScheduleName || 'Select Schedule'}</span>
                   <span class="${selectorIconClass}">${ICONS.chevronDown}</span>
                 </button>
             </div>
@@ -73,7 +73,7 @@ export function renderScheduleList(): string {
         </div>
         <div class="${headerCenterClass}">
             <button class="${selectorBtnClass} schedule-selector-btn" title="Select Schedule">
-               <span class="${selectorTextClass} current-schedule-name">${currentScheduleName}</span>
+               <span class="${selectorTextClass} current-schedule-name">${currentScheduleName || 'Select Schedule'}</span>
                <span class="${selectorIconClass}">${ICONS.chevronDown}</span>
              </button>
         </div>
@@ -111,31 +111,27 @@ export function renderScheduleList(): string {
       icon = icons[item.type] || ICONS.file
     }
 
-    if (item.type === 'video' && item.isYouTube) icon = ICONS.youtube // Legacy check
+    if (item.type === 'video' && item.isYouTube) icon = ICONS.youtube
     if (item.type === 'video' && item.settings?.isCanvaSlide) {
       extras += '<span class="text-[0.6rem] opacity-50 ml-1">SLIDE</span>'
-      // icon = ICONS.slides // Keep thumbnail if exists
     }
 
-    // File Size Metadata (Media)
-    if (['video', 'image', 'audio'].includes(item.type) && item.data?.size) {
-      extras += `<span class="text-[0.6rem] text-text-muted opacity-70 ml-2 border border-border-color px-1 rounded">${item.data.size}</span>`
+    // Duration for video/audio
+    if ((item.type === 'video' || item.type === 'audio') && item.duration) {
+      const mins = Math.floor(item.duration / 60)
+      const secs = Math.floor(item.duration % 60)
+      extras += `<span class="text-[0.6rem] text-text-muted opacity-70 ml-2 border border-border-color px-1 rounded">${mins}:${secs.toString().padStart(2, '0')}</span>`
     }
 
     if (item.type === 'song') {
-      // Logic for variations
+      const songItem = item as SongItem
+      // Logic for variations - use songs list since we have SongItem with songId
       let vName = 'Default'
       let arrangement: string[] = []
 
-      if (item.data && item.data.variations) {
-        const v = item.data.variations.find((v: any) => String(v.id) === String(item.variationId || item.settings?.variationId)) || item.data.variations[0]
-        if (v) {
-          vName = v.name
-          arrangement = v.arrangement || []
-        }
-      } else if (item.songId) {
-        const s = songs.find(s => s.id === item.songId)
-        const v = s?.variations?.find(v => String(v.id) === String(item.variationId)) || s?.variations?.[0]
+      const song = songs.find(s => s.id === songItem.songId)
+      if (song) {
+        const v = song.variations?.find(v => String(v.id) === String(songItem.variationId)) || song.variations?.[0]
         if (v) {
           vName = v.name
           arrangement = v.arrangement || []
@@ -160,8 +156,9 @@ export function renderScheduleList(): string {
     }
 
     // Slide count badge
-    if (item.type === 'slide' && item.data?.slides) {
-      extras += `<span class="text-[0.6rem] text-text-muted opacity-70 ml-2 border border-border-color px-1 rounded">${item.data.slides.length} slides</span>`
+    if (item.type === 'slide') {
+      const slideItem = item as SlideItem
+      extras += `<span class="text-[0.6rem] text-text-muted opacity-70 ml-2 border border-border-color px-1 rounded">${slideItem.slides?.length || 0} slides</span>`
     }
 
     // Construct final classes
@@ -499,10 +496,7 @@ export function setCurrentScheduleName(name: string): void {
   saveCurrentScheduleName(name)
 }
 
-// Initialize schedule on first load
+// Initialize schedule on first load (Legacy - initialization now handled in main.ts)
 export async function initializeSchedule(): Promise<void> {
-  const savedName = getSavedCurrentSchedule()
-  if (savedName && savedName !== 'current') {
-    await loadSchedule(savedName)
-  }
+  // Fresh start every session
 }

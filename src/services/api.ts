@@ -306,3 +306,84 @@ export async function addYouTubeLink(url: string): Promise<{ success: boolean; i
     return null
   }
 }
+
+/**
+ * Upload multiple files (e.g. for directory upload)
+ */
+export async function uploadFiles(files: FileList | File[], target: string, subfolder?: string): Promise<{ success: boolean; count: number } | null> {
+  const formData = new FormData()
+  // Append all files
+  Array.from(files).forEach(f => formData.append('files', f))
+
+  formData.append('target', target)
+  if (subfolder) formData.append('subfolder', subfolder)
+
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/upload`, {
+      method: 'POST',
+      body: formData
+    })
+    if (!response.ok) throw new Error('Failed to upload files')
+    return await response.json()
+  } catch (error) {
+    console.error('API Error - uploadFiles:', error)
+    return null
+  }
+}
+
+/**
+ * Create a new slide deck
+ */
+export async function createSlideDeck(name: string, type = 'local_slides'): Promise<{ success: boolean; name: string; path: string } | null> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/slides/groups`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, type })
+    })
+    if (!response.ok) throw new Error('Failed to create slide deck')
+    return await response.json()
+  } catch (error) {
+    console.error('API Error - createSlideDeck:', error)
+    return null
+  }
+}
+
+/**
+ * Update a slide deck (slides content, title)
+ */
+export async function updateSlideDeck(type: string, name: string, data: { slides?: any[], title?: string }): Promise<{ success: boolean } | null> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/slides/${type}/${encodeURIComponent(name)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+    if (!response.ok) throw new Error('Failed to update slide deck')
+    return await response.json()
+  } catch (error) {
+    console.error('API Error - updateSlideDeck:', error)
+    return null
+  }
+}
+
+/**
+ * Upload an image to a slide deck
+ */
+export async function uploadSlideImage(type: string, group: string, file: File): Promise<{ success: boolean; file: string } | null> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/slides/${type}/${encodeURIComponent(group)}/upload`, {
+      method: 'POST',
+      body: formData
+    })
+    if (!response.ok) throw new Error('Failed to upload slide image')
+    return await response.json()
+  } catch (error) {
+    console.error('API Error - uploadSlideImage:', error)
+    return null
+  }
+}
+

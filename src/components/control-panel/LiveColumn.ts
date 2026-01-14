@@ -1,6 +1,6 @@
 import { state } from '../../state'
 import { ICONS } from '../../constants/icons'
-import type { Song, SongPart, PartType, DisplayMode } from '../../types'
+import type { Song, SongPart, PartType, DisplayMode, SlidePosition, SlideItem, SimplePosition } from '../../types'
 import { getNextPosition, getPrevPosition } from '../../utils/slides'
 import {
   goLiveWithPosition,
@@ -8,7 +8,7 @@ import {
   nextSlide,
   setDisplayMode
 } from '../../actions/controlPanel'
-import { toggleClass, updateDisabled } from '../../utils/dom'
+import { updateDisabled } from '../../utils/dom'
 
 function getArrangementParts(song: Song, variationIndex: number): Array<{ part: SongPart; partIndex: number; partId: PartType }> {
   const variation = song.variations[variationIndex]
@@ -111,18 +111,156 @@ function renderLiveContent(): string {
         `
   }
 
+  // Use unified content if available, fall back to legacy rendering
+  if (state.liveContent.length > 0) {
+    return renderUnifiedContent()
+  }
+
+  // Legacy type-specific rendering (TODO: remove after full migration)
   if (item.type === 'song') return renderSongLive()
   if (item.type === 'video') return renderVideoLive()
   if (item.type === 'image') return renderImageLive()
   if (item.type === 'audio') return renderAudioLive()
-  // Presentation/Slides handled same as Generic/Slides for now if structure allows
-  // Scripture might have slides
+  if (item.type === 'slide') return renderSlideLive()
+  if (item.type === 'scripture') return renderScriptureLive()
+
   return `
             <div class="flex flex-col items-center justify-center h-full text-text-muted gap-4">
                 <span class="w-16 h-16 opacity-20">${ICONS.file}</span>
                 <p>Preview not available for ${item.type}</p>
             </div>
         `
+}
+
+/**
+ * Unified content rendering - renders any type using ContentSlide[]
+ */
+function renderUnifiedContent(): string {
+  const content = state.liveContent
+  const currentPosition = state.livePosition
+  const item = state.liveItem
+
+  if (content.length === 0) {
+    return `<div class="p-4 text-center text-text-muted">No content</div>`
+  }
+
+  // For single-slide items (video, image, audio), render media-specific UI
+  if (content.length === 1 && item) {
+    if (item.type === 'video') return renderVideoLive()
+    if (item.type === 'image') return renderImageLive()
+    if (item.type === 'audio') return renderAudioLive()
+  }
+
+  // For multi-slide content (songs, slides, scriptures), render slide list
+  // Group by partId if present (songs)
+  const hasGroups = content.some(s => s.partId)
+
+  if (hasGroups) {
+    return renderGroupedContent(content, currentPosition)
+  } else {
+    return renderFlatContent(content, currentPosition)
+  }
+}
+
+/**
+ * Render content grouped by partId (for songs)
+ */
+function renderGroupedContent(content: import('../../types').ContentSlide[], currentPosition: number): string {
+  // Group slides by partId
+  const groups: Map<string, { label: string, slides: import('../../types').ContentSlide[] }> = new Map()
+
+  for (const slide of content) {
+    const key = slide.partId || '_default'
+    if (!groups.has(key)) {
+      groups.set(key, { label: slide.label || key, slides: [] })
+    }
+    groups.get(key)!.slides.push(slide)
+  }
+
+  return `
+    <div class="flex flex-col gap-2 pb-8">
+    ${Array.from(groups.entries()).map(([partId, group]) => `
+        <div class="lyrics-part" data-part-id="${partId}">
+        <div class="text-[0.65rem] font-bold text-text-muted uppercase mb-1 flex items-center gap-2 part-${partId}">${group.label}</div>
+        <div class="flex flex-col gap-[1px]">
+            ${group.slides.map(slide => {
+    const isActive = slide.index === currentPosition
+    const slideBtnClass = "group relative flex items-start gap-4 w-full p-2 pl-3 bg-bg-tertiary border-l-[3px] border-transparent cursor-pointer transition-all duration-100 min-h-[48px] text-left hover:bg-bg-hover focus:outline-none"
+    const slideBtnActiveClass = "bg-red-600/10 border-l-live-red active live"
+    const numClass = "text-[0.7rem] font-bold text-text-muted mt-[0.15rem] w-3 flex justify-center group-hover:text-text-secondary"
+    const textClass = "flex-1 text-sm leading-[1.4] text-text-secondary font-medium whitespace-pre-wrap group-hover:text-text-primary"
+    const activeTextClass = "text-white"
+
+    return `
+                <button class="${slideBtnClass} ${isActive ? slideBtnActiveClass : ''} slide-btn" 
+                        data-index="${slide.index}"
+                        data-context="live">
+                    <span class="slide-num ${numClass} ${isActive ? 'text-live-red' : ''}">${slide.index + 1}</span>
+                    <span class="${textClass} ${isActive ? activeTextClass : ''} slide-text">${slide.content.replace(/\n/g, '<br>')}</span>
+                </button>
+              `
+  }).join('')}
+        </div>
+        </div>
+    `).join('')}
+    </div>
+  `
+}
+
+/**
+ * Render flat content list (for slides, scriptures)
+ */
+function renderFlatContent(content: import('../../types').ContentSlide[], currentPosition: number): string {
+  return `
+    <div class="flex flex-col gap-2 p-2 pb-8">
+        ${content.map(slide => {
+    const isActive = slide.index === currentPosition
+    const thumbHTML = slide.type === 'image'
+      ? `<div class="w-10 h-8 bg-black rounded overflow-hidden shrink-0"><img src="${slide.content}" class="w-full h-full object-cover"></div>`
+      : `<div class="w-10 h-8 bg-bg-tertiary rounded flex items-center justify-center shrink-0 border border-border-color text-[8px] text-text-muted">TXT</div>`
+
+    const displayContent = slide.type === 'image'
+      ? (slide.content.split('/').pop() || 'Image')
+      : slide.content
+
+    return `
+                <button class="w-full flex items-center gap-3 p-2 text-left bg-bg-tertiary border border-border-color rounded hover:bg-bg-hover transition-colors slide-btn ${isActive ? 'active live bg-red-600/10 border-live-red' : ''}"
+                        data-index="${slide.index}">
+                    <div class="text-[0.65rem] font-bold text-text-muted w-4 text-center ${isActive ? 'text-live-red' : ''} slide-num">${slide.index + 1}</div>
+                    ${thumbHTML}
+                    <div class="flex-1 min-w-0 text-sm truncate ${isActive ? 'text-white font-medium' : 'text-text-secondary'}">
+                        ${displayContent}
+                    </div>
+                </button>
+            `
+  }).join('')}
+    </div>
+  `
+}
+
+function renderScriptureLive(): string {
+  const item = state.liveItem
+  if (!item || item.type !== 'scripture') return ''
+
+  const scriptureItem = item as import('../../types').ScriptureItem
+
+  return `
+    <div class="flex flex-col gap-2 p-2 pb-8">
+        <div class="text-sm font-bold text-text-muted mb-2">${scriptureItem.reference}</div>
+        ${scriptureItem.verses.map((verse, index) => {
+    const isActive = index === state.livePosition
+    return `
+            <button class="w-full flex items-start gap-3 p-2 text-left bg-bg-tertiary border border-border-color rounded hover:bg-bg-hover transition-colors slide-btn ${isActive ? 'active live bg-red-600/10 border-live-red' : ''}"
+                    data-index="${index}">
+                <div class="text-[0.65rem] font-bold text-text-muted w-4 text-center ${isActive ? 'text-live-red' : ''}">${verse.number}</div>
+                <div class="flex-1 text-sm ${isActive ? 'text-white font-medium' : 'text-text-secondary'}">
+                    ${verse.text}
+                </div>
+            </button>
+          `
+  }).join('')}
+    </div>
+  `
 }
 
 function renderSongLive(): string {
@@ -240,6 +378,40 @@ function renderAudioLive(): string {
     `
 }
 
+
+function renderSlideLive(): string {
+  const item = state.liveItem
+  if (!item || item.type !== 'slide') return ''
+
+  const slideItem = item as SlideItem
+  const slides = slideItem.slides || []
+  const currentIndex = (state.livePosition as SimplePosition).index || 0
+
+  return `
+    <div class="flex flex-col gap-2 p-2 pb-8">
+        ${slides.map((slide: any, index: number) => {
+    const isActive = index === currentIndex
+    const thumbHTML = slide.type === 'image'
+      ? `<div class="w-10 h-8 bg-black rounded overflow-hidden shrink-0"><img src="${slide.path || slide.content}" class="w-full h-full object-cover"></div>`
+      : `<div class="w-10 h-8 bg-bg-tertiary rounded flex items-center justify-center shrink-0 border border-border-color text-[8px] text-text-muted">TXT</div>`
+
+    const content = slide.type === 'image' ? (slide.path ? slide.path.split('/').pop() : 'Image Slide') : slide.content
+
+    return `
+                <button class="w-full flex items-center gap-3 p-2 text-left bg-bg-tertiary border border-border-color rounded hover:bg-bg-hover transition-colors slide-btn ${isActive ? 'active live bg-red-600/10 border-live-red' : ''}"
+                        data-index="${index}">
+                    <div class="text-[0.65rem] font-bold text-text-muted w-4 text-center ${isActive ? 'text-live-red' : ''} slide-num">${index + 1}</div>
+                    ${thumbHTML}
+                    <div class="flex-1 min-w-0 text-sm truncate ${isActive ? 'text-white font-medium' : 'text-text-secondary'}">
+                        ${content}
+                    </div>
+                </button>
+            `
+  }).join('')}
+    </div>
+  `
+}
+
 export function initLiveListeners(): void {
   // Live navigation
   document.getElementById('prev-live')?.addEventListener('click', prevSlide)
@@ -258,48 +430,48 @@ export function initLiveListeners(): void {
     })
   })
 
-  // Slide selection (Song only for now)
+  // Slide selection - unified using data-index
   document.querySelectorAll('.cp-live .slide-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const partIndex = parseInt(btn.getAttribute('data-part') || '0')
-      const slideIndex = parseInt(btn.getAttribute('data-slide') || '0')
-      goLiveWithPosition({ partIndex, slideIndex })
+      const index = btn.getAttribute('data-index')
+      if (index !== null) {
+        goLiveWithPosition(parseInt(index))
+      }
     })
   })
 }
 
 export function updateLiveSlideSelection(scrollToActive = false): void {
-  // Only relevant for songs primarily
-  if (state.liveItem?.type !== 'song') return
+  const item = state.liveItem
+  if (!item) return
 
   const liveButtons = document.querySelectorAll('.cp-live .slide-btn')
-  const { livePosition } = state
+  const currentPosition = state.livePosition
   let activeBtn: Element | null = null
 
   liveButtons.forEach(btn => {
-    const partIndex = parseInt(btn.getAttribute('data-part') || '0')
-    const slideIndex = parseInt(btn.getAttribute('data-slide') || '0')
+    // Unified: use data-index
+    const index = parseInt(btn.getAttribute('data-index') || '-1')
+    const isActive = index === currentPosition
 
-    // Careful with direct type comparison if `partIndex` is missing in SimplePosition
-    const isActive = 'partIndex' in livePosition && livePosition.partIndex === partIndex &&
-      livePosition.slideIndex === slideIndex
+    const activeClasses = ['active', 'live', 'bg-red-600/10', 'border-l-live-red', 'border-live-red']
+    const textSpan = btn.querySelector('.slide-text') || btn.querySelector('.text-sm')
+    const numSpan = btn.querySelector('.slide-num') || btn.querySelector('.w-4')
 
-    const activeClasses = ['active', 'live', 'bg-red-600/10', 'border-l-live-red']
-    const textSpan = btn.querySelector('.slide-text')
-    const numSpan = btn.querySelector('.slide-num')
-    const activeTextClasses = ['text-white']
+    // Reset classes
+    btn.classList.remove(...activeClasses)
+    textSpan?.classList.remove('text-white', 'font-medium')
+    numSpan?.classList.remove('text-live-red')
 
     if (isActive) {
       btn.classList.add(...activeClasses)
-      textSpan?.classList.add(...activeTextClasses)
-      textSpan?.classList.remove('text-text-secondary', 'font-medium')
-      numSpan?.classList.add('text-live-red')
+      if (textSpan) textSpan.classList.add('text-white', 'font-medium')
+      if (numSpan) numSpan.classList.add('text-live-red')
+      textSpan?.classList.remove('text-text-secondary', 'text-text-muted')
       activeBtn = btn
     } else {
-      btn.classList.remove(...activeClasses)
-      textSpan?.classList.remove(...activeTextClasses)
-      textSpan?.classList.add('text-text-secondary', 'font-medium')
-      numSpan?.classList.remove('text-live-red')
+      textSpan?.classList.remove('text-white', 'font-medium')
+      textSpan?.classList.add('text-text-secondary')
     }
   })
 
@@ -314,26 +486,19 @@ export function updateLiveSlideSelection(scrollToActive = false): void {
 }
 
 export function updateLiveNavButtons(): void {
-  // Only for songs currently
-  if (state.liveItem?.type !== 'song' || !state.liveSong) return
-
-  // For other types like Presentation, we might want nav buttons? 
-  // Should check if it supports next/prev.
-
-  const { liveSong, liveVariation, livePosition } = state
-  if (!liveSong) return
-
   const prevBtn = document.getElementById('prev-live') as HTMLButtonElement
   const nextBtn = document.getElementById('next-live') as HTMLButtonElement
+  if (!prevBtn || !nextBtn) return
 
-  if (prevBtn && nextBtn) {
-    // Need safe casting for SlidePosition
-    if ('partIndex' in livePosition) {
-      updateDisabled(prevBtn, !getPrevPosition(liveSong, liveVariation, livePosition))
-      updateDisabled(nextBtn, !getNextPosition(liveSong, liveVariation, livePosition))
-    }
-  }
+  // Unified navigation using content array
+  const content = state.liveContent
+  const position = state.livePosition
+
+  updateDisabled(prevBtn, position <= 0)
+  updateDisabled(nextBtn, position >= content.length - 1)
 }
+
+
 
 export function updateDisplayModeButtons(): void {
   const { displayMode } = state

@@ -1,3 +1,5 @@
 export * from './ScheduleNameModal'
 export * from './ShortcutsModal'
 export * from './SongEditorModal'
+export * from './SlideDeckEditorModal'
+export * from './YouTubeInputModal'

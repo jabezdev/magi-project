@@ -1,8 +1,9 @@
 
 import { ICONS } from '../../constants'
-import { openSongEditor } from '../modals'
-import { searchLibrary, fetchLibrary, uploadFile, addYouTubeLink } from '../../services/api'
-import { addItemToSchedule } from '../../actions' // We might need to make sure this works with ProjectableItem
+import { state } from '../../state'
+import { openSongEditor, openSlideDeckEditor } from '../modals'
+import { searchLibrary, fetchLibrary, uploadFile, uploadFiles, addYouTubeLink } from '../../services/api'
+import { addItemToSchedule } from '../../actions'
 import type { ProjectableItem, MediaType } from '../../types'
 
 let libraryItems: ProjectableItem[] = []
@@ -11,14 +12,8 @@ let searchQuery = ''
 
 // Creation Menu State
 let creationMenuOpen = false
+let youtubeMenuOpen = false
 // Stack of menu items to represent current view (empty = root)
-
-interface MenuItem {
-    label: string
-    icon?: string
-    action?: string
-    children?: MenuItem[]
-}
 
 // Menu Structure Definition
 type MenuNode =
@@ -112,6 +107,21 @@ function renderCreationPopover(): string {
     `
 }
 
+function renderYouTubePopover(): string {
+    if (!youtubeMenuOpen) return ''
+
+    return `
+    <div class="fixed z-[9999] bg-bg-primary border border-border-color shadow-xl rounded-sm p-3 w-[300px] flex flex-col gap-2 youtube-popover animate-fade-in-left" style="display: none;">
+        <div class="text-[10px] uppercase font-bold text-text-muted">Add YouTube Video</div>
+        <input type="text" id="yt-popover-input" class="w-full bg-bg-tertiary border border-border-color rounded px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary placeholder:text-text-muted" placeholder="Paste URL..." autofocus />
+        <div class="flex justify-end gap-2 mt-1">
+            <button class="text-xs px-2 py-1 rounded hover:bg-bg-hover text-text-secondary yt-cancel-btn">Cancel</button>
+            <button class="text-xs px-3 py-1 rounded bg-accent-primary text-white hover:brightness-110 yt-add-btn">Add</button>
+        </div>
+    </div>
+    `
+}
+
 // --- Render Helpers ---
 
 function renderChipsHTML(): string {
@@ -166,23 +176,17 @@ function renderListHTML(): string {
 
         if (item.type === 'song') {
             icon = ICONS.music
-            // Song Arrangements
-            const variations = item.data?.variations || []
-            if (variations.length > 0) {
-                // Determine parts from first variation or "Default"
-                const parts: string[] = variations[0].arrangement || []
+            // Song arrangements - use songs from state for variation data
+            const song = state.songs.find(s => s.id === (item as import('../../types').SongItem).songId)
+            if (song && song.variations && song.variations.length > 0) {
+                const parts: string[] = song.variations[0].arrangement || []
                 if (parts.length > 0) {
-                    // Render first 6 parts as pills
                     const preview = parts.slice(0, 6).map(p => {
-                        // Mappings for short names
                         const map: Record<string, string> = { 'Verse 1': 'V1', 'Verse 2': 'V2', 'Chorus': 'C', 'Bridge': 'B' }
-                        // Simple heuristic to shorten names
                         let label = map[p] || p.substring(0, 2).toUpperCase()
-                        // If numeric badge (e.g. Verse 1 -> V1) handling
                         if (p.startsWith('Verse ')) label = 'V' + p.replace('Verse ', '')
                         if (p === 'Chorus') label = 'C'
                         if (p === 'Bridge') label = 'B'
-
                         return `<span class="px-1 text-[9px] bg-bg-tertiary rounded text-text-secondary border border-border-color">${label}</span>`
                     }).join('')
                     metaBadges = `<div class="flex items-center gap-1 mt-0.5 opacity-80">${preview}${parts.length > 6 ? '<span class="text-[9px] text-text-muted">...</span>' : ''}</div>`
@@ -191,25 +195,26 @@ function renderListHTML(): string {
         }
 
         if (item.type === 'video') {
-            icon = item.thumbnail ? `<img src="${item.thumbnail}" class="w-full h-full object-cover rounded-sm"/>` : ICONS.video
-            if (item.data?.size) {
-                metaBadges = `<span class="text-[10px] text-text-muted bg-bg-tertiary px-1 rounded border border-border-color">${item.data.size}</span>`
+            const videoItem = item as import('../../types').VideoItem
+            icon = videoItem.thumbnail ? `<img src="${videoItem.thumbnail}" class="w-full h-full object-cover rounded-sm"/>` : ICONS.video
+            if (videoItem.duration) {
+                const mins = Math.floor(videoItem.duration / 60)
+                const secs = Math.floor(videoItem.duration % 60)
+                metaBadges = `<span class="text-[10px] text-text-muted bg-bg-tertiary px-1 rounded border border-border-color">${mins}:${secs.toString().padStart(2, '0')}</span>`
             }
         }
 
         if (item.type === 'image') {
-            icon = item.thumbnail ? `<img src="${item.thumbnail}" class="w-full h-full object-cover rounded-sm"/>` : ICONS.image
-            if (item.data?.size) {
-                metaBadges = `<span class="text-[10px] text-text-muted bg-bg-tertiary px-1 rounded border border-border-color">${item.data.size}</span>`
-            }
+            const imageItem = item as import('../../types').ImageItem
+            icon = imageItem.thumbnail ? `<img src="${imageItem.thumbnail}" class="w-full h-full object-cover rounded-sm"/>` : ICONS.image
         }
 
         if (item.type === 'scripture') icon = ICONS.book
 
         if (item.type === 'slide') {
             icon = ICONS.slides
-            // Slide count
-            const count = item.data?.slides?.length || 0
+            const slideItem = item as import('../../types').SlideItem
+            const count = slideItem.slides?.length || 0
             if (count) {
                 metaBadges = `<span class="text-[10px] text-text-muted bg-bg-tertiary px-1 rounded border border-border-color">${count} slides</span>`
             }
@@ -217,8 +222,11 @@ function renderListHTML(): string {
 
         if (item.type === 'audio') {
             icon = ICONS.sound
-            if (item.data?.size) {
-                metaBadges = `<span class="text-[10px] text-text-muted bg-bg-tertiary px-1 rounded border border-border-color">${item.data.size}</span>`
+            const audioItem = item as import('../../types').AudioItem
+            if (audioItem.duration) {
+                const mins = Math.floor(audioItem.duration / 60)
+                const secs = Math.floor(audioItem.duration % 60)
+                metaBadges = `<span class="text-[10px] text-text-muted bg-bg-tertiary px-1 rounded border border-border-color">${mins}:${secs.toString().padStart(2, '0')}</span>`
             }
         }
 
@@ -228,10 +236,15 @@ function renderListHTML(): string {
                     <div class="${iconClass} text-text-secondary select-none pointer-events-none">${icon}</div>
                     <div class="flex flex-col min-w-0 flex-1">
                         <div class="${titleClass}">${item.title}</div>
-                        ${metaBadges ? metaBadges : `<div class="${subTitleClass}">${item.subtitle || item.type.toUpperCase()}</div>`}
+                        ${metaBadges ? metaBadges : item.type === 'slide'
+                ? `<div class="${subTitleClass}">${(item as import('../../types').SlideItem).slides?.length || 0} SLIDES</div>`
+                : `<div class="${subTitleClass}">${item.subtitle || item.type.toUpperCase()}</div>`}
                     </div>
                 </div>
-                <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                    <button class="edit-btn icon-btn-sm w-6 h-6 rounded bg-bg-tertiary hover:bg-bg-hover text-text-muted hover:text-text-primary flex items-center justify-center p-0" title="Edit">
+                        <span class="w-3 h-3">${ICONS.edit || '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'}</span>
+                    </button>
                     <button class="add-btn icon-btn-sm w-6 h-6 rounded bg-bg-tertiary hover:bg-accent-primary hover:text-white flex items-center justify-center p-0" title="Add to Schedule">
                         ${ICONS.plus}
                     </button>
@@ -273,6 +286,9 @@ export function renderUnifiedLibrary(): string {
                 </div>
                 <div class="creation-popover-container">
                     ${renderCreationPopover()}
+                </div>
+                <div class="youtube-popover-container">
+                    ${renderYouTubePopover()}
                 </div>
                 <button class="${addButtonClass}" title="Create / Upload">
                     <span class="w-4 h-4">${ICONS.plus}</span>
@@ -344,6 +360,50 @@ function updatePopoverDOM() {
             attachPopoverListeners(container as HTMLElement)
         }
     }
+
+    // YouTube Popover Position
+    const ytContainer = document.querySelector('.youtube-popover-container')
+    const ytTrigger = document.querySelector('[data-action="upload_youtube"]')
+
+    if (ytContainer && youtubeMenuOpen && ytTrigger) {
+        ytContainer.innerHTML = renderYouTubePopover()
+        const popover = ytContainer.querySelector('.youtube-popover') as HTMLElement
+
+        if (popover) {
+            popover.style.display = 'flex'
+            popover.style.visibility = 'hidden'
+
+            const rect = ytTrigger.getBoundingClientRect()
+            const popRect = popover.getBoundingClientRect()
+
+            // Default: Right of item
+            let top = rect.top
+            let left = rect.right + 5
+
+            // Flip to left if overflow
+            if (left + popRect.width > window.innerWidth) {
+                const mainRect = document.querySelector('.creation-popover')?.getBoundingClientRect()
+                if (mainRect) {
+                    left = mainRect.left - popRect.width - 5
+                } else {
+                    left = rect.left - popRect.width - 5
+                }
+            }
+
+            // Adjust vertical
+            if (top + popRect.height > window.innerHeight) {
+                top = window.innerHeight - popRect.height - 10
+            }
+
+            popover.style.top = `${top}px`
+            popover.style.left = `${left}px`
+            popover.style.visibility = 'visible'
+
+            attachYouTubeListeners(ytContainer as HTMLElement)
+        }
+    } else if (ytContainer) {
+        ytContainer.innerHTML = '' // Clear if closed
+    }
 }
 
 function updateChipsDOM() {
@@ -411,8 +471,13 @@ export function initUnifiedLibraryListeners(): void {
             setTimeout(() => {
                 const closeHandler = (ev: Event) => {
                     const target = ev.target as HTMLElement
-                    if (!target.closest('.creation-popover') && !target.closest('.creation-menu-trigger')) {
+                    // Check logic: if click is outside Creation Popover AND outside Trigger AND outside YouTube Popover
+                    if (!target.closest('.creation-popover') &&
+                        !target.closest('.creation-menu-trigger') &&
+                        !target.closest('.youtube-popover')) {
+
                         creationMenuOpen = false
+                        youtubeMenuOpen = false // Close sub-menu too
                         updatePopoverDOM()
                         document.removeEventListener('click', closeHandler)
                     }
@@ -425,19 +490,38 @@ export function initUnifiedLibraryListeners(): void {
     // Upload Input Listener
     const uploadInput = container.querySelector('#library-upload-input') as HTMLInputElement
     uploadInput?.addEventListener('change', async (e) => {
-        const file = (e.target as HTMLInputElement).files?.[0]
-        if (file && pendingUploadType) {
-            const result = await uploadFile(file, pendingUploadType)
-            if (result?.success) {
-                // Refresh
-                const items = await fetchLibrary()
-                libraryItems = items
-                updateListDOM()
-                // alert(`Uploaded ${file.name} successfully`)
-            } else {
-                alert('Upload failed')
+        const input = (e.target as HTMLInputElement)
+        const files = input.files
+        if (!files || files.length === 0 || !pendingUploadType) return
+
+        let result
+        // Check for directory upload or multiple files
+        if (files.length > 1 || input.webkitdirectory) {
+            // Extract subfolder from first file if directory upload
+            let subfolder: string | undefined
+            if (input.webkitdirectory && files[0].webkitRelativePath) {
+                const parts = files[0].webkitRelativePath.split('/')
+                if (parts.length > 1) subfolder = parts[0]
             }
+            // For Canva/Slides, if no directory structure, maybe prompt? 
+            // For now assume if they selected a folder, we use that folder name.
+
+            result = await uploadFiles(files, pendingUploadType, subfolder)
+        } else {
+            result = await uploadFile(files[0], pendingUploadType)
         }
+
+        if (result?.success) {
+            const items = await fetchLibrary()
+            libraryItems = items
+            updateListDOM()
+        } else {
+            alert('Upload failed')
+        }
+
+        // Reset
+        input.value = ''
+        input.removeAttribute('webkitdirectory')
     })
 }
 
@@ -491,6 +575,31 @@ function attachListListeners(container: HTMLElement) {
                 // @ts-ignore
                 addItemToSchedule(scheduleItem)
             }
+
+        })
+
+        itemEl.querySelector('.edit-btn')?.addEventListener('click', () => {
+            const index = parseInt(itemEl.getAttribute('data-index') || '0')
+            const filtered = getFilteredItems()
+            const item = filtered[index]
+            if (item) {
+                if (item.type === 'song') {
+                    // Assuming item.id is numeric for song
+                    openSongEditor(item.id as any, async () => {
+                        const items = await fetchLibrary()
+                        libraryItems = items
+                        updateListDOM()
+                    })
+                } else if (item.type === 'slide') {
+                    openSlideDeckEditor(item, async () => {
+                        const items = await fetchLibrary()
+                        libraryItems = items
+                        updateListDOM()
+                    })
+                } else {
+                    alert(`Editing ${item.type} is not yet supported via this menu.`)
+                }
+            }
         })
     })
 }
@@ -498,12 +607,19 @@ function attachListListeners(container: HTMLElement) {
 // --- Action Handling ---
 let pendingUploadType: string | null = null
 
-function triggerUpload(accept: string, targetType: string) {
+function triggerUpload(accept: string, targetType: string, isDirectory = false) {
     const input = document.getElementById('library-upload-input') as HTMLInputElement
     if (input) {
         input.accept = accept
         pendingUploadType = targetType
         input.value = '' // Reset
+        if (isDirectory) {
+            input.setAttribute('webkitdirectory', '')
+            input.setAttribute('directory', '') // Standard fallback
+        } else {
+            input.removeAttribute('webkitdirectory')
+            input.removeAttribute('directory')
+        }
         input.click()
     }
 }
@@ -523,22 +639,27 @@ async function handleAction(action: string) {
     // ...
 
     // YouTube
+    // YouTube
     if (action === 'upload_youtube') {
-        const url = prompt('Enter YouTube URL:')
-        if (url) {
-            // Optimistically update or show loading?
-            // For now simple block
-            addYouTubeLink(url).then(res => {
-                if (res?.success) {
-                    fetchLibrary().then(items => {
-                        libraryItems = items
-                        updateListDOM()
-                    })
-                } else {
-                    alert('Failed to add YouTube video. Please check the URL.')
-                }
-            })
+        youtubeMenuOpen = !youtubeMenuOpen
+        updatePopoverDOM()
+        // Auto focus input if opening
+        if (youtubeMenuOpen) {
+            setTimeout(() => {
+                const input = document.getElementById('yt-popover-input') as HTMLInputElement
+                if (input) input.focus()
+            }, 50)
         }
+        return
+    }
+
+    // Slide Deck
+    if (action === 'create_slide_deck') {
+        openSlideDeckEditor(undefined, async () => {
+            const items = await fetchLibrary()
+            libraryItems = items
+            updateListDOM()
+        })
         return
     }
 
@@ -548,12 +669,16 @@ async function handleAction(action: string) {
     if (action === 'upload_bg_video') return triggerUpload('video/*', 'video_bg')
     if (action === 'upload_image_file') return triggerUpload('image/*', 'image_content')
     if (action === 'upload_bg_image') return triggerUpload('image/*', 'image_bg')
-    if (action === 'upload_presentation_images') return triggerUpload('image/*', 'image_slides') // Maps to slides/image_slides logic (needs server support, use simple img for now)
 
-    // Future / Placeholders
-    if (['upload_youtube', 'create_slide_deck', 'upload_canva', 'upload_bible'].includes(action)) {
-        alert(`Feature "${action.replace(/_/g, ' ')}" is coming soon!`)
-    }
+    // Directory Uploads
+    if (action === 'upload_presentation_images') return triggerUpload('image/*', 'image_slides', true)
+    if (action === 'upload_canva') return triggerUpload('image/*', 'canva_slides', true)
+
+    // Bible (Single File for now)
+    if (action === 'upload_bible') return triggerUpload('.json', 'bible')
+
+    // Fallback
+    console.warn('Unknown action:', action)
 }
 
 function attachPopoverListeners(container: HTMLElement) {
@@ -565,11 +690,61 @@ function attachPopoverListeners(container: HTMLElement) {
 
             if (action) {
                 handleAction(action)
-                creationMenuOpen = false
-                updatePopoverDOM()
+                // Only close for non-interactive actions (YouTube stays open)
+                if (action !== 'upload_youtube') {
+                    creationMenuOpen = false
+                    updatePopoverDOM()
+                }
             }
         })
     })
+}
+
+function attachYouTubeListeners(container: HTMLElement) {
+    const input = container.querySelector('#yt-popover-input') as HTMLInputElement
+    const addBtn = container.querySelector('.yt-add-btn') as HTMLButtonElement
+    const cancelBtn = container.querySelector('.yt-cancel-btn') as HTMLButtonElement
+
+    const submit = () => {
+        const url = input.value.trim()
+        if (!url) return
+
+        addBtn.disabled = true
+        addBtn.textContent = '...'
+
+        addYouTubeLink(url).then(res => {
+            if (res?.success) {
+                fetchLibrary().then(items => {
+                    libraryItems = items
+                    updateListDOM()
+                })
+                youtubeMenuOpen = false
+                creationMenuOpen = false // Close everything on success
+                updatePopoverDOM()
+            } else {
+                alert('Invalid URL')
+                addBtn.disabled = false
+                addBtn.textContent = 'Add'
+            }
+        })
+    }
+
+    addBtn?.addEventListener('click', submit)
+    cancelBtn?.addEventListener('click', () => {
+        youtubeMenuOpen = false
+        updatePopoverDOM()
+    })
+
+    input?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') submit()
+        if (e.key === 'Escape') {
+            youtubeMenuOpen = false
+            updatePopoverDOM()
+        }
+    })
+
+    // Stop propagation so clicking inside doesn't close
+    container.querySelector('.youtube-popover')?.addEventListener('click', e => e.stopPropagation())
 }
 
 function getFilteredItems() {

@@ -2,7 +2,7 @@
  * Default configuration values
  */
 
-import type { DisplaySettings, SlidePosition, ConfidenceMonitorSettings, LayoutSettings, LowerThirdsSettings, PartColorSettings } from '../types'
+import type { DisplaySettings, SlidePosition, ConfidenceMonitorSettings, LayoutSettings, LowerThirdsSettings } from '../types'
 
 export const DEFAULT_LAYOUT_SETTINGS: LayoutSettings = {
   songsColumnWidth: 350,
@@ -93,17 +93,15 @@ export const DEFAULT_POSITION: SlidePosition = {
   slideIndex: 0
 }
 
-export const DEFAULT_BACKGROUND_VIDEO = '/media/background.mp4'
-export const DEFAULT_LOGO_MEDIA = '/media/logo.mp4'
+export const DEFAULT_BACKGROUND_VIDEO = ''
+export const DEFAULT_LOGO_MEDIA = ''
 
 export const STORAGE_KEYS = {
   THEME: 'magi-theme',
   DISPLAY_SETTINGS: 'magi-display-settings',
   CONFIDENCE_MONITOR_SETTINGS: 'magi-confidence-monitor-settings',
-  CURRENT_SCHEDULE: 'magi-current-schedule',
   LAYOUT_SETTINGS: 'magi-layout-settings',
   LOWER_THIRDS_SETTINGS: 'magi-lower-thirds-settings',
-  PREVIEW_BACKGROUND: 'magi-preview-background',
   PART_COLORS: 'magi-part-colors'
 } as const
 

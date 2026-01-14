@@ -1,5 +1,5 @@
 import { state, subscribeToState } from '../state'
-import type { DisplaySettings } from '../types'
+import type { DisplaySettings, SlideItem, VideoItem, ImageItem, ScriptureItem, SimplePosition } from '../types'
 import { getSlideText } from '../utils'
 import { updateHTML } from '../utils'
 import { socketService } from '../services'
@@ -184,13 +184,12 @@ export function buildMainProjectionHTML(): string {
 
                 case 'slide':
                     // Render current slide
-                    const slideIndex = (livePosition as any).index || 0
-                    // Cast to any because generic ProjectableItem doesn't define 'slides' array structure strictly yet
-                    const itemData = liveItem as any
-                    const slide = itemData.slides ? itemData.slides[slideIndex] : null
+                    const slideIndex = (livePosition as SimplePosition).index || 0
+                    const slideItem = liveItem as SlideItem
+                    const slide = slideItem.slides?.[slideIndex]
                     if (slide) {
                         if (slide.type === 'image') {
-                            contentHTML = `<div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('${slide.content}');"></div>`
+                            contentHTML = `<div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('${slide.path || slide.content}');"></div>`
                         } else if (slide.type === 'text') {
                             contentHTML = `<div class="flex items-center justify-center h-full text-white text-6xl font-bold p-10 text-center">${slide.content}</div>`
                         }
@@ -312,17 +311,17 @@ export function updateDisplayMode(): void {
                     }
                     break
                 case 'slide':
-                    const slideIndex2 = (livePosition as any).index || 0
-                    const itemData2 = liveItem as any
-                    const slide2 = itemData2.slides ? itemData2.slides[slideIndex2] : null
+                    const slideIndex2 = (livePosition as SimplePosition).index || 0
+                    const slideItem2 = liveItem as SlideItem
+                    const slide2 = slideItem2.slides?.[slideIndex2]
                     if (slide2) {
-                        if (slide2.type === 'image') contentHTML = `<div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('${slide2.content}');"></div>`
+                        if (slide2.type === 'image') contentHTML = `<div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('${slide2.path || slide2.content}');"></div>`
                         else if (slide2.type === 'text') contentHTML = `<div class="flex items-center justify-center h-full text-white text-6xl font-bold p-10 text-center">${slide2.content}</div>`
                     }
                     break
                 case 'scripture':
-                    const sItem = liveItem as any
-                    contentHTML = `<div class="flex flex-col items-center justify-center h-full text-white p-20 text-center"><div class="text-4xl mb-8">${sItem.reference}</div><div class="text-6xl font-serif leading-tight">"${sItem.verses.map((v: any) => v.text).join(' ')}"</div></div>`
+                    const scriptureItem = liveItem as ScriptureItem
+                    contentHTML = `<div class="flex flex-col items-center justify-center h-full text-white p-20 text-center"><div class="text-4xl mb-8">${scriptureItem.reference}</div><div class="text-6xl font-serif leading-tight">"${scriptureItem.verses.map(v => v.text).join(' ')}"</div></div>`
                     break
                 case 'audio':
                     // Audio Visualization (Minimal)

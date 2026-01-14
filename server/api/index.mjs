@@ -96,6 +96,13 @@ function checkAndMigrate(dataDir) {
 
 export function setupRoutes(app, __dirname) {
     const dataDir = join(__dirname, 'data')
+    const publicDir = join(__dirname, 'public')
+
+    // Ensure all required directories exist
+    if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true })
+    }
+
     ensureDirs(dataDir)
     checkAndMigrate(dataDir)
 
@@ -105,7 +112,7 @@ export function setupRoutes(app, __dirname) {
     app.use('/api/slides', slidesRoutes(dataDir))
     app.use('/api/scriptures', scripturesRoutes(dataDir))
     app.use('/api', mediaRoutes(dataDir))
-    app.use('/api', settingsRoutes(dataDir))
+    app.use('/api', settingsRoutes(publicDir))
     app.use('/api', libraryRoutes(dataDir))
     app.use('/api', uploadRoutes(dataDir))
 }

@@ -6,8 +6,8 @@
  */
 
 import './style.css'
-import { fetchSongs, fetchSchedule, fetchScheduleByName, fetchVideoAssets } from './services'
-import { state, updateState, setUpdateScreenCallback, loadSettingsFromServer, getSavedCurrentSchedule } from './state'
+import { fetchSongs, fetchSchedule, fetchVideoAssets } from './services'
+import { state, updateState, setUpdateScreenCallback, loadSettingsFromServer } from './state'
 import { getScreenType } from './utils'
 import { renderControlPanel, renderProjectionScreen, renderLowerThirdsScreen, renderMobileScreen } from './screens'
 import type { ScreenType } from './types'
@@ -83,25 +83,11 @@ async function init(): Promise<void> {
 
   // Load initial data
   try {
-    // Check if there's a saved schedule name
-    const savedScheduleName = getSavedCurrentSchedule()
-
-    const [songs, videos] = await Promise.all([
+    const [songs, videos, schedule] = await Promise.all([
       fetchSongs(),
-      fetchVideoAssets()
+      fetchVideoAssets(),
+      fetchSchedule()
     ])
-
-    // Load the saved schedule or default to 'current'
-    let schedule
-    if (savedScheduleName && savedScheduleName !== 'current') {
-      schedule = await fetchScheduleByName(savedScheduleName)
-      if (!schedule) {
-        // Fall back to current if saved schedule doesn't exist
-        schedule = await fetchSchedule()
-      }
-    } else {
-      schedule = await fetchSchedule()
-    }
 
     // Initial data load - triggers first render
     const updates: any = {
