@@ -39,8 +39,8 @@ export function renderScheduleList(): string {
   const variationBadgeClass = "text-[0.65rem] text-text-secondary bg-bg-primary px-[0.4rem] py-[0.15rem] rounded-sm cursor-pointer transition-all duration-150 border border-border-color hover:bg-bg-hover hover:text-accent-primary hover:border-accent-primary"
   const typeIconClass = "text-[0.65rem] opacity-50 mr-1"
 
-  const removeBtnClass = "opacity-0 transition-opacity duration-150 flex items-center justify-center w-[22px] h-[22px] bg-transparent border-none rounded-[3px] text-text-muted cursor-pointer hover:text-live-red hover:bg-red-600/10 group-hover:opacity-100"
-  const settingsBtnClass = "opacity-0 transition-opacity duration-150 flex items-center justify-center w-[22px] h-[22px] bg-transparent border-none rounded-[3px] text-text-muted cursor-pointer hover:text-accent-primary hover:bg-indigo-500/10 group-hover:opacity-100"
+  const removeBtnClass = "flex items-center justify-center w-[22px] h-[22px] bg-transparent border-none rounded-[3px] text-text-muted cursor-pointer hover:text-live-red hover:bg-red-600/10"
+  const settingsBtnClass = "flex items-center justify-center w-[22px] h-[22px] bg-transparent border-none rounded-[3px] text-text-muted cursor-pointer hover:text-accent-primary hover:bg-indigo-500/10"
 
 
   if (!schedule || schedule.items.length === 0) {
@@ -174,7 +174,7 @@ export function renderScheduleList(): string {
                 <div class="song-meta ${metaClass}">
                    ${extras}
                    ${extras}
-                   <div class="flex items-center gap-1 absolute right-0 bg-gradient-to-l from-bg-tertiary via-bg-tertiary to-transparent pl-4">
+                   <div class="flex items-center gap-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                         <button class="icon-btn-sm settings-schedule-btn ${settingsBtnClass}" data-index="${index}" title="Settings">${ICONS.settings || '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>'}</button>
                         <button class="icon-btn-sm remove-schedule-btn ${removeBtnClass}" data-index="${index}" title="Remove">${ICONS.trash}</button>
                    </div>

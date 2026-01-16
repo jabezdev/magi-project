@@ -279,15 +279,19 @@ export function savePartColors(settings: PartColorSettings): void {
   saveSettingsToServer({ partColors: settings } as any).catch(console.error)
 }
 
-export function saveCurrentScheduleName(_name: string): void {
-  // Session only, not persisted to server anymore
+const stateInternal = {
+  currentScheduleName: ''
+}
+
+export function saveCurrentScheduleName(name: string): void {
+  stateInternal.currentScheduleName = name
 }
 
 /**
  * Get the current schedule name (session only)
  */
 export function getSavedCurrentSchedule(): string {
-  return '' // Start fresh every time
+  return stateInternal.currentScheduleName
 }
 
 /**

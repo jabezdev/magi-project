@@ -1,0 +1,71 @@
+{
+  "id": "c831fdc3-3bff-4e78-a683-83e2247694a0",
+  "title": "Forever",
+  "artist": "Chris Tomlin",
+  "parts": [
+    {
+      "id": "V 1",
+      "label": "Verse 1",
+      "slides": [
+        "Give thanks to the Lord our God and King\nHis love endures forever",
+        "For He is good, He is above all things\nHis love endures forever"
+      ]
+    },
+    {
+      "id": "pCH 1",
+      "label": "Pre-Chorus 1",
+      "slides": [
+        "Sing praise, sing praise"
+      ]
+    },
+    {
+      "id": "V 2",
+      "label": "Verse 2",
+      "slides": [
+        "With a mighty hand and outstretched arm\nHis love endures forever",
+        "For the life that's been reborn\nHis love endures forever"
+      ]
+    },
+    {
+      "id": "CH 1",
+      "label": "Chorus 1",
+      "slides": [
+        "Forever God is faithful\nForever God is strong",
+        "Forever God is with us\nForever"
+      ]
+    },
+    {
+      "id": "V 3",
+      "label": "Verse 3",
+      "slides": [
+        "From the rising to the setting sun\nHis love endures forever",
+        "And by the grace of God we will carry on\nHis love endures forever"
+      ]
+    }
+  ],
+  "variations": [
+    {
+      "id": 1768372057978,
+      "name": "Chris Tomlin",
+      "arrangement": [
+        "V 1",
+        "pCH 1",
+        "V 2",
+        "pCH 1",
+        "pCH 1",
+        "CH 1",
+        "V 3",
+        "pCH 1",
+        "pCH 1",
+        "CH 1",
+        "CH 1",
+        "pCH 1",
+        "pCH 1",
+        "pCH 1",
+        "pCH 1",
+        "CH 1",
+        "CH 1"
+      ]
+    }
+  ]
+}

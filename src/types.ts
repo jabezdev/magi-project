@@ -1,351 +1,280 @@
 // Core data types for the projection system
+// Based on media_behaviors.md - Distributed Document Store Architecture
 
-export type TransitionType = 'none' | 'crossfade'
+// ============ BASE TYPES ============
+
+/**
+ * Standard UUID v4 string
+ */
+export type UUID = string
+
+/**
+ * ISO 8601 Date string
+ */
+export type ISODateString = string
+
+/**
+ * Supported Media Types
+ */
+export type MediaType = 'song' | 'video' | 'image' | 'slide' | 'scripture' | 'audio' | 'presentation'
+
+// ============ DATA STORE SCHEMA ============
+
+/**
+ * Base interface for all items in the library.
+ * Supports distributed sync, history, and conflict resolution.
+ */
+export interface BaseMediaItem {
+  // Core Identity
+  id: UUID
+  type: MediaType
+  title: string
+  subtitle?: string // Derived helper for UI (e.g. Artist, File Size)
+  tags: string[]
+
+  // Sync & Versioning
+  version: number // Incrementing integer (Head state)
+  content_hash: string // SHA-256 of the content state
+  history_head_id: UUID // Pointer to the latest history commit
+  origin_device_id?: UUID
+  last_modified_device_id?: UUID
+  is_deleted?: boolean
+
+  // Analytics & Workflow
+  created_at: ISODateString
+  updated_at: ISODateString
+  usage_count: number
+  last_used_at?: ISODateString
+  author?: string
+  notes?: string
+}
+
+/**
+ * History Entry for Append-Only Logs
+ */
+export interface HistoryEntry {
+  commit_id: UUID
+  parent_commit_id: UUID | null
+  version_number: number
+  timestamp: ISODateString
+  author: string
+  device_id: UUID
+  change_summary: string
+  full_snapshot: BaseMediaItem // Snapshot of the item at this point
+}
+
+// ============ MEDIA SPECIFIC TYPES ============
+
+export interface SongItem extends BaseMediaItem {
+  type: 'song'
+
+  // Metadata
+  artist: string
+  copyright?: string
+  ccli_number?: string
+  key?: string
+  original_key?: string
+  tempo?: number // BPM
+  time_signature?: string
+  themes: string[]
+  scripture_references: string[]
+  language?: string
+  default_background_id?: UUID
+
+  // Content
+  parts: SongPart[]
+  arrangements: SongArrangement[]
+}
+
+export interface SongPart {
+  id: UUID
+  type: string // VERSE, CHORUS, BRIDGE, INTRO, ENDING, etc.
+  label: string // "Verse 1", "Chorus"
+  lyrics: string // Markdown/Plain text
+  background_override_id?: UUID
+}
+
+export interface SongArrangement {
+  id: UUID
+  name: string // "Default", "Acoustic", "Radio Edit"
+  is_default: boolean
+  sequence: UUID[] // Array of SongPart IDs
+}
+
+export interface ScriptureItem extends BaseMediaItem {
+  type: 'scripture'
+
+  reference_title: string // "John 3:16"
+  book: string
+  chapter: number
+  verse_start: number
+  verse_end: number
+  translation_id: string // "NIV", "KJV"
+  text_content: string
+  is_favorite: boolean
+}
+
+export interface VideoItem extends BaseMediaItem {
+  type: 'video'
+
+  source_url: string // Path or URL
+  file_hash: string // SHA-256 of binary
+  file_size_bytes: number
+  duration_total: number // seconds
+
+  // Run settings
+  trim_start: number
+  trim_end: number
+  volume_multiplier: number
+  is_loop: boolean
+  is_youtube: boolean
+
+  thumbnail_path?: string
+}
+
+export interface ImageItem extends BaseMediaItem {
+  type: 'image'
+
+  source_url: string
+  file_hash?: string
+  scaling_mode: 'fit' | 'fill' | 'stretch'
+  dominant_color?: string
+  duration?: number // For slideshows
+}
+
+export interface AudioItem extends BaseMediaItem {
+  type: 'audio'
+
+  source_url: string
+  file_hash?: string
+  duration: number
+  artist?: string
+  bpm?: number
+  musical_key?: string
+  waveform_data?: number[] // For visualizer
+}
+
+export interface PresentationItem extends BaseMediaItem {
+  type: 'presentation'
+  presentation_type: 'local' | 'canva' | 'images'
+
+  // Local Deck
+  slides?: PresentationSlide[]
+  theme_id?: UUID
+
+  // Canva
+  video_source_id?: UUID
+  original_canva_url?: string
+  cues?: PresentationCue[]
+}
+
+export interface PresentationSlide {
+  id: UUID
+  type: 'text' | 'image' | 'video'
+  content: string // HTML or Asset Path
+  notes?: string
+  media_source_id?: UUID
+}
+
+export interface PresentationCue {
+  time_in: number
+  time_hold: number
+  time_out: number
+}
+
+// Union Type for usage
+export type LibraryItem =
+  | SongItem
+  | ScriptureItem
+  | VideoItem
+  | ImageItem
+  | AudioItem
+  | PresentationItem
+
+// ============ SETTINGS SCHEMA ============
+
+export interface GlobalSettings {
+  // Appearance
+  theme: 'light' | 'dark'
+
+  // Output Configuration
+  outputs: {
+    main: OutputSettings
+    confidence: OutputSettings
+    lower_thirds: OutputSettings
+    mobile: OutputSettings
+  }
+
+  // Core Behavior
+  default_transitions: {
+    background: TransitionSettings
+    lyrics: TransitionSettings
+  }
+
+  // Library Paths
+  paths: {
+    media_root: string
+    data_root: string
+  }
+}
+
+export interface OutputSettings {
+  enabled: boolean
+  fontFamily: string
+  fontSize: number // rem
+  lineHeight: number
+
+  // Margins
+  marginTop: number
+  marginBottom: number
+  marginLeft: number
+  marginRight: number
+
+  // Styles
+  textColor: string
+  isAllCaps: boolean
+  hasShadow: boolean
+  shadowSettings?: {
+    blur: number
+    x: number
+    y: number
+  }
+  hasOutline: boolean
+  outlineSettings?: {
+    width: number
+    color: string
+  }
+}
+
+export type TransitionType = 'none' | 'crossfade' | 'cut' | 'fade_to_black'
 
 export interface TransitionSettings {
   type: TransitionType
   duration: number // seconds
 }
 
-// === MEDIA TYPES ===
-
-export type MediaType = 'song' | 'video' | 'image' | 'slide' | 'scripture' | 'audio'
-
-export type AspectRatioMode = 'fit' | 'fill' | 'stretch'
-
-export interface MediaSettings {
-  aspectRatioMode?: AspectRatioMode
-}
-
-export interface VideoSettings extends MediaSettings {
-  startTime?: number // seconds
-  endTime?: number // seconds
-  muted?: boolean
-  loop?: boolean // Default loop setting
-}
-
-export interface ImageSettings extends MediaSettings {
-  duration?: number // Default duration in seconds
-}
-
-// === BASE ITEM INTERFACE ===
-// Common fields for all projectable items
-interface BaseProjectableItem {
-  id: string
-  title: string
-  subtitle?: string
-  thumbnail?: string
-}
-
-// === TYPE-SPECIFIC ITEM INTERFACES ===
-
-export interface SongItem extends BaseProjectableItem {
-  type: 'song'
-  songId: number
-  variationId: number
-  artist?: string
-  // Hydrated data (loaded on demand)
-  searchContent?: string
-}
-
-export interface VideoItem extends BaseProjectableItem {
-  type: 'video'
-  url: string
-  duration?: number // seconds
-  isYouTube?: boolean
-  settings?: VideoSettings
-  loop?: boolean
-}
-
-export interface ImageItem extends BaseProjectableItem {
-  type: 'image'
-  url: string
-  settings?: ImageSettings
-}
-
-export interface AudioItem extends BaseProjectableItem {
-  type: 'audio'
-  url: string
-  duration?: number // seconds
-}
-
-export interface SlideContent {
-  id: string
-  type: 'text' | 'image'
-  content: string // Text content or image path
-  path?: string   // Alias for image path
-}
-
-// === UNIFIED CONTENT SLIDE ===
-// All projectable items have their content normalized into ContentSlide[]
-export interface ContentSlide {
-  id: string           // Unique ID within the item
-  index: number        // Flat index (0-based)
-  type: 'text' | 'image' | 'video' | 'audio' | 'embed'
-
-  // Content
-  content: string      // Text content, URL, or embed code
-
-  // Metadata (optional)
-  label?: string       // e.g., "CHORUS", "Verse 1", "Genesis 1:1"
-  partId?: string      // Song part ID for grouping
-  thumbnail?: string   // Preview image for videos/images
-}
-
-export interface SlideItem extends BaseProjectableItem {
-  type: 'slide'
-  slides: SlideContent[]
-  slideType: 'local' | 'image' | 'canva'
-}
-
-export interface ScriptureVerse {
-  number: number
-  text: string
-}
-
-export interface ScriptureItem extends BaseProjectableItem {
-  type: 'scripture'
-  reference: string
-  translation: string
-  verses: ScriptureVerse[]
-}
-
-// === UNIFIED PROJECTABLE ITEM (Discriminated Union) ===
-export type ProjectableItem =
-  | SongItem
-  | VideoItem
-  | ImageItem
-  | AudioItem
-  | SlideItem
-  | ScriptureItem
-
-// === SCHEDULE ITEM ===
-// Schedule items are ProjectableItems with optional override settings
-export interface ItemSettings extends VideoSettings, ImageSettings {
-  // Common
-  autoAdvance?: boolean
-  transitionOverride?: TransitionSettings
-
-  // Specific
-  isCanvaSlide?: boolean // Special handling for Canva embed slides
-  canvaHoldPoint?: number // Video timestamp to hold at (seconds)
-  holdTime?: number
-}
-
-export type ScheduleItem = ProjectableItem & {
-  settings?: ItemSettings
-}
-
-// === SUPPORT TYPES ===
-export type PartType = string
-
-export interface SongPart {
-  id: PartType
-  label: string
-  slides: string[]
-}
-
-export interface SongVariation {
-  id: number
-  name: string
-  arrangement: PartType[]
-}
-
-export interface Song {
-  id: number
-  title: string
-  artist?: string
-  parts: SongPart[]
-  variations: SongVariation[]
-}
-
-// === SCHEDULE ===
-
-export interface Schedule {
-  date: string
-  items: ScheduleItem[]
-}
-
-// Song summary for library listing (lighter than full Song)
-export interface SongSummary {
-  id: number
-  title: string
-  artist?: string
-  variations?: SongVariation[]
-  searchContent?: string
-}
-
-export interface SongSet {
-  id: number
-  name: string
-  songs: Song[]
-}
-
-// Deprecated: LyricsData was monolothic
-export interface LyricsData {
-  sets: SongSet[] // Kept for type compat during migration if any
-}
-
-export type DisplayMode = 'lyrics' | 'logo' | 'black' | 'clear' | 'media'
-
-export interface DisplaySettings {
-  fontSize: number
-  fontFamily: string
-  lineHeight: number
-  // Transitions
-  transitions: TransitionSettings
-  // Text styling
-  textColor: string
-  allCaps: boolean
-  // Shadow
-  textShadow: boolean
-  shadowBlur: number
-  shadowOffsetX: number
-  shadowOffsetY: number
-  // Outline
-  textOutline: boolean
-  outlineWidth: number
-  outlineColor: string
-  // Margins (separate for each side)
-  marginTop: number
-  marginBottom: number
-  marginLeft: number
-  marginRight: number
-}
-
-export interface ConfidenceMonitorSettings {
-  fontSize: number
-  fontFamily: string
-  lineHeight: number
-  transitions: TransitionSettings
-  prevNextOpacity: number
-  clockSize: number
-  marginTop: number
-  marginBottom: number
-  marginLeft: number
-  marginRight: number
-  partGap: number
-  slideGap: number
-}
-
-export interface LayoutSettings {
-  songsColumnWidth: number | null
-  scheduleSectionHeight: number | null
-  librarySectionHeight: number | null
-  backgroundsSectionHeight: number | null
-  thumbnailSize?: number // Optional, defaults to 80
-  monitorColumnWidth?: number | null // Optional, defaults to 300
-  // Monitor performance settings
-  mainMonitorEnabled?: boolean
-  confidenceMonitorEnabled?: boolean
-  lowerThirdsMonitorEnabled?: boolean
-  confidenceMonitorResolution?: { width: number; height: number }
-  mainProjectionStaticMode?: boolean
-}
-
-// Represents a unified slide position (0-based index)
-export type SlidePosition = number
-export type SimplePosition = SlidePosition
-
-export interface LiveMediaState {
-  isPlaying: boolean
-  currentTime: number
-  duration: number
-  isCanvaHolding?: boolean // Special state for Canva slides
-}
+// ============ RUNTIME STATE (Shared Types) ============
 
 export interface AppState {
-  // Preview state (unified)
-  previewItem: ScheduleItem | null
-  previewContent: ContentSlide[]  // Hydrated content slides
-  previewPosition: number         // Simple 0-based index
+  // Navigation
+  active_schedule_id: UUID | null
 
-  // Live state (unified)
-  liveItem: ScheduleItem | null
-  liveContent: ContentSlide[]     // Hydrated content slides  
-  livePosition: number            // Simple 0-based index
-  liveMediaState: LiveMediaState
+  // Playback Pointers
+  preview: MediaStatePointer
+  live: MediaStatePointer
 
-  // Previous Live state (for transition context)
-  previousItem: ScheduleItem | null
-  previousContent: ContentSlide[]
-  previousPosition: number
+  // Resources
+  blackout_active: boolean
+  clear_active: boolean
+  logo_active: boolean
 
-  // Display settings
-  previewBackground: string
-  backgroundVideo: string
-  availableVideos: VideoFile[]
-  logoMedia: string
-  displayMode: DisplayMode
-
-  // Data State
-  songs: SongSummary[]
-  schedule: Schedule
-
-  // Legacy Data (Deprecated)
-  lyricsData: LyricsData | null
-
-  // UI settings
-  theme: 'light' | 'dark'
-  displaySettings: DisplaySettings
-  confidenceMonitorSettings: ConfidenceMonitorSettings
-  layoutSettings: LayoutSettings
-  partColors: PartColorSettings
+  // Access to data (optional populated fields)
+  // In a real app, this might be fetched via API, but we keep some state here
 }
 
-export type PartColorSettings = Record<string, string>
-
-export interface VideoFile {
-  name: string
-  path: string
-  thumbnail?: string
+export interface MediaStatePointer {
+  item_id: UUID | null
+  slide_index: number
+  media_position: number // seconds (for videos)
+  is_playing: boolean
 }
-
-export interface SlideUpdate {
-  item: ScheduleItem | null
-  content?: ContentSlide[] // New: include hydrated content in updates
-  position: number // Changed from SlidePosition | SimplePosition
-}
-
-export interface VideoUpdate {
-  video: string
-}
-
-export interface DisplayModeUpdate {
-  mode: DisplayMode
-}
-
-export interface LogoUpdate {
-  logo: string
-}
-
-export interface DisplaySettingsUpdate {
-  settings: DisplaySettings
-}
-
-export interface LowerThirdsSettings {
-  // Background
-  backgroundColor: string
-  backgroundOpacity: number
-  // Text styling
-  fontFamily: string
-  fontSize: number
-  fontWeight: string
-  textColor: string
-  textAlign: 'left' | 'center' | 'right'
-  allCaps: boolean
-  // Position and sizing
-  position: 'bottom' | 'top'
-  marginBottom: number
-  marginTop: number
-  marginLeft: number
-  marginRight: number
-  paddingVertical: number
-  paddingHorizontal: number
-  // Visibility
-  visible: boolean
-  // Animation
-  animationDuration: number
-}
-
-export type ScreenType = 'control-panel' | 'main-projection' | 'confidence-monitor' | 'lower-thirds' | 'mobile'

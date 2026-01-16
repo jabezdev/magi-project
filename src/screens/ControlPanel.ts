@@ -49,6 +49,8 @@ let unsubscribe: (() => void) | null = null
 // Track layout state
 let activeSongListWidth = state.layoutSettings.songsColumnWidth || 350
 let activeMonitorColumnWidth = state.layoutSettings.monitorColumnWidth || 300
+// Track previous live item ID to prevent aggressive re-renders/scrolls
+let lastLiveItemId: string | null = null
 
 /**
  * Cleanup control panel resources
@@ -126,13 +128,20 @@ function setupEfficientUpdates(): void {
   })
 }
 
+// Track previous preview item ID
+let lastPreviewItemId: string | null = null
+
 function handlePreviewChange(): void {
   // 1. Update selection in song lists (schedule & library)
   updateSongSelectionUI()
 
-  // 2. Re-render ONLY the preview column
+  const currentPreviewItemId = state.previewItem?.id || null
+  const isNewItem = currentPreviewItemId !== lastPreviewItemId
+  lastPreviewItemId = currentPreviewItemId
+
+  // 2. Re-render ONLY the preview column if ITEM changed
   const previewContainer = document.querySelector('.cp-preview')
-  if (previewContainer) {
+  if (previewContainer && isNewItem) {
     const tempContainer = document.createElement('div')
     tempContainer.innerHTML = renderPreviewColumn()
     const newPreview = tempContainer.firstElementChild
@@ -144,6 +153,10 @@ function handlePreviewChange(): void {
       // We need to make sure we also update the "Live" badges in the new preview if it matches live song
       updatePreviewSlideSelection()
     }
+  } else if (previewContainer && !isNewItem) {
+    // Just update selection classes/status without full re-render
+    // This preserves scroll position
+    updatePreviewSlideSelection()
   }
 }
 
@@ -159,7 +172,13 @@ function handleLiveChange(): void {
   // Let's assume RenderLiveColumn is cheap or we can just update it.
   // Actually, LiveColumn usually needs re-render if the song changes to show the new song title/etc.
   const liveContainer = document.querySelector('.cp-live')
-  if (liveContainer) {
+  const currentLiveItemId = state.liveItem?.id || null
+  const isNewItem = currentLiveItemId !== lastLiveItemId
+  lastLiveItemId = currentLiveItemId
+
+  // Only re-render Live Panel if the ITEM has changed (or if it was/is null)
+  // This prevents re-rendering on every slide click, which caused the scroll reset.
+  if (liveContainer && isNewItem) {
     const tempContainer = document.createElement('div')
     tempContainer.innerHTML = renderLiveColumn()
     const newLive = tempContainer.firstElementChild
@@ -167,9 +186,13 @@ function handleLiveChange(): void {
     if (newLive) {
       liveContainer.replaceWith(newLive)
       initLiveListeners()
-      // Restore proper slide selection
+      // Only scroll to active if it's a new item (likely index 0 or restored index)
       updateLiveSlideSelection(true)
     }
+  } else if (!isNewItem) {
+    // If item is same, just update selection (which handles scrolling if needed, but we pass false or handle elsewhere)
+    // Actually, if we just clicked a slide, 'livePosition' update handles the selection class toggling.
+    // We don't need to do anything heavy here.
   }
 }
 

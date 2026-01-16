@@ -4,7 +4,7 @@ import { state } from '../../state'
 import { showToast } from '../common/Toast'
 import { openSongEditor, openSlideDeckEditor, openVideoEditor, openImageEditor } from '../modals'
 import { searchLibrary, fetchLibrary, uploadFile, uploadFiles, addYouTubeLink } from '../../services/api'
-import { addItemToSchedule } from '../../actions'
+import { addItemToSchedule, selectItemForPreview } from '../../actions'
 import type { ProjectableItem, MediaType } from '../../types'
 
 let libraryItems: ProjectableItem[] = []
@@ -516,6 +516,31 @@ export function initUnifiedLibraryListeners(): void {
             const items = await fetchLibrary()
             libraryItems = items
             updateListDOM()
+
+            // Auto-open editor for single files
+            if (result.files && result.files.length === 1) {
+                const uploadedFile = result.files[0]
+                const item = libraryItems.find(i =>
+                    (i.type === 'video' || i.type === 'image') &&
+                    (i as any).id.endsWith(uploadedFile.filename)
+                )
+
+                if (item) {
+                    if (item.type === 'video') {
+                        openVideoEditor(item as import('../../types').VideoItem, async () => {
+                            const newItems = await fetchLibrary()
+                            libraryItems = newItems
+                            updateListDOM()
+                        })
+                    } else if (item.type === 'image') {
+                        openImageEditor(item as import('../../types').ImageItem, async () => {
+                            const newItems = await fetchLibrary()
+                            libraryItems = newItems
+                            updateListDOM()
+                        })
+                    }
+                }
+            }
         } else {
             alert('Upload failed')
         }
@@ -578,6 +603,21 @@ function attachListListeners(container: HTMLElement) {
                 showToast('Added to schedule')
             }
 
+        })
+
+        // Preview on click
+        itemEl.addEventListener('click', (e) => {
+            // Don't trigger if clicking add button or edit button
+            if ((e.target as HTMLElement).closest('.add-btn') ||
+                (e.target as HTMLElement).closest('.edit-btn')) return
+
+            const index = parseInt(itemEl.getAttribute('data-index') || '0')
+            const filtered = getFilteredItems()
+            const item = filtered[index]
+            if (item) {
+                selectItemForPreview(item)
+                // updateListDOM() // Removed to prevent re-render loop/destruction
+            }
         })
 
         itemEl.querySelector('.edit-btn')?.addEventListener('click', () => {

@@ -142,7 +142,7 @@ export async function saveSchedule(schedule: Schedule, name?: string): Promise<v
   try {
     const url = name ? `${getApiBaseUrl()}/schedules/${encodeURIComponent(name)}` : `${getApiBaseUrl()}/schedules`
     const response = await fetch(url, {
-      method: 'POST',
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(schedule)
     })
@@ -158,7 +158,7 @@ export async function saveSchedule(schedule: Schedule, name?: string): Promise<v
  */
 export async function createSchedule(name: string): Promise<{ success: boolean; name: string } | null> {
   try {
-    const response = await fetch(`${getApiBaseUrl()}/schedules/new`, {
+    const response = await fetch(`${getApiBaseUrl()}/schedules`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name })
@@ -271,10 +271,11 @@ export async function searchLibrary(query: string): Promise<ProjectableItem[]> {
 /**
  * Upload a file
  */
-export async function uploadFile(file: File, target: string): Promise<{ success: boolean; filename: string } | null> {
+export async function uploadFile(file: File, target: string): Promise<{ success: boolean; filename: string; files?: any[] } | null> {
   const formData = new FormData()
-  formData.append('file', file)
+  // Meta fields FIRST for Multer
   formData.append('target', target)
+  formData.append('file', file)
 
   try {
     const response = await fetch(`${getApiBaseUrl()}/upload`, {
@@ -310,13 +311,15 @@ export async function addYouTubeLink(url: string): Promise<{ success: boolean; i
 /**
  * Upload multiple files (e.g. for directory upload)
  */
-export async function uploadFiles(files: FileList | File[], target: string, subfolder?: string): Promise<{ success: boolean; count: number } | null> {
+export async function uploadFiles(files: FileList | File[], target: string, subfolder?: string): Promise<{ success: boolean; count: number; files?: any[] } | null> {
   const formData = new FormData()
-  // Append all files
-  Array.from(files).forEach(f => formData.append('files', f))
 
+  // Meta fields FIRST
   formData.append('target', target)
   if (subfolder) formData.append('subfolder', subfolder)
+
+  // Append all files
+  Array.from(files).forEach(f => formData.append('files', f))
 
   try {
     const response = await fetch(`${getApiBaseUrl()}/upload`, {
