@@ -19,20 +19,11 @@ export function setupSocket(io) {
             previewItem: sharedState.previewItem,
             previewPosition: sharedState.previewPosition,
 
-            // Legacy compat
-            liveSong: sharedState.liveSong,
-            liveVariation: sharedState.liveVariation,
-            previousLiveSong: sharedState.previousLiveSong,
-            previousLiveVariation: sharedState.previousLiveVariation,
-            previewSong: sharedState.previewSong,
-            previewVariation: sharedState.previewVariation,
-
             backgroundVideo: sharedState.backgroundVideo,
             logoMedia: sharedState.logoMedia,
             displayMode: sharedState.displayMode,
             displaySettings: sharedState.displaySettings,
             confidenceMonitorSettings: sharedState.confidenceMonitorSettings,
-            availableVideos: sharedState.availableVideos,
             availableMedia: sharedState.availableMedia,
             availableSlides: sharedState.availableSlides,
             availableScriptures: sharedState.availableScriptures
@@ -58,20 +49,11 @@ export function setupSocket(io) {
                 previewItem: sharedState.previewItem,
                 previewPosition: sharedState.previewPosition,
 
-                // Legacy
-                liveSong: sharedState.liveSong,
-                liveVariation: sharedState.liveVariation,
-                previousLiveSong: sharedState.previousLiveSong,
-                previousLiveVariation: sharedState.previousLiveVariation,
-                previewSong: sharedState.previewSong,
-                previewVariation: sharedState.previewVariation,
-
                 backgroundVideo: sharedState.backgroundVideo,
                 logoMedia: sharedState.logoMedia,
                 displayMode: sharedState.displayMode,
                 displaySettings: sharedState.displaySettings,
                 confidenceMonitorSettings: sharedState.confidenceMonitorSettings,
-                availableVideos: sharedState.availableVideos,
                 availableMedia: sharedState.availableMedia,
                 availableSlides: sharedState.availableSlides,
                 availableScriptures: sharedState.availableScriptures
@@ -80,21 +62,15 @@ export function setupSocket(io) {
 
         // Update current slide (go live)
         socket.on('update-slide', (data) => {
-            console.log('📝 Updating slide/item:', data.item?.type || 'song', 'position:', data.position)
+            console.log('📝 Updating slide/item:', data.item?.type || 'unknown', 'position:', data.position)
 
-            // Capture generic previous state
+            // Capture previous state if item is changing
             if (data.item && sharedState.liveItem && data.item.id !== sharedState.liveItem.id) {
                 sharedState.previousLiveItem = sharedState.liveItem
                 sharedState.previousLivePosition = sharedState.livePosition
             }
 
-            // If the song is changing (legacy support), capture the previous state
-            if (data.song && sharedState.liveSong && data.song.id !== sharedState.liveSong.id) {
-                sharedState.previousLiveSong = sharedState.liveSong
-                sharedState.previousLiveVariation = sharedState.liveVariation
-            }
-
-            // Update generic state
+            // Update unified state
             sharedState.liveItem = data.item || null
             sharedState.liveContent = data.content || []
             sharedState.livePosition = typeof data.position === 'number' ? data.position : 0
@@ -104,11 +80,7 @@ export function setupSocket(io) {
                 sharedState.liveMediaState = { isPlaying: true, currentTime: 0, duration: 0, isCanvaHolding: false }
             }
 
-            // Update legacy song state
-            sharedState.liveSong = data.song
-            sharedState.liveVariation = data.variation
-
-            // Emit all relevant state for proper sync
+            // Emit unified state for proper sync
             io.emit('slide-updated', {
                 item: sharedState.liveItem,
                 content: sharedState.liveContent,
@@ -116,25 +88,16 @@ export function setupSocket(io) {
                 liveMediaState: sharedState.liveMediaState,
 
                 previousItem: sharedState.previousLiveItem,
-                previousPosition: sharedState.previousLivePosition,
-
-                // Legacy
-                song: sharedState.liveSong,
-                variation: sharedState.liveVariation,
-                previousSong: sharedState.previousLiveSong,
-                previousVariation: sharedState.previousLiveVariation
+                previousPosition: sharedState.previousLivePosition
             })
         })
 
-        // Update preview item/song
+        // Update preview item
         socket.on('update-preview', (data) => {
             sharedState.previewItem = data.item
             sharedState.previewContent = data.content || []
             sharedState.previewPosition = typeof data.position === 'number' ? data.position : 0
 
-            // Legacy
-            sharedState.previewSong = data.song
-            sharedState.previewVariation = data.variation
             io.emit('preview-updated', data)
         })
 
@@ -142,7 +105,6 @@ export function setupSocket(io) {
         socket.on('update-media-state', (data) => {
             sharedState.liveMediaState = { ...sharedState.liveMediaState, ...data }
             // Broadcast to others (Control Panel, Confidence Monitor)
-            // exclude sender? No, sender is MainProjection, others need it.
             socket.broadcast.emit('media-state-updated', sharedState.liveMediaState)
         })
 

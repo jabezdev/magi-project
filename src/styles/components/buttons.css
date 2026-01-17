@@ -4,7 +4,7 @@
 
     /* Icon Button */
     .icon-btn {
-        @apply flex items-center justify-center w-8 h-8 bg-bg-tertiary border border-border-color rounded-md text-text-secondary cursor-pointer transition-all duration-150;
+        @apply flex items-center justify-center w-8 h-8 bg-bg-tertiary border border-border-color text-text-secondary cursor-pointer transition-all duration-150;
     }
 
     .icon-btn:hover {
@@ -17,7 +17,7 @@
 
     /* Small Icon Button */
     .icon-btn-sm {
-        @apply flex items-center justify-center w-6 h-6 bg-transparent border-none rounded text-text-muted cursor-pointer transition-all duration-150 p-0;
+        @apply flex items-center justify-center w-6 h-6 bg-transparent border-none text-text-muted cursor-pointer transition-all duration-150 p-0;
     }
 
     .icon-btn-sm:hover {
@@ -39,7 +39,7 @@
 
     /* Display Control Button */
     .display-btn {
-        @apply flex items-center justify-center w-7 h-6 bg-bg-tertiary border border-border-color rounded text-text-muted cursor-pointer transition-all duration-150;
+        @apply flex items-center justify-center w-7 h-6 bg-bg-tertiary border border-border-color text-text-muted cursor-pointer transition-all duration-150;
     }
 
     .display-btn:hover {
@@ -56,7 +56,7 @@
 
     /* Navigation Buttons */
     .nav-btn {
-        @apply flex items-center justify-center gap-1 px-4 py-2 bg-bg-tertiary border border-border-color rounded-md text-text-secondary text-[0.7rem] font-semibold cursor-pointer transition-all duration-150;
+        @apply flex items-center justify-center gap-1 px-3 py-1 bg-bg-tertiary border border-border-color text-text-secondary text-[0.7rem] font-semibold cursor-pointer transition-all duration-150;
     }
 
     .nav-btn:hover:not(:disabled) {
@@ -77,7 +77,7 @@
 
     /* Go Live Button */
     .go-live-btn {
-        @apply flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-success border-none rounded-md text-white text-xs font-bold cursor-pointer transition-all duration-150;
+        @apply flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-success border-none text-white text-xs font-bold cursor-pointer transition-all duration-150;
     }
 
     .go-live-btn:hover {
@@ -95,21 +95,21 @@
 
     /* Ghost Button */
     .btn-ghost {
-        @apply px-4 py-2 bg-transparent border-none rounded-md text-text-secondary text-sm cursor-pointer hover:text-text-primary hover:bg-bg-hover;
+        @apply px-4 py-2 bg-transparent border-none text-text-secondary text-sm cursor-pointer hover:text-text-primary hover:bg-bg-hover;
     }
 
     /* Outline Button */
     .btn-outline {
-        @apply px-4 py-2 bg-transparent border border-border-color rounded-md text-text-primary text-sm cursor-pointer hover:bg-bg-hover;
+        @apply px-4 py-2 bg-transparent border border-border-color text-text-primary text-sm cursor-pointer hover:bg-bg-hover;
     }
 
     /* Primary Button */
     .btn-primary {
-        @apply px-4 py-2 bg-accent-primary border-none rounded-md text-white text-sm font-medium cursor-pointer hover:bg-accent-secondary;
+        @apply px-4 py-2 bg-accent-primary border-none text-white text-sm font-medium cursor-pointer hover:bg-accent-secondary;
     }
 
     /* Secondary Button */
     .btn-secondary {
-        @apply px-4 py-2 bg-bg-tertiary border border-border-color rounded-md text-text-primary text-sm cursor-pointer hover:bg-bg-hover;
+        @apply px-4 py-2 bg-bg-tertiary border border-border-color text-text-primary text-sm cursor-pointer hover:bg-bg-hover;
     }
 }

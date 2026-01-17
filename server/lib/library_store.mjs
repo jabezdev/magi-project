@@ -140,10 +140,22 @@ export class LibraryStore {
     }
 
     /**
-     * List all items, optionally filtered by type
-     * @param {string} typeFilter 
+     * Soft delete an item
+     * @param {string} id
+     * @param {string} author
+     * @param {string} deviceId
      */
-    list(typeFilter = null) {
+    delete(id, author = 'System', deviceId = 'unknown-device') {
+        return this.update(id, { is_deleted: true }, author, deviceId, 'Item deleted')
+    }
+
+    /**
+     * List all items, optionally filtered by type.
+     * By default excludes soft-deleted items only if explicitly requested to include them.
+     * @param {string} typeFilter 
+     * @param {boolean} includeDeleted
+     */
+    list(typeFilter = null, includeDeleted = false) {
         const files = fs.readdirSync(this.dbPath)
         const items = []
 
@@ -155,6 +167,9 @@ export class LibraryStore {
                 // Here we read files but we could keep an in-memory index if needed.
                 const path = join(this.dbPath, file)
                 const item = JSON.parse(fs.readFileSync(path, 'utf-8'))
+
+                // Filter out deleted items unless requested
+                if (!includeDeleted && item.is_deleted) continue
 
                 if (!typeFilter || item.type === typeFilter) {
                     items.push(item)

@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+const colors = require('tailwindcss/colors')
+
 export default {
     content: [
         "./index.html",
@@ -7,25 +9,22 @@ export default {
     theme: {
         extend: {
             colors: {
-                // Mapping CSS variables to Tailwind colors
-                'bg-primary': 'var(--bg-primary)',
-                'bg-secondary': 'var(--bg-secondary)',
-                'bg-tertiary': 'var(--bg-tertiary)',
-                'bg-hover': 'var(--bg-hover)',
-                'border-color': 'var(--border-color)',
-                'text-primary': 'var(--text-primary)',
-                'text-secondary': 'var(--text-secondary)',
-                'text-muted': 'var(--text-muted)',
-                'accent-primary': 'var(--accent-primary)',
-                'accent-secondary': 'var(--accent-secondary)',
-                'success': 'var(--success)',
-                'warning': 'var(--warning)',
-                'danger': 'var(--danger)',
-                'live-red': 'var(--live-red)',
+                // Force Premium Gray Scale (Zinc)
+                gray: colors.zinc,
+
+                // Semantic Colors from CSS Variables
+                'app': 'var(--color-bg-app)',
+                'panel': 'var(--color-bg-panel)',
+                'header': 'var(--color-bg-panel-header)',
+                'primary': {
+                    DEFAULT: 'var(--color-primary)',
+                    dim: 'var(--color-primary-dim)',
+                },
+                'accent': 'var(--color-accent)',
+                'live': 'var(--color-live)',
             },
-            borderRadius: {
-                'sm': 'var(--radius-sm)',
-                'md': 'var(--radius-md)',
+            fontFamily: {
+                sans: ['Inter', 'system-ui', 'sans-serif'],
             }
         },
     },

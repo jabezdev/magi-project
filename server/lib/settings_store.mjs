@@ -68,15 +68,104 @@ const DEFAULT_SETTINGS = {
             hasOutline: false
         }
     },
+
+    // Screen-specific detailed settings
+    displaySettings: {
+        fontSize: 3.5,
+        fontFamily: 'system-ui',
+        lineHeight: 1.5,
+        textColor: '#ffffff',
+        allCaps: false,
+        textShadow: true,
+        shadowBlur: 4,
+        shadowOffsetX: 2,
+        shadowOffsetY: 2,
+        textOutline: false,
+        outlineWidth: 2,
+        outlineColor: '#000000',
+        marginTop: 10,
+        marginBottom: 10,
+        marginLeft: 5,
+        marginRight: 5,
+        transitions: { type: 'crossfade', duration: 0.5 }
+    },
+
+    confidenceMonitorSettings: {
+        fontSize: 2.5,
+        fontFamily: 'system-ui',
+        lineHeight: 1.4,
+        prevNextOpacity: 0.35,
+        clockSize: 1.25,
+        marginTop: 0.5,
+        marginBottom: 0.5,
+        marginLeft: 0.5,
+        marginRight: 0.5,
+        partGap: 2.0,
+        slideGap: 0,
+        transitions: { type: 'crossfade', duration: 0.5 }
+    },
+
+    lowerThirdsSettings: {
+        backgroundColor: '#00FF00',
+        backgroundOpacity: 1,
+        fontFamily: 'Arial',
+        fontSize: 48,
+        fontWeight: 'bold',
+        textColor: '#ffffff',
+        textAlign: 'center',
+        allCaps: true,
+        position: 'bottom',
+        marginBottom: 10,
+        marginTop: 10,
+        marginLeft: 5,
+        marginRight: 5,
+        paddingVertical: 20,
+        paddingHorizontal: 40,
+        visible: true,
+        animationDuration: 0.5
+    },
+
+    layoutSettings: {
+        songsColumnWidth: 350,
+        scheduleSectionHeight: 300,
+        librarySectionHeight: null,
+        backgroundsSectionHeight: 200,
+        thumbnailSize: 80,
+        mainMonitorEnabled: true,
+        confidenceMonitorEnabled: true,
+        lowerThirdsMonitorEnabled: true,
+        mobileMonitorEnabled: true,
+        confidenceMonitorResolution: { width: 1024, height: 768 },
+        mainProjectionStaticMode: false,
+        monitorColumnWidth: 450
+    },
+
     default_transitions: {
         background: { type: 'crossfade', duration: 1.0 },
         lyrics: { type: 'crossfade', duration: 0.3 }
     },
+
     paths: {
-        media_root: join(DATA_ROOT, 'media'),
+        media_root: join(DATA_ROOT, 'library', 'assets'),
         data_root: DATA_ROOT
+    },
+
+    // Media
+    logoMedia: '',
+    defaultBackgroundVideo: '',
+
+    // Part Colors
+    partColors: {
+        'V': '#3b82f6',
+        'CH': '#ef4444',
+        'pCH': '#f97316',
+        'BR': '#8b5cf6',
+        'TAG': '#ec4899',
+        'IN': '#10b981',
+        'OUT': '#6366f1'
     }
 }
+
 
 export class SettingsStore {
     constructor(filePath = SETTINGS_PATH) {

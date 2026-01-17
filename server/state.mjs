@@ -18,6 +18,9 @@ export const sharedState = {
     previewItem: null, // ScheduleItem
     previousLiveItem: null, // ScheduleItem
 
+    // Independent Layers
+    active_background_id: null,
+
     // Unified Position State (Simple 0-based index)
     livePosition: 0,
     previewPosition: 0,
@@ -27,19 +30,6 @@ export const sharedState = {
     liveItemId: null,
     liveItemType: null,
     liveContent: [], // The full hydrated array of ContentSlide
-
-    // Song Specific State (Legacy/Deprecated - kept for fallback)
-    liveSong: null,
-    liveVariation: 0,
-    // livePosition removed (replaced by numeric livePosition above)
-
-    previousLiveSong: null,
-    previousLiveVariation: 0,
-    // previousLivePosition removed
-
-    previewSong: null,
-    previewVariation: 0,
-    // previewPosition removed
 
     // Media Playback State
     liveMediaState: {
@@ -54,7 +44,6 @@ export const sharedState = {
     displayMode: 'clear', // 'lyrics' | 'logo' | 'black' | 'clear' | 'media'
     displaySettings: { ...DEFAULT_DISPLAY_SETTINGS, ...savedSettings.displaySettings },
     confidenceMonitorSettings: { ...DEFAULT_CONFIDENCE_MONITOR_SETTINGS, ...savedSettings.confidenceMonitorSettings },
-    availableVideos: [], // Legacy compat
     availableMedia: {
         backgroundVideos: [],
         contentVideos: [],
@@ -67,11 +56,3 @@ export const sharedState = {
 
 // Track connected clients
 export const connectedClients = new Map()
-
-export function updateAvailableVideos(videoDir) {
-    // Deprecated in favor of Scanners, but kept for legacy compat if needed
-    // The new Scanners will update the new state fields
-}
-
-
-

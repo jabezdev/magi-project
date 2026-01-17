@@ -1,425 +1,252 @@
-/**
- * Control Panel Screen
- * 
- * Renders the main control interface for managing the projection.
- * Uses efficient DOM updates for slide selection changes, schedule updates, and library changes.
- */
+import '../style.css'
+import { UnifiedLibrary } from '../components/UnifiedLibrary'
+import { PreviewPanel } from '../components/PreviewPanel'
+import { LivePanel } from '../components/LivePanel'
+import { SchedulePanel } from '../components/SchedulePanel'
+import { OutputStatusPanel } from '../components/OutputStatusPanel'
+import { AudioMixerPanel } from '../components/AudioMixerPanel'
+import { UtilityPanelManager } from '../components/UtilityPanelManager'
+import { openSettingsModal } from '../components/modals/SettingsModal'
+import { KeyboardService } from '../services/KeyboardService'
 
-import { state, subscribeToState, StateChangeKey, saveLayoutSettings } from '../state'
-import {
-  goLive,
-  setDisplayMode,
-  prevSlide,
-  nextSlide
-} from '../actions'
-import { initKeyboardHandlers, setupKeyboardListener, removeKeyboardListener } from '../utils'
-import { toggleShortcutsModal } from '../components/modals'
+export class ControlPanel {
+  element: HTMLElement;
 
-
-import {
-  renderLibraryColumn,
-  renderProjectionControlColumn,
-  renderOutputMonitorColumn,
-  renderPreviewColumn,
-  renderLiveColumn,
-  // Specific component renders & inits for granular updates
-  renderScheduleList,
-  initScheduleListListeners,
-  renderLibraryList,
-  initLibraryListListeners,
-
-  initLibraryColumnListeners,
-  initProjectionControlListeners,
-  initOutputMonitorListeners,
-  initPreviewListeners,
-  initLiveListeners,
-  updateVideoSelection,
-  updatePreviewSlideSelection,
-  updatePreviewNavButtons,
-  updateLiveSlideSelection,
-  updateLiveNavButtons,
-  updateDisplayModeButtons,
-  updateSongSelectionUI,
-  updateLiveStatusUI
-} from '../components/control-panel'
-
-// Track initialization state
-let isInitialized = false
-let unsubscribe: (() => void) | null = null
-// Track layout state
-let activeSongListWidth = state.layoutSettings.songsColumnWidth || 350
-let activeMonitorColumnWidth = state.layoutSettings.monitorColumnWidth || 300
-// Track previous live item ID to prevent aggressive re-renders/scrolls
-let lastLiveItemId: string | null = null
-
-/**
- * Cleanup control panel resources
- */
-function cleanup(): void {
-  if (unsubscribe) {
-    unsubscribe()
-    unsubscribe = null
-  }
-  removeKeyboardListener()
-  isInitialized = false
-}
-
-/**
- * Initialize keyboard handlers for control panel
- */
-function initKeyboard(): void {
-  initKeyboardHandlers({
-    nextSlide,
-    prevSlide,
-    goLive,
-    setDisplayMode,
-    toggleHelp: toggleShortcutsModal
-  })
-  setupKeyboardListener()
-}
-
-/**
- * Setup efficient updates that don't require full re-render
- */
-function setupEfficientUpdates(): void {
-  unsubscribe = subscribeToState((changedKeys: StateChangeKey[]) => {
-    if (!isInitialized) return
-
-    // Handle preview changes efficiently
-    if (changedKeys.includes('previewPosition')) {
-      updatePreviewSlideSelection()
-      updatePreviewNavButtons()
-    }
-
-    if (changedKeys.includes('preview' as any) || changedKeys.includes('previewContent')) {
-      handlePreviewChange()
-    }
-
-    // Handle live changes efficiently
-    if (changedKeys.includes('livePosition')) {
-      updateLiveSlideSelection()
-      updateLiveNavButtons()
-      // Also update preview panel's live indicators
-      updatePreviewSlideSelection()
-    }
-
-    if (changedKeys.includes('live' as any) || changedKeys.includes('liveContent')) {
-      handleLiveChange()
-    }
-
-    // Handle display mode changes
-    if (changedKeys.includes('displayMode')) {
-      updateDisplayModeButtons()
-    }
-
-    // Handle video selection change
-    if (changedKeys.includes('backgroundVideo') || changedKeys.includes('previewBackground')) {
-      updateVideoSelection()
-    }
-
-    // Handle data changes efficiently
-    if (changedKeys.includes('schedule')) {
-      handleScheduleChange()
-    }
-
-    if (changedKeys.includes('songs') || changedKeys.includes('data' as any)) {
-      handleDataChange()
-    }
-  })
-}
-
-// Track previous preview item ID
-let lastPreviewItemId: string | null = null
-
-function handlePreviewChange(): void {
-  // 1. Update selection in song lists (schedule & library)
-  updateSongSelectionUI()
-
-  const currentPreviewItemId = state.previewItem?.id || null
-  const isNewItem = currentPreviewItemId !== lastPreviewItemId
-  lastPreviewItemId = currentPreviewItemId
-
-  // 2. Re-render ONLY the preview column if ITEM changed
-  const previewContainer = document.querySelector('.cp-preview')
-  if (previewContainer && isNewItem) {
-    const tempContainer = document.createElement('div')
-    tempContainer.innerHTML = renderPreviewColumn()
-    const newPreview = tempContainer.firstElementChild
-
-    if (newPreview) {
-      previewContainer.replaceWith(newPreview)
-      // Re-attach listeners for the new DOM
-      initPreviewListeners()
-      // We need to make sure we also update the "Live" badges in the new preview if it matches live song
-      updatePreviewSlideSelection()
-    }
-  } else if (previewContainer && !isNewItem) {
-    // Just update selection classes/status without full re-render
-    // This preserves scroll position
-    updatePreviewSlideSelection()
-  }
-}
-
-function handleLiveChange(): void {
-  // 1. Update live status in song lists
-  updateLiveStatusUI()
-
-  // 2. Update live status in preview column (if matching)
-  updatePreviewSlideSelection()
-
-  // 3. Re-render live column if needed (usually live column just shows static text or current slide)
-  // For now, simpler to just re-render live column content if we had one, but currently LiveColumn is simple.
-  // Let's assume RenderLiveColumn is cheap or we can just update it.
-  // Actually, LiveColumn usually needs re-render if the song changes to show the new song title/etc.
-  const liveContainer = document.querySelector('.cp-live')
-  const currentLiveItemId = state.liveItem?.id || null
-  const isNewItem = currentLiveItemId !== lastLiveItemId
-  lastLiveItemId = currentLiveItemId
-
-  // Only re-render Live Panel if the ITEM has changed (or if it was/is null)
-  // This prevents re-rendering on every slide click, which caused the scroll reset.
-  if (liveContainer && isNewItem) {
-    const tempContainer = document.createElement('div')
-    tempContainer.innerHTML = renderLiveColumn()
-    const newLive = tempContainer.firstElementChild
-
-    if (newLive) {
-      liveContainer.replaceWith(newLive)
-      initLiveListeners()
-      // Only scroll to active if it's a new item (likely index 0 or restored index)
-      updateLiveSlideSelection(true)
-    }
-  } else if (!isNewItem) {
-    // If item is same, just update selection (which handles scrolling if needed, but we pass false or handle elsewhere)
-    // Actually, if we just clicked a slide, 'livePosition' update handles the selection class toggling.
-    // We don't need to do anything heavy here.
-  }
-}
-
-/**
- * Handle schedule changes efficiently
- */
-function handleScheduleChange(): void {
-  // Update schedule section
-  const scheduleContainer = document.querySelector('.schedule-section')
-  if (scheduleContainer && scheduleContainer.parentElement) {
-    const tempContainer = document.createElement('div')
-    tempContainer.innerHTML = renderScheduleList()
-    const newSchedule = tempContainer.firstElementChild
-
-    if (newSchedule) {
-      // Preserve height if manually resized
-      const currentHeight = (scheduleContainer as HTMLElement).style.height
-      const currentFlex = (scheduleContainer as HTMLElement).style.flex
-
-      if (currentHeight) {
-        (newSchedule as HTMLElement).style.height = currentHeight
-      }
-      if (currentFlex) {
-        (newSchedule as HTMLElement).style.flex = currentFlex
-      }
-
-      scheduleContainer.replaceWith(newSchedule)
-      initScheduleListListeners()
-
-      // Restore selection state
-      updateSongSelectionUI()
-      updateLiveStatusUI()
-    }
-  }
-}
-
-/**
- * Handle data/library changes efficiently
- */
-function handleDataChange(): void {
-  // 1. Update library section
-  const libraryContainer = document.querySelector('.library-section')
-  if (libraryContainer) {
-    const tempContainer = document.createElement('div')
-    tempContainer.innerHTML = renderLibraryList()
-    const newLibrary = tempContainer.firstElementChild
-
-    if (newLibrary) {
-      // Preserve layout styles
-      const currentHeight = (libraryContainer as HTMLElement).style.height
-      const currentFlex = (libraryContainer as HTMLElement).style.flex
-
-      if (currentHeight) (newLibrary as HTMLElement).style.height = currentHeight
-      if (currentFlex) (newLibrary as HTMLElement).style.flex = currentFlex
-
-      libraryContainer.replaceWith(newLibrary)
-      initLibraryListListeners()
-    }
+  constructor() {
+    this.element = document.createElement('div')
+    this.element.className = 'layout-grid'
+    this.render()
+    this.initResizers()
   }
 
-  // 2. Also update schedule as song details might have changed
-  handleScheduleChange()
+  render() {
+    this.element.innerHTML = `
+            <!-- COLUMN 1: Resources -->
+            <div class="col-resources">
+                <div id="panel-schedule" class="flex-1 overflow-hidden bg-gray-900 border-b border-gray-700" style="flex: none; height: 40%; min-height: 150px;"></div>
+                <div class="resizer-row" id="resizer-resources"></div>
+                <div id="panel-library" class="flex-1 overflow-hidden"></div>
+            </div>
 
-  // 3. Selection states might need re-check if IDs changed
-  updateSongSelectionUI()
-  updateLiveStatusUI()
-}
+            <!-- RESIZER 1 -->
+            <div class="resizer-col" id="resizer-col-1"></div>
 
-/**
- * Render the control panel UI
- */
-export function renderControlPanel(): void {
-  // Cleanup previous instance
-  cleanup()
+            <!-- COLUMN 2: Operation (Grid) -->
+            <div class="col-operation">
+                
+                <!-- LEFT COLUMN (Preview) -->
+                <div class="op-col" id="op-col-left">
+                     <!-- Preview Panel -->
+                     <div id="panel-preview-mount" class="panel-mount" style="border-right: 1px solid #333; background: #222;"></div>
+                     
+                     <!-- Preview Utility Resizer -->
+                     <div class="resizer-row" id="resizer-preview-utility"></div>
+                     
+                     <!-- Preview Utility -->
+                     <div id="panel-utility-preview" class="utility-mount" style="height: var(--height-utility-preview, 30%); min-height: 0;"></div>
+                </div>
 
-  document.body.setAttribute('data-theme', state.theme)
+                <!-- CENTER SPLIT RESIZER -->
+                <div class="resizer-col" id="resizer-center-split"></div>
 
-  const app = document.getElementById('app')
-  if (!app) return
+                <!-- RIGHT COLUMN (Live) -->
+                <div class="op-col" id="op-col-right">
+                     <!-- Live Panel -->
+                     <div id="panel-live-mount" class="panel-mount" style="background: #222;"></div>
+                     
+                     <!-- Live Utility Resizer -->
+                     <div class="resizer-row" id="resizer-live-utility"></div>
+                     
+                     <!-- Live Utility -->
+                     <div id="panel-utility-live" class="utility-mount" style="height: var(--height-utility-live, 30%); min-height: 0;"></div>
+                </div>
 
-  // const sets = state.lyricsData?.sets || [] // Deprecated
+            </div>
 
-  app.innerHTML = buildControlPanelHTML()
+            <!-- RESIZER 2 -->
+            <div class="resizer-col" id="resizer-col-2"></div>
 
-  attachControlPanelListeners()
-  initKeyboard()
-  setupEfficientUpdates()
+            <!-- COLUMN 3: Outputs -->
+            <div class="col-outputs flex flex-col">
+                <div id="panel-outputs" class="flex-1 overflow-hidden bg-gray-900 min-h-0"></div>
+                
+                <div class="resizer-row" id="resizer-outputs"></div>
 
-  // Restore layout
-  const cpMain = document.querySelector('.cp-main') as HTMLElement
-  if (cpMain) {
-    if (state.layoutSettings.songsColumnWidth) {
-      activeSongListWidth = state.layoutSettings.songsColumnWidth
-    }
-    if (state.layoutSettings.monitorColumnWidth) {
-      activeMonitorColumnWidth = state.layoutSettings.monitorColumnWidth
-    }
-    cpMain.style.setProperty('--song-list-width', `${activeSongListWidth}px`)
-    cpMain.style.setProperty('--monitor-column-width', `${activeMonitorColumnWidth}px`)
+                <!-- Audio Mixer -->
+                 <div id="panel-audio" class="bg-gray-900 flex-none border-t border-gray-800 flex flex-col overflow-hidden" style="height: var(--height-audio, 180px); min-height: 180px;"></div>
+
+                <!-- Settings Button -->
+                <div class="border-t border-gray-800 bg-[#0a0a0a] flex justify-between items-center h-7 select-none px-2">
+                    <div class="flex items-center gap-2" title="Server Connection: Active">
+                        <div class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] "></div>
+                    </div>
+                    <button id="btn-settings" class="aspect-square h-full text-gray-500 hover:text-white hover:bg-gray-800  flex items-center justify-center border-l border-gray-800" title="Settings">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    </button>
+                </div>
+            </div>
+        `
+
+    // Mount Sub-components
+    const scheduleContainer = this.element.querySelector('#panel-schedule')
+    if (scheduleContainer) scheduleContainer.appendChild(new SchedulePanel().element)
+
+    const libraryContainer = this.element.querySelector('#panel-library')
+    if (libraryContainer) libraryContainer.appendChild(new UnifiedLibrary().element)
+
+    const previewContainer = this.element.querySelector('#panel-preview-mount')
+    if (previewContainer) previewContainer.appendChild(new PreviewPanel().element)
+
+    const liveContainer = this.element.querySelector('#panel-live-mount')
+    if (liveContainer) liveContainer.appendChild(new LivePanel().element)
+
+    const outputsContainer = this.element.querySelector('#panel-outputs')
+    if (outputsContainer) outputsContainer.appendChild(new OutputStatusPanel().element)
+
+    const audioContainer = this.element.querySelector('#panel-audio')
+    if (audioContainer) audioContainer.appendChild(new AudioMixerPanel().element)
+
+    // Mount Independent Utility Panels
+    const previewUtilMount = this.element.querySelector('#panel-utility-preview') as HTMLElement
+    const previewResizer = this.element.querySelector('#resizer-preview-utility') as HTMLElement
+    new UtilityPanelManager(previewUtilMount, previewResizer, 'preview')
+
+    const liveUtilMount = this.element.querySelector('#panel-utility-live') as HTMLElement
+    const liveResizer = this.element.querySelector('#resizer-live-utility') as HTMLElement
+    new UtilityPanelManager(liveUtilMount, liveResizer, 'live')
+
+    // Initialize Shortcuts
+    new KeyboardService()
+
+    this.element.querySelector('#btn-settings')?.addEventListener('click', () => {
+      openSettingsModal()
+    })
   }
 
-  isInitialized = true
-}
+  initResizers() {
+    const makeResizable = (resizer: HTMLElement, direction: 'horizontal' | 'vertical', onDrag: (delta: number) => void) => {
+      let startX = 0
+      let startY = 0
+      let isDragging = false
 
-function buildControlPanelHTML(): string {
-  const resizerClass = "w-1 bg-[#2a2a32] cursor-col-resize hover:bg-accent-primary transition-colors duration-200 shrink-0 select-none z-[10]";
-  return `
-    <div class="w-full h-full flex flex-col items-stretch overflow-hidden bg-bg-primary text-text-primary control-panel no-navbar">
-      <div class="flex-1 flex overflow-hidden min-h-0 cp-main" style="--song-list-width: ${activeSongListWidth}px; --monitor-column-width: ${activeMonitorColumnWidth}px;">
-        ${renderLibraryColumn()}
-        <div class="${resizerClass}" id="cp-resizer"></div>
-        ${renderProjectionControlColumn()}
-        <div class="${resizerClass}" id="cp-resizer-monitors"></div>
-        ${renderOutputMonitorColumn()}
-      </div>
-    </div>
-  `
-}
-
-/**
- * Attach event listeners to the control panel
- */
-function attachControlPanelListeners(): void {
-  initLibraryColumnListeners()
-  initProjectionControlListeners()
-
-  // Settings button listener removed as it's now in SongListColumn
-  initResizer()
-  initMonitorResizer()
-  initOutputMonitorListeners()
-}
-
-function initResizer(): void {
-  const resizer = document.getElementById('cp-resizer')
-  const cpMain = document.querySelector('.cp-main') as HTMLElement
-
-  if (!resizer || !cpMain) return
-
-  let isResizing = false
-
-  resizer.addEventListener('mousedown', () => {
-    isResizing = true
-    resizer.classList.add('bg-accent-primary', 'resizing')
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
-  })
-
-  document.addEventListener('mousemove', (e) => {
-    if (!isResizing) return
-
-    // Calculate new width relative to cpMain left edge
-    // Max width is 50% of window width to ensure space for other columns
-    const max = window.innerWidth * 0.5
-    const newWidth = Math.max(200, Math.min(max, e.clientX))
-    activeSongListWidth = newWidth
-    cpMain.style.setProperty('--song-list-width', `${newWidth}px`)
-  })
-
-  document.addEventListener('mouseup', () => {
-    if (isResizing) {
-      isResizing = false
-      resizer.classList.remove('bg-accent-primary', 'resizing')
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-
-      // Save the new width
-      saveLayoutSettings({
-        ...state.layoutSettings,
-        songsColumnWidth: activeSongListWidth
-      })
-    }
-  })
-}
-
-
-function initMonitorResizer(): void {
-  const resizer = document.getElementById('cp-resizer-monitors')
-  const cpMain = document.querySelector('.cp-main') as HTMLElement
-
-  if (!resizer || !cpMain) return
-
-  let isResizing = false
-
-  resizer.addEventListener('mousedown', () => {
-    isResizing = true
-    resizer.classList.add('bg-accent-primary', 'resizing')
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
-  })
-
-  document.addEventListener('mousemove', (e) => {
-    if (!isResizing) return
-
-    // Monitor column is on the right. Width = WindowWidth - MouseX
-    // Calculate max width based on viewport height to prevent overflow
-    // Total height = height(16:9) + height(4:3) + height(16:9) + gaps
-    // H = W*(9/16) + W*(3/4) + W*(9/16) = W*(1.875)
-    // H_vp > H + Fixed (approx 200px for headers/padding)
-    // W < (H_vp - 200) / 1.875
-    const FIXED_V_SPACE = 108
-    const availHeight = window.innerHeight - FIXED_V_SPACE
-    const calcMaxWidth = Math.floor(Math.max(200, availHeight / 1.875))
-
-    // Also limit by window width
-    const maxWidth = Math.min(calcMaxWidth, window.innerWidth * 0.75)
-
-    const newWidth = Math.max(200, Math.min(maxWidth, window.innerWidth - e.clientX))
-
-    activeMonitorColumnWidth = newWidth
-    cpMain.style.setProperty('--monitor-column-width', `${newWidth}px`)
-  })
-
-  document.addEventListener('mouseup', () => {
-    if (isResizing) {
-      isResizing = false
-      resizer.classList.remove('bg-accent-primary', 'resizing')
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-
-      // Save the new width
-      saveLayoutSettings({
-        ...state.layoutSettings,
-        monitorColumnWidth: activeMonitorColumnWidth
+      resizer.addEventListener('mousedown', (e) => {
+        isDragging = true
+        startX = e.clientX
+        startY = e.clientY
+        resizer.classList.add('resizing')
+        e.preventDefault()
       })
 
-      // Trigger resize for iframes in OutputMonitorColumn
-      initOutputMonitorListeners()
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return
+        const dx = e.clientX - startX
+        const dy = e.clientY - startY
+        onDrag(direction === 'horizontal' ? dx : dy)
+        startX = e.clientX
+        startY = e.clientY
+      })
+
+      window.addEventListener('mouseup', () => {
+        if (isDragging) {
+          isDragging = false
+          resizer.classList.remove('resizing')
+        }
+      })
     }
-  })
+
+    // 1. Resources Width (Col 1)
+    const resizer1 = this.element.querySelector('#resizer-col-1') as HTMLElement
+    if (resizer1) {
+      makeResizable(resizer1, 'horizontal', (dx) => {
+        const root = document.documentElement
+        const currentWidth = parseInt(getComputedStyle(root).getPropertyValue('--width-col-resources')) || 320
+        const newWidth = Math.max(400, Math.min(800, currentWidth + dx))
+        root.style.setProperty('--width-col-resources', `${newWidth}px`)
+      })
+    }
+
+    // 2. Center Split (Between Preview & Live columns)
+    // Actually, this is fixed 1fr 1fr usually, but if we want to allow resizing:
+    // This would change the grid definition. For now, let's keep it 1fr 1fr and maybe just allow small adjustments?
+    // Or ignore it if 50/50 is the golden standard.
+    // The user didn't ask explicitly to resize the 50/50 split, but "different panel controls (resizing)" likely meant utility height.
+    // So let's skip implementing logic for 'resizer-center-split' unless we change the grid to pixels.
+    // Wait, grid-template-columns: var(--width-col-resources) 4px 1fr 4px var(--width-col-outputs);
+    // 1fr takes remaining space. Splitting that 1fr into two columns needs 'subgrid' or nested grid.
+    // Current CSS: .col-operation { display: grid; grid-template-columns: 1fr 4px 1fr; }
+    // If I resize this, I need to change 1fr 1fr to something else. 
+    // Since flexbox is easier for variable split, maybe switch back to flex row for col-operation?
+    // But CSS is already GRID.
+    // Let's Just keep it simple: 50/50 split is fine for now on the horizontal axis. 
+    // Just implement vertical resizers for utility panels.
+
+    // 3. Preview Utility Height
+    const resizerPreviewUtil = this.element.querySelector('#resizer-preview-utility') as HTMLElement
+    if (resizerPreviewUtil) {
+      makeResizable(resizerPreviewUtil, 'vertical', (dy) => {
+        const panel = this.element.querySelector('#panel-utility-preview') as HTMLElement
+        if (panel) {
+          const h = panel.clientHeight
+          const newH = Math.max(0, h - dy) // Dragging UP increases height? No, resizer is ABOVE utility.
+          // Resizer is between PreviewPanel (Top) and Utility (Bottom).
+          // Dragging DOWN (+dy) -> Preview Panel Grows, Utility Shrinks.
+          // So Utility New Height = Current Height - dy.
+          panel.style.height = `${newH}px`
+          document.documentElement.style.setProperty('--height-utility-preview', `${newH}px`)
+        }
+      })
+    }
+
+    // 4. Live Utility Height
+    const resizerLiveUtil = this.element.querySelector('#resizer-live-utility') as HTMLElement
+    if (resizerLiveUtil) {
+      makeResizable(resizerLiveUtil, 'vertical', (dy) => {
+        const panel = this.element.querySelector('#panel-utility-live') as HTMLElement
+        if (panel) {
+          const h = panel.clientHeight
+          const newH = Math.max(0, h - dy) // Same logic
+          panel.style.height = `${newH}px`
+          document.documentElement.style.setProperty('--height-utility-live', `${newH}px`)
+        }
+      })
+    }
+
+    // 5. Output Column Width
+    const resizer2 = this.element.querySelector('#resizer-col-2') as HTMLElement
+    if (resizer2) {
+      makeResizable(resizer2, 'horizontal', (dx) => {
+        const root = document.documentElement
+        const currentWidth = parseInt(getComputedStyle(root).getPropertyValue('--width-col-outputs')) || 340
+        const newWidth = Math.max(200, Math.min(600, currentWidth - dx))
+        root.style.setProperty('--width-col-outputs', `${newWidth}px`)
+      })
+    }
+
+    // 6. Audio Mixer Height
+    const resizerOutputs = this.element.querySelector('#resizer-outputs') as HTMLElement
+    if (resizerOutputs) {
+      makeResizable(resizerOutputs, 'vertical', (dy) => {
+        const bottomPanel = this.element.querySelector('#panel-audio') as HTMLElement
+        if (bottomPanel) {
+          const h = bottomPanel.clientHeight
+          const newH = Math.max(180, h - dy) // Resizer is ABOVE audio. Drag Down -> Shrinks.
+          bottomPanel.style.height = `${newH}px`
+          document.documentElement.style.setProperty('--height-audio', `${newH}px`)
+        }
+      })
+    }
+
+    // 7. Schedule Height
+    const resizerResources = this.element.querySelector('#resizer-resources') as HTMLElement
+    if (resizerResources) {
+      makeResizable(resizerResources, 'vertical', (dy) => {
+        const topPanel = this.element.querySelector('#panel-schedule') as HTMLElement
+        if (topPanel) {
+          const h = topPanel.clientHeight
+          const newH = Math.max(100, h + dy)
+          topPanel.style.height = `${newH}px`
+        }
+      })
+    }
+  }
 }

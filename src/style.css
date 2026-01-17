@@ -1,16 +1,219 @@
-@import "tailwindcss/base";
-@import "tailwindcss/components";
-@import "tailwindcss/utilities";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* ========== CORE STYLES ========== */
-@import './styles/variables.css';
-@import './styles/base.css';
-@import './styles/utils.css';
 
-/* ========== COMPONENTS ========== */
-@import './styles/core-layout.css';
-@import './styles/components/buttons.css';
-@import './styles/components/modal.css';
+:root {
+  /* Premium Dark Mode Palette */
+  --color-bg-app: #09090b;
+  /* Zinc 950 */
+  --color-bg-panel: #18181b;
+  /* Zinc 900 */
+  --color-bg-panel-header: #27272a;
+  /* Zinc 800 */
 
-/* ========== SCREENS ========== */
-@import './styles/screens.css';
+  --color-primary: #3b82f6;
+  /* Blue 500 */
+  --color-primary-dim: #1d4ed8;
+  /* Blue 700 */
+  --color-accent: #f59e0b;
+  /* Amber 500 */
+  --color-live: #ef4444;
+  /* Red 500 */
+
+  --color-text-primary: #fafafa;
+  /* Zinc 50 */
+  --color-text-secondary: #a1a1aa;
+  /* Zinc 400 */
+
+  --width-col-resources: 400px;
+  --width-col-outputs: 340px;
+}
+
+body {
+  background-color: var(--color-bg-app);
+  color: var(--color-text-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  height: 100vh;
+  margin: 0;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
+
+/* 5-Column Grid Layout (Resources | Resizer | Operation | Resizer | Outputs) */
+.layout-grid {
+  display: grid;
+  grid-template-columns: var(--width-col-resources) 4px minmax(0, 1fr) 4px var(--width-col-outputs);
+  grid-template-rows: 100vh;
+  height: 100vh;
+  width: 100vw;
+}
+
+.resizer-col {
+  background-color: var(--color-bg-app);
+  cursor: col-resize;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.resizer-col:hover,
+.resizer-col.resizing {
+  background-color: var(--color-primary);
+}
+
+.resizer-row {
+  height: 4px;
+  background-color: var(--color-bg-app);
+  cursor: row-resize;
+  z-index: 50;
+  flex-shrink: 0;
+}
+
+.resizer-row:hover,
+.resizer-row.resizing {
+  background-color: var(--color-primary);
+}
+
+.col-resources {
+  background-color: var(--color-bg-panel);
+  display: flex;
+  flex-direction: column;
+}
+
+.col-operation {
+  display: grid;
+  grid-template-columns: 1fr 4px 1fr;
+  /* Preview | Resizer | Live */
+  background-color: #000;
+  position: relative;
+  overflow: hidden;
+}
+
+.op-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Specific styling for mounts handled in JS or inline, but ensuring flex growth */
+.panel-mount {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.utility-mount {
+  /* Height set via JS/Resizer */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.col-outputs {
+  background-color: var(--color-bg-panel);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Common UI Elements */
+.panel-header {
+  background-color: var(--color-bg-panel-header);
+  border-bottom: 1px solid #27272a;
+  display: flex;
+  align-items: center;
+  font-weight: 700;
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  justify-content: space-between;
+  user-select: none;
+}
+
+.scroll-y {
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Utility: Glassmorphism */
+.glass {
+  background: rgba(24, 24, 27, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Form Elements Reset */
+input,
+textarea,
+select {
+  background-color: #27272a;
+  border: 1px solid #3f3f46;
+  color: white;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Toast Animations */
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.2s ease-out forwards;
+}
+
+.animate-slide-out {
+  animation: slide-out 0.2s ease-in forwards;
+}

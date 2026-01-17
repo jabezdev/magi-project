@@ -6,59 +6,18 @@
  */
 
 import './style.css'
-import { fetchSongs, fetchSchedule, fetchVideoAssets } from './services'
-import { state, updateState, setUpdateScreenCallback, loadSettingsFromServer } from './state'
+import { ControlPanel } from './screens/ControlPanel'
+import { MainProjection } from './screens/MainProjection'
+import { ConfidenceMonitor } from './screens/ConfidenceMonitor'
+import { LowerThirds } from './screens/LowerThirds'
+import { MobileScreen } from './screens/MobileScreen'
 import { getScreenType } from './utils'
-import { renderControlPanel, renderProjectionScreen, renderLowerThirdsScreen, renderMobileScreen } from './screens'
-import type { ScreenType } from './types'
+
+
+import { ScreenType } from './types'
 
 // Store the current screen type
 let currentScreen: ScreenType
-// Track if screen has been rendered at least once
-let hasRendered = false
-
-/**
- * Update the screen based on the current screen type
- * Only performs full re-render when needed (initial render or major state changes)
- */
-function updateScreen(): void {
-  // Skip re-render if already rendered (efficient updates handle partial changes)
-  // Only re-render for major state changes like song selection
-  if (!hasRendered) {
-    performRender()
-    hasRendered = true
-    return
-  }
-
-  // For control panel, we rely on efficient updates in ControlPanel.ts
-  // DO NOT trigger performRender() here for state changes, as it rebuilds the entire DOM
-  // and breaks scroll position / drag states / selection
-  if (currentScreen === 'control-panel') {
-    return
-  }
-  // Projection screens use subscription-based updates after initial render
-}
-
-/**
- * Perform the actual render based on screen type
- */
-function performRender(): void {
-  switch (currentScreen) {
-    case 'control-panel':
-      renderControlPanel()
-      break
-    case 'main-projection':
-    case 'confidence-monitor':
-      renderProjectionScreen(currentScreen)
-      break
-    case 'mobile':
-      renderMobileScreen()
-      break
-    case 'lower-thirds':
-      renderLowerThirdsScreen()
-      break
-  }
-}
 
 /**
  * Initialize the application
@@ -66,60 +25,41 @@ function performRender(): void {
 async function init(): Promise<void> {
   // Detect screen type from URL
   currentScreen = getScreenType()
+  const appRoot = document.querySelector<HTMLDivElement>('#app')!
 
-  // Set up the state update callback
-  setUpdateScreenCallback(updateScreen)
-
-  // Lower thirds screen is standalone - doesn't need server data
-  if (currentScreen === 'lower-thirds') {
-    renderLowerThirdsScreen()
-    hasRendered = true
-    console.log(`[MAGI] System initialized as: ${currentScreen}`)
-    return
-  }
-
-  // Load settings from server first (merges with localStorage)
-  await loadSettingsFromServer()
-
-  // Load initial data
-  try {
-    const [songs, videos, schedule] = await Promise.all([
-      fetchSongs(),
-      fetchVideoAssets(),
-      fetchSchedule()
-    ])
-
-    // Initial data load - triggers first render
-    const updates: any = {
-      songs,
-      schedule,
-      availableVideos: videos
-    }
-
-    // Force Logo view on startup ONLY if we are the main Control Panel
-    // This prevents sub-screens (iframes) from resetting the global state
-    if (currentScreen === 'control-panel' && window.top === window) {
-      updates.displayMode = 'logo'
-      updateState(updates)
-
-      // Also ensure socket service is notified to sync with other clients
-      const { socketService } = await import('./services')
-      socketService.updateDisplayMode('logo')
-    } else {
-      updateState(updates)
-    }
-  } catch (error) {
-    console.error('Failed to load initial data:', error)
-    // Still render the screen even if data load fails
-    performRender()
-    hasRendered = true
-  }
-
-  // Apply saved theme
-  document.body.setAttribute('data-theme', state.theme)
+  if (!appRoot) throw new Error('Root #app element not found')
 
   console.log(`[MAGI] System initialized as: ${currentScreen}`)
+
+  switch (currentScreen) {
+    case 'control-panel':
+      const controlPanel = new ControlPanel()
+      appRoot.appendChild(controlPanel.element)
+      break
+
+    case 'main-projection':
+      const mainProjection = new MainProjection()
+      appRoot.appendChild(mainProjection.element)
+      break
+    case 'confidence-monitor':
+      const confidence = new ConfidenceMonitor()
+      appRoot.appendChild(confidence.element)
+      break
+
+
+    case 'lower-thirds':
+      const lowerThirds = new LowerThirds()
+      appRoot.appendChild(lowerThirds.element)
+      break
+
+    case 'mobile':
+      const mobile = new MobileScreen()
+      appRoot.appendChild(mobile.element)
+      break
+
+  }
 }
 
 // Start the application
 init()
+

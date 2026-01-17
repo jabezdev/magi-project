@@ -1,424 +1,67 @@
-/**
- * API Service Layer
- */
+import { BaseMediaItem, GlobalSettings, LibraryItem, UUID } from '../types'
 
-import type { Song, Schedule, SongSummary, DisplaySettings, ConfidenceMonitorSettings, LayoutSettings, PartColorSettings } from '../types'
+const API_ROOT = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
-// ... (existing code, relying on smart replacement to keep lines I don't touch) ...
+async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_ROOT}${endpoint}`, {
+    ...options,
+    headers: {
+      ...(options?.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+      ...options?.headers,
+    },
+  })
 
-/**
- * Settings interface for server persistence
- */
-export interface ServerSettings {
-  theme?: 'light' | 'dark'
-  displaySettings?: DisplaySettings
-  confidenceMonitorSettings?: ConfidenceMonitorSettings
-  layoutSettings?: LayoutSettings
-  currentSchedule?: string
-  logoMedia?: string
-  backgroundVideo?: string
-  previewBackground?: string
-  partColors?: PartColorSettings
-}
-
-// Configuration
-const API_CONFIG = {
-  USE_MOCK_DATA: false, // Force false now
-  LOCAL_API_URL: '/api'
-}
-
-function getApiBaseUrl(): string {
-  return API_CONFIG.LOCAL_API_URL
-}
-
-/**
- * Fetch all songs (metadata only or simplified)
- */
-export async function fetchSongs(): Promise<SongSummary[]> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/songs`)
-    if (!response.ok) throw new Error('Failed to fetch songs')
-    return await response.json()
-  } catch (error) {
-    console.error('API Error - fetchSongs:', error)
-    return []
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Unknown error' }))
+    throw new Error(error.error || `Request failed: ${res.statusText}`)
   }
+
+  return res.json()
 }
 
-/**
- * Fetch a specific song by ID
- */
-export async function fetchSongById(id: number): Promise<Song | null> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/songs/${id}`)
-    if (!response.ok) throw new Error('Failed to fetch song')
-    return await response.json()
-  } catch (error) {
-    console.error('API Error - fetchSongById:', error)
-    return null
-  }
-}
+export const api = {
+  library: {
+    list: (type?: string) => request<LibraryItem[]>(`/library${type ? `?type=${type}` : ''}`),
 
-/**
- * Save or Update a song
- */
-export async function saveSong(song: Song): Promise<{ success: boolean; id: number }> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/songs`, {
+    get: (id: UUID) => request<LibraryItem>(`/library/${id}`),
+
+    create: (item: Partial<LibraryItem>) => request<LibraryItem>('/library', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(song)
-    })
-    if (!response.ok) throw new Error('Failed to save song')
-    return await response.json()
-  } catch (error) {
-    console.error('API Error - saveSong:', error)
-    throw error
-  }
-}
+      body: JSON.stringify(item),
+    }),
 
-/**
- * Delete a song
- */
-export async function deleteSong(id: number): Promise<void> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/songs/${id}`, {
+    update: (id: UUID, updates: Partial<LibraryItem>, summary?: string) => request<LibraryItem>(`/library/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ ...updates, change_summary: summary }),
+    }),
+
+    delete: (id: UUID) => request<{ success: boolean }>(`/library/${id}`, {
       method: 'DELETE'
-    })
-    if (!response.ok) throw new Error('Failed to delete song')
-  } catch (error) {
-    console.error('API Error - deleteSong:', error)
-    throw error
-  }
-}
+    }),
 
-/**
- * Fetch current schedule
- */
-export async function fetchSchedule(): Promise<Schedule> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/schedules/current`)
-    if (!response.ok) throw new Error('Failed to fetch schedule')
-    return await response.json()
-  } catch (error) {
-    console.error('API Error - fetchSchedule:', error)
-    return { date: new Date().toISOString(), items: [] }
-  }
-}
+    getHistory: (id: UUID) => request<any[]>(`/library/${id}/history`), // TODO: Add HistoryEntry type to frontend
 
-/**
- * Fetch list of all available schedules
- */
-export async function fetchScheduleList(): Promise<{ name: string; filename: string; date: string | null; itemCount: number }[]> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/schedules`)
-    if (!response.ok) throw new Error('Failed to fetch schedules')
-    return await response.json()
-  } catch (error) {
-    console.error('API Error - fetchScheduleList:', error)
-    return []
-  }
-}
-
-/**
- * Fetch a specific schedule by name
- */
-export async function fetchScheduleByName(name: string): Promise<Schedule | null> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/schedules/${encodeURIComponent(name)}`)
-    if (response.status === 404) return null // Expected if schedule doesn't exist
-    if (!response.ok) throw new Error('Failed to fetch schedule')
-    return await response.json()
-  } catch (error) {
-    console.error('API Error - fetchScheduleByName:', error)
-    return null
-  }
-}
-
-/**
- * Save schedule
- */
-export async function saveSchedule(schedule: Schedule, name?: string): Promise<void> {
-  try {
-    const url = name ? `${getApiBaseUrl()}/schedules/${encodeURIComponent(name)}` : `${getApiBaseUrl()}/schedules`
-    const response = await fetch(url, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(schedule)
-    })
-    if (!response.ok) throw new Error('Failed to save schedule')
-  } catch (error) {
-    console.error('API Error - saveSchedule:', error)
-    throw error
-  }
-}
-
-/**
- * Create a new schedule
- */
-export async function createSchedule(name: string): Promise<{ success: boolean; name: string } | null> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/schedules`, {
+    revert: (id: UUID, commitId: UUID) => request<LibraryItem>(`/library/${id}/revert`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name })
-    })
-    if (!response.ok) throw new Error('Failed to create schedule')
-    return await response.json()
-  } catch (error) {
-    console.error('API Error - createSchedule:', error)
-    return null
+      body: JSON.stringify({ commit_id: commitId }),
+    }),
+  },
+
+  settings: {
+    get: () => request<GlobalSettings>('/settings'),
+
+    update: (updates: Partial<GlobalSettings>) => request<GlobalSettings>('/settings', {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    }),
+  },
+
+  upload: (formData: FormData) => request<{ success: boolean, files: any[] }>('/upload', {
+    method: 'POST',
+    body: formData
+  }),
+
+  youtube: {
+    getMeta: (url: string) => request<{ title: string, duration: number, thumbnail: string }>(`/youtube/meta?url=${encodeURIComponent(url)}`)
   }
 }
-
-/**
- * Fetch available video assets
- */
-export async function fetchVideoAssets(): Promise<{ name: string; path: string; thumbnail?: string }[]> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/media/background_videos`)
-    if (!response.ok) throw new Error('Failed to fetch videos')
-    return await response.json()
-  } catch (error) {
-    console.error('API Error - fetchVideoAssets:', error)
-    return [{ name: 'background.mp4', path: '/media/background.mp4' }]
-  }
-}
-
-/**
- * Get app configuration
- */
-export async function fetchConfig(): Promise<{ appTitle: string; screens: string[] }> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/config`)
-    if (!response.ok) throw new Error('Failed to fetch config')
-    return await response.json()
-  } catch (error) {
-    console.error('API Error - fetchConfig:', error)
-    return {
-      appTitle: 'MAGI Church Projection System',
-      screens: ['control-panel', 'main-projection', 'confidence-monitor']
-    }
-  }
-}
-
-
-/**
- * Fetch settings from server
- */
-export async function fetchSettings(): Promise<ServerSettings> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/settings`)
-    if (!response.ok) throw new Error('Failed to fetch settings')
-    return await response.json()
-  } catch (error) {
-    console.error('API Error - fetchSettings:', error)
-    return {}
-  }
-}
-
-/**
- * Save settings to server
- */
-export async function saveSettings(settings: Partial<ServerSettings>): Promise<void> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/settings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(settings)
-    })
-    if (!response.ok) throw new Error('Failed to save settings')
-  } catch (error) {
-    console.error('API Error - saveSettings:', error)
-    throw error
-  }
-}
-
-/* DEPRECATED - Compatibility Shims if needed */
-export async function fetchLyrics(): Promise<any> {
-  console.warn('fetchLyrics is deprecated')
-  return { sets: [] }
-}
-
-/**
- * == LIBRARY FUNCTIONS ==
- */
-
-import type { ProjectableItem } from '../types'
-
-export async function fetchLibrary(): Promise<ProjectableItem[]> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/library`)
-    if (!response.ok) throw new Error('Failed to fetch library')
-    return await response.json()
-  } catch (error) {
-    console.error('API Error - fetchLibrary:', error)
-    return []
-  }
-}
-
-export async function searchLibrary(query: string): Promise<ProjectableItem[]> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/library/search?q=${encodeURIComponent(query)}`)
-    if (!response.ok) throw new Error('Failed to search library')
-    return await response.json()
-  } catch (error) {
-    console.error('API Error - searchLibrary:', error)
-    return []
-  }
-}
-
-/**
- * Upload a file
- */
-export async function uploadFile(file: File, target: string): Promise<{ success: boolean; filename: string; files?: any[] } | null> {
-  const formData = new FormData()
-  // Meta fields FIRST for Multer
-  formData.append('target', target)
-  formData.append('file', file)
-
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/upload`, {
-      method: 'POST',
-      body: formData
-    })
-    if (!response.ok) throw new Error('Failed to upload file')
-    return await response.json()
-  } catch (error) {
-    console.error('API Error - uploadFile:', error)
-    return null
-  }
-}
-
-/**
- * Add a YouTube Link
- */
-export async function addYouTubeLink(url: string): Promise<{ success: boolean; item?: any } | null> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/media/youtube`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url })
-    })
-    if (!response.ok) throw new Error('Failed to add YouTube link')
-    return await response.json()
-  } catch (error) {
-    console.error('API Error - addYouTubeLink:', error)
-    return null
-  }
-}
-
-/**
- * Upload multiple files (e.g. for directory upload)
- */
-export async function uploadFiles(files: FileList | File[], target: string, subfolder?: string): Promise<{ success: boolean; count: number; files?: any[] } | null> {
-  const formData = new FormData()
-
-  // Meta fields FIRST
-  formData.append('target', target)
-  if (subfolder) formData.append('subfolder', subfolder)
-
-  // Append all files
-  Array.from(files).forEach(f => formData.append('files', f))
-
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/upload`, {
-      method: 'POST',
-      body: formData
-    })
-    if (!response.ok) throw new Error('Failed to upload files')
-    return await response.json()
-  } catch (error) {
-    console.error('API Error - uploadFiles:', error)
-    return null
-  }
-}
-
-/**
- * Create a new slide deck
- */
-export async function createSlideDeck(name: string, type = 'local_slides'): Promise<{ success: boolean; name: string; path: string } | null> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/slides/groups`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, type })
-    })
-    if (!response.ok) throw new Error('Failed to create slide deck')
-    return await response.json()
-  } catch (error) {
-    console.error('API Error - createSlideDeck:', error)
-    return null
-  }
-}
-
-/**
- * Update a slide deck (slides content, title)
- */
-export async function updateSlideDeck(type: string, name: string, data: { slides?: any[], title?: string }): Promise<{ success: boolean } | null> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/slides/${type}/${encodeURIComponent(name)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    })
-    if (!response.ok) throw new Error('Failed to update slide deck')
-    return await response.json()
-  } catch (error) {
-    console.error('API Error - updateSlideDeck:', error)
-    return null
-  }
-}
-
-/**
- * Upload an image to a slide deck
- */
-export async function uploadSlideImage(type: string, group: string, file: File): Promise<{ success: boolean; file: string } | null> {
-  const formData = new FormData()
-  formData.append('file', file)
-
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/slides/${type}/${encodeURIComponent(group)}/upload`, {
-      method: 'POST',
-      body: formData
-    })
-    if (!response.ok) throw new Error('Failed to upload slide image')
-    return await response.json()
-  } catch (error) {
-    console.error('API Error - uploadSlideImage:', error)
-    return null
-  }
-}
-
-/**
- * Update media metadata (Video/Image settings)
- */
-export async function updateMediaMetadata(id: string, metadata: any): Promise<{ success: boolean; metadata?: any } | null> {
-  // Extract type and filename from ID/URL
-  // ID format: /media/<type>/<filename> or /media/<type>/items/<filename>
-  // Example: /media/content_videos/myvideo.mp4
-
-  try {
-    const parts = id.split('/')
-    const filename = parts.pop()
-    const type = parts.pop()
-
-    if (!filename || !type) throw new Error('Invalid ID format')
-
-    // Handle "thumbnails" case if ID was pointing to a thumbnail for some reason, but usually ID points to main file
-    // The ID in types.ts is the URL.
-
-    const response = await fetch(`${getApiBaseUrl()}/media/${type}/${encodeURIComponent(filename)}/metadata`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ metadata })
-    })
-
-    if (!response.ok) throw new Error('Failed to update metadata')
-    return await response.json()
-  } catch (error) {
-    console.error('API Error - updateMediaMetadata:', error)
-    return null
-  }
-}
-

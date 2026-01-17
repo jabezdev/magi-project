@@ -6,7 +6,7 @@
     }
 
     .modal-content {
-        @apply flex flex-col w-[500px] max-w-[90%] max-h-[85vh] bg-bg-secondary border border-border-color rounded-lg shadow-lg;
+        @apply flex flex-col w-[500px] max-w-[90%] max-h-[85vh] bg-bg-secondary border border-border-color shadow-lg;
         /* shadow-lg is slightly different from 0 4px 12px, but consistent with tailwind */
     }
 
@@ -15,7 +15,7 @@
     }
 
     .modal-header {
-        @apply flex justify-between items-center p-4 border-b border-border-color;
+        @apply flex justify-between items-center p-2 border-b border-border-color;
     }
 
     .modal-header h2 {
@@ -27,7 +27,7 @@
     }
 
     .modal-body {
-        @apply flex-1 p-4 overflow-y-auto;
+        @apply flex-1 p-2 overflow-y-auto;
     }
 
     .help-text {
@@ -36,7 +36,7 @@
 
     /* Editor (Specific ID but migrated here) */
     #json-editor {
-        @apply w-full h-full min-h-[400px] p-4 bg-[#1e1e1e] text-[#d4d4d4] border border-border-color rounded font-mono text-sm resize-none;
+        @apply w-full h-full min-h-[400px] p-2 bg-[#1e1e1e] text-[#d4d4d4] border border-border-color font-mono text-sm resize-none;
     }
 
     .data-editor-container {
@@ -44,7 +44,7 @@
     }
 
     .modal-actions {
-        @apply flex justify-end items-center gap-4 pt-4 border-t border-border-color;
+        @apply flex justify-end items-center gap-2 pt-2 border-t border-border-color;
     }
 
     .status-success {

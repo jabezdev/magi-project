@@ -66,11 +66,11 @@
     }
 
     .toggle-switch .toggle-slider {
-        @apply absolute inset-0 cursor-pointer bg-[#444] rounded transition-all duration-200;
+        @apply absolute inset-0 cursor-pointer bg-[#444] transition-all duration-200;
     }
 
     .toggle-switch .toggle-slider::before {
-        @apply absolute content-[''] bg-[#888] rounded-[3px] transition-all duration-200;
+        @apply absolute content-[''] bg-[#888] transition-all duration-200;
         height: 14px;
         width: 14px;
         left: 2px;
@@ -201,7 +201,7 @@
     }
 
     .song-info {
-        @apply z-10 bg-bg-primary mb-0 py-2 px-3 border-b border-border-color shrink-0;
+        @apply z-10 bg-bg-primary mb-0 py-1 px-2 border-b border-border-color shrink-0;
     }
 
     .song-info .song-name {
@@ -213,11 +213,11 @@
     }
 
     .lyrics-arrangement {
-        @apply flex flex-col gap-3 p-3 flex-1 overflow-y-auto min-h-0;
+        @apply flex flex-col gap-0 p-1 flex-1 overflow-y-auto min-h-0;
     }
 
     .lyrics-part {
-        @apply flex flex-col gap-1;
+        @apply flex flex-col gap-0;
     }
 
     .part-header {
@@ -225,11 +225,11 @@
     }
 
     .part-slides {
-        @apply flex flex-col gap-1;
+        @apply flex flex-col gap-0;
     }
 
     .slide-btn {
-        @apply flex items-start gap-2 p-2 bg-bg-tertiary border border-transparent rounded-md cursor-pointer transition-all duration-150 text-left w-full;
+        @apply flex items-start gap-1 p-1 bg-bg-tertiary border border-border-color cursor-pointer transition-all duration-150 text-left w-full;
     }
 
     .slide-btn:hover {

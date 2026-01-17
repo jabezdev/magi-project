@@ -20,6 +20,6 @@
     }
 
     .variation-select {
-        @apply ml-auto px-2 py-1 bg-bg-tertiary border border-border-color rounded-sm text-text-primary text-[0.7rem] cursor-pointer;
+        @apply ml-auto px-2 py-1 bg-bg-tertiary border border-border-color text-text-primary text-[0.7rem] cursor-pointer;
     }
 }

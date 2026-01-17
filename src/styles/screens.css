@@ -52,7 +52,6 @@
     width: 18px;
     height: 18px;
     background: #3b82f6;
-    border-radius: 50%;
     cursor: pointer;
     transition: transform 0.1s;
 }
@@ -66,7 +65,6 @@
     height: 18px;
     background: #3b82f6;
     border: none;
-    border-radius: 50%;
     cursor: pointer;
 }
 

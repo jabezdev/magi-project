@@ -3,43 +3,24 @@ import multer from 'multer'
 import { join } from 'path'
 import fs from 'fs'
 import { generateThumbnail } from './utils.mjs'
+import { AssetStore } from '../lib/asset_store.mjs'
 
 export function uploadRoutes(dataDir) {
     const router = Router()
 
-    // Destinations mapping
-    const targets = {
-        'audio': join(dataDir, 'media/audio'),
-        'video_bg': join(dataDir, 'media/background_videos'),
-        'video_content': join(dataDir, 'media/content_videos'),
-        'image_bg': join(dataDir, 'media/background_images'),
-        'image_content': join(dataDir, 'media/content_images'),
-        'image_slides': join(dataDir, 'slides/image_slides'),
-        'canva_slides': join(dataDir, 'slides/canva_slides'),
-        'bible': join(dataDir, 'scriptures')
-    }
+    const assetStore = new AssetStore(join(dataDir, 'library'))
 
-    // Ensure dirs exist
-    Object.values(targets).forEach(dir => {
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-    })
+    // Multer now just dumps to a temp folder, we ingest immediately
+    const uploadTemp = join(dataDir, 'temp_uploads')
+    if (!fs.existsSync(uploadTemp)) fs.mkdirSync(uploadTemp, { recursive: true })
 
     const storage = multer.diskStorage({
         destination: (req, file, cb) => {
-            const targetKey = req.body.target
-            let dest = targets[targetKey] || join(dataDir, 'uploads')
-
-            // Subfolder support
-            if (req.body.subfolder) {
-                const safeSub = req.body.subfolder.replace(/[^a-z0-9 _-]/gi, '').trim()
-                if (safeSub) dest = join(dest, safeSub)
-            }
-
-            if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true })
-            cb(null, dest)
+            cb(null, uploadTemp)
         },
         filename: (req, file, cb) => {
-            cb(null, file.originalname)
+            // Keep original name for temp to help debug
+            cb(null, `${Date.now()}-${file.originalname}`)
         }
     })
 
@@ -51,30 +32,59 @@ export function uploadRoutes(dataDir) {
 
         console.log(`[UPLOAD] Uploaded ${files.length} files to ${req.body.target}`)
 
-        // Generate Thumbnails for Videos
+        // Ingest into CAS
         const uploadedFiles = []
         for (const file of files) {
-            const isVideo = file.mimetype.startsWith('video/') || file.originalname.match(/\.(mp4|mov|avi|mkv|webm)$/i)
-            // Check if target implies video
-            const target = req.body.target
-            const isVideoTarget = target.includes('video')
+            try {
+                // Ingest moves the file from temp to library/assets/...
+                const assetInfo = await assetStore.ingest(file.path, file.originalname)
 
-            if ((isVideo || isVideoTarget) && !target.includes('audio')) {
-                const thumbnailsDir = join(file.destination, 'thumbnails')
-                if (!fs.existsSync(thumbnailsDir)) fs.mkdirSync(thumbnailsDir, { recursive: true })
+                // Generate Thumbnails? 
+                // We'd need to know the 'final' path in the CAS to generate a thumb.
+                // AssetStore returns 'path' relative to DATA_ROOT (e.g. library/assets/xx/...)
+                // We can construct absolute path for thumbnailer
 
-                const thumbPath = join(thumbnailsDir, `${file.filename}.jpg`)
-                try {
-                    await generateThumbnail(file.path, thumbPath)
-                } catch (e) {
-                    console.error('Thumbnail generation failed', e)
-                }
+                const absolutePath = join(dataDir, assetInfo.path)
+                const isVideo = file.mimetype.startsWith('video/') || file.originalname.match(/\.(mp4|mov|avi|mkv|webm)$/i)
+
+                // if (isVideo) {
+                // TODO: Implement CAS-aware thumbnail storage
+                // Ideally thumbnails also go into CAS or a parallel 'thumbnails' CAS
+                // }
+
+                uploadedFiles.push({
+                    filename: file.originalname, // We show original name
+                    originalName: file.originalname,
+                    ...assetInfo,
+                    // AssetInfo.path is "library/assets/xx/hash.ext"
+                    // We map that to /assets/xx/hash.ext via getWebPath logic
+                    path: getWebPath(assetInfo.path)
+                })
+            } catch (e) {
+                console.error('Ingest failed', e)
             }
-            uploadedFiles.push({ filename: file.filename, originalName: file.originalname })
         }
 
         res.json({ success: true, count: files.length, files: uploadedFiles })
     })
 
     return router
+}
+
+function getWebPath(relativePath) {
+    // relativePath is like "library/assets/a1/a1b2c3... .jpg"
+    // Our server serves "data/library/assets" at "/assets"
+
+    // So we need to strip "library/assets"
+    // and prepend "/assets"
+
+    // Normalize separaters
+    const normalized = relativePath.replace(/\\/g, '/')
+
+    if (normalized.includes('library/assets/')) {
+        return normalized.replace('library/assets/', '/assets/')
+    }
+
+    // Fallback
+    return '/' + normalized
 }

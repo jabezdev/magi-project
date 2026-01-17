@@ -30,13 +30,11 @@ app.use(express.json())
 app.use(express.static('dist'))
 app.use('/public', express.static('public'))
 app.use('/public', express.static('public'))
-// Use absolute path for robustness
-const mediaDir = join(__dirname, 'data', 'media')
-const legacyVideoDir = join(__dirname, 'data', 'media', 'background_videos')
+// Serve Library Assets (CAS)
+const assetsDir = join(__dirname, 'data', 'library', 'assets')
+app.use('/assets', express.static(assetsDir))
 
-app.use('/media', (req, res, next) => {
-  next()
-}, express.static(mediaDir), express.static(legacyVideoDir))
+
 
 // ============ SETUP MODULES ============
 setupRoutes(app, __dirname)
@@ -68,7 +66,7 @@ httpServer.listen(PORT, '0.0.0.0', () => {
 ╔══════════════════════════════════════════════════════════╗
 ║         MAGI Church Projection System                    ║
 ╠══════════════════════════════════════════════════════════╣
-║  Server running on: http://0.0.0.0:${String(PORT).padEnd(24, ' ')}║
+║  Server running on: http://0.0.0.0:${String(PORT).padEnd(22, ' ')}║
 ║                                                          ║
 ║  Screens:                                                ║
 ║  • Control Panel:      http://localhost:${PORT}/            ║

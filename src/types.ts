@@ -16,7 +16,12 @@ export type ISODateString = string
 /**
  * Supported Media Types
  */
-export type MediaType = 'song' | 'video' | 'image' | 'slide' | 'scripture' | 'audio' | 'presentation'
+export type MediaType = 'song' | 'video' | 'image' | 'slide' | 'scripture' | 'audio' | 'presentation' | 'schedule'
+
+/**
+ * Screen types for different projection outputs
+ */
+export type ScreenType = 'control-panel' | 'main-projection' | 'confidence-monitor' | 'lower-thirds' | 'mobile'
 
 // ============ DATA STORE SCHEMA ============
 
@@ -47,6 +52,13 @@ export interface BaseMediaItem {
   last_used_at?: ISODateString
   author?: string
   notes?: string
+
+  // Future-proofing
+  metadata?: Record<string, unknown>  // Reserved for extensions
+  source_info?: {
+    type: 'manual' | 'import' | 'sync' | 'migration'
+    ref?: string
+  }
 }
 
 /**
@@ -112,10 +124,14 @@ export interface ScriptureItem extends BaseMediaItem {
   translation_id: string // "NIV", "KJV"
   text_content: string
   is_favorite: boolean
+
+  // Slide Content
+  slides?: { id: string, text: string, label: string }[]
 }
 
 export interface VideoItem extends BaseMediaItem {
   type: 'video'
+  video_subtype: 'youtube' | 'content' | 'background'
 
   source_url: string // Path or URL
   file_hash: string // SHA-256 of binary
@@ -127,13 +143,14 @@ export interface VideoItem extends BaseMediaItem {
   trim_end: number
   volume_multiplier: number
   is_loop: boolean
-  is_youtube: boolean
+  is_youtube: boolean  // Legacy compat, prefer video_subtype
 
   thumbnail_path?: string
 }
 
 export interface ImageItem extends BaseMediaItem {
   type: 'image'
+  image_subtype: 'content' | 'background'
 
   source_url: string
   file_hash?: string
@@ -190,20 +207,148 @@ export type LibraryItem =
   | ImageItem
   | AudioItem
   | PresentationItem
+  | Schedule
+
+// ============ SCHEDULE SCHEMA ============
+
+/**
+ * A single item within a Schedule.
+ * These are "instances" with potential overrides that don't affect the master library item.
+ */
+export interface ScheduleItem {
+  id: UUID
+  schedule_id: UUID
+  library_item_id: UUID
+  order_index: number
+
+  // Display overrides
+  label?: string
+  notes?: string
+
+  // Content overrides (don't affect master)
+  background_override_id?: UUID
+  arrangement_id?: UUID  // For songs - which arrangement to use
+  translation_override?: string  // For scriptures
+
+  // Timestamps
+  created_at: ISODateString
+  updated_at: ISODateString
+}
+
+/**
+ * A Schedule represents a service or event with ordered items.
+ */
+export interface Schedule extends BaseMediaItem {
+  type: 'schedule'
+  date: ISODateString
+  service_type?: string  // E.g., "Sunday Morning", "Youth Night"
+  items: ScheduleItem[]
+}
 
 // ============ SETTINGS SCHEMA ============
 
+/**
+ * Main Projection display settings (legacy/specific)
+ */
+export interface DisplaySettings {
+  fontSize: number
+  fontFamily: string
+  lineHeight: number
+  textColor: string
+  allCaps: boolean
+  textShadow: boolean
+  shadowBlur: number
+  shadowOffsetX: number
+  shadowOffsetY: number
+  textOutline: boolean
+  outlineWidth: number
+  outlineColor: string
+  marginTop: number
+  marginBottom: number
+  marginLeft: number
+  marginRight: number
+  transitions: TransitionSettings
+}
+
+/**
+ * Layout settings for the Control Panel UI
+ */
+export interface LayoutSettings {
+  songsColumnWidth: number
+  scheduleSectionHeight: number
+  librarySectionHeight: number | null
+  backgroundsSectionHeight: number
+  thumbnailSize: number
+  mainMonitorEnabled: boolean
+  confidenceMonitorEnabled: boolean
+  lowerThirdsMonitorEnabled: boolean
+  mobileMonitorEnabled: boolean
+  confidenceMonitorResolution: { width: number; height: number }
+  mainProjectionStaticMode: boolean
+  monitorColumnWidth: number
+}
+
+/**
+ * Confidence Monitor specific settings
+ */
+export interface ConfidenceMonitorSettings {
+  fontSize: number
+  fontFamily: string
+  lineHeight: number
+  prevNextOpacity: number
+  clockSize: number
+  marginTop: number
+  marginBottom: number
+  marginLeft: number
+  marginRight: number
+  partGap: number
+  slideGap: number
+  transitions: TransitionSettings
+}
+
+/**
+ * Lower Thirds broadcast overlay settings
+ */
+export interface LowerThirdsSettings {
+  backgroundColor: string
+  backgroundOpacity: number
+  fontFamily: string
+  fontSize: number
+  fontWeight: string
+  textColor: string
+  textAlign: 'left' | 'center' | 'right'
+  allCaps: boolean
+  position: 'top' | 'bottom'
+  marginBottom: number
+  marginTop: number
+  marginLeft: number
+  marginRight: number
+  paddingVertical: number
+  paddingHorizontal: number
+  visible: boolean
+  animationDuration: number
+}
+
+/**
+ * Unified Global Settings - The single source of truth for all app configuration
+ */
 export interface GlobalSettings {
   // Appearance
-  theme: 'light' | 'dark'
+  theme: 'light' | 'dark' | 'high-contrast'
 
-  // Output Configuration
+  // Output Configuration (per-screen generic settings)
   outputs: {
     main: OutputSettings
     confidence: OutputSettings
     lower_thirds: OutputSettings
     mobile: OutputSettings
   }
+
+  // Screen-specific detailed settings
+  displaySettings: DisplaySettings
+  confidenceMonitorSettings: ConfidenceMonitorSettings
+  lowerThirdsSettings: LowerThirdsSettings
+  layoutSettings: LayoutSettings
 
   // Core Behavior
   default_transitions: {
@@ -216,6 +361,13 @@ export interface GlobalSettings {
     media_root: string
     data_root: string
   }
+
+  // Media
+  logoMedia: string
+  defaultBackgroundVideo: string
+
+  // Part Colors (key prefixes: V, CH, pCH, BR, TAG, IN, OUT)
+  partColors: Record<string, string>
 }
 
 export interface OutputSettings {
@@ -253,6 +405,10 @@ export interface TransitionSettings {
   duration: number // seconds
 }
 
+// Helper type for slide position
+export type SlidePosition = number
+
+
 // ============ RUNTIME STATE (Shared Types) ============
 
 export interface AppState {
@@ -267,6 +423,9 @@ export interface AppState {
   blackout_active: boolean
   clear_active: boolean
   logo_active: boolean
+
+  // Independent Layers
+  active_background_id: UUID | null
 
   // Access to data (optional populated fields)
   // In a real app, this might be fetched via API, but we keep some state here

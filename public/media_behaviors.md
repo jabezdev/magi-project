@@ -26,6 +26,7 @@ The application is divided into **3 Main Vertical Columns**:
         4.  **Play** (Restore): Disables Logo/Black/Clear and resumes normal program output.
 - **Lower Left**: **Preview Utility Panel**.
     - *Context Aware*: Shows relevant tools for the Preview Item (e.g., Background Picker for Songs, Transport Controls for Video).
+    - *Dynamic Visibility*: Hides (or shows empty state) if no item is loaded in Preview.
 - **Lower Right**: **Live Utility Panel**.
     - *Context Aware*: Shows relevant tools for the Live Item.
 - **Smart Merging vs Split**:
@@ -82,7 +83,7 @@ The application is divided into **3 Main Vertical Columns**:
 - **Unified Storage**: Library contains ALL media types (Songs, Scriptures, Videos, Images, Backgrounds, Presentations).
 - **Search Scope**: By default, search filters OUT Background Videos/Images to keep the list clean.
 - **Search logic**: Fuzzy search title, metadata, tags, and content (lyrics). Matches shown by relevance.
-- **Filters**: User can toggle filters: "Song", "Audio", "Video", "Image", "Slide", "Bible". (Backgrounds have a specific view context usually).
+- **Filters**: User can toggle filters: "All", "Song", "Scripture", "Slides", "Media", "Backgrounds"
 - **Order**: Most Recently Used (MRU) first, then Creation Date.
 - **Interaction Standard**:
     - **Left Click Card**: Toggles Preview (Loads into Preview Panel).
