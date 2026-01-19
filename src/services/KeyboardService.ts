@@ -11,7 +11,7 @@ export class KeyboardService {
 
     init() {
         window.addEventListener('keydown', (e) => this.handleKeyDown(e))
-        console.log('[KeyboardService] Initialized')
+
     }
 
     handleKeyDown(e: KeyboardEvent) {

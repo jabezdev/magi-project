@@ -2,7 +2,9 @@ import { store } from '../state/store'
 import { LibraryItem, Schedule, ScheduleItem } from '../types'
 import { v4 as uuidv4 } from 'uuid'
 import { api } from '../services/api'
-import { ICONS } from '../constants/icons'
+
+import { ScheduleRendererRegistry } from './schedule/registry'
+import { ScheduleItemContext } from './schedule/types'
 
 export class SchedulePanel {
     element: HTMLElement
@@ -244,86 +246,33 @@ export class SchedulePanel {
             return
         }
 
+        list.innerHTML = ''
         const items = this.currentSchedule.items
 
-        // Fetch details for all items to display titles (in real app, use joined query)
-        const renderedItems = await Promise.all(items.map(async (item, index) => {
-            // Mock fetch from store
+        for (const item of items) {
             let libItem: LibraryItem | undefined | null = store.library.find(i => i.id === item.library_item_id)
-            if (!libItem) libItem = await api.library.get(item.library_item_id).catch(() => null)
+            if (!libItem) libItem = await api.library.get(item.library_item_id).catch(() => null) || undefined
 
-            if (!libItem) return '' // Skip missing
+            // If still not found, we might want to render a placeholder or skip
+            // For now, if we have no libItem, we can't determine type easily unless we store it on ScheduleItem
+            // But ScheduleItem doesn't enforce type.
+            // We can try to guess or use a fallback.
+            if (!libItem) {
+                console.warn('Library item not found for schedule item', item.id)
+                continue
+            }
 
-            // Icon
-            let icon: string = ICONS.file
-            if (libItem.type === 'song') icon = ICONS.music
-            if (libItem.type === 'scripture') icon = ICONS.book
-            if (libItem.type === 'video') icon = ICONS.video
-            if (libItem.type === 'image') icon = ICONS.image
-            if (libItem.type === 'presentation') icon = ICONS.slides
-
-            return `
-                <div class="sched-item group relative flex items-center h-10 w-full bg-gray-800 border-b border-gray-700 hover:bg-gray-750 cursor-pointer select-none overflow-hidden transition-colors" 
-                     data-id="${item.id}" 
-                     data-lib-id="${item.library_item_id}">
-
-                    <div class="w-8 flex items-center justify-center text-gray-500 font-mono text-xs bg-gray-900/30 h-full border-r border-gray-700/50">
-                        ${index + 1}
-                    </div>
-
-                    <div class="flex-1 min-w-0 flex flex-col justify-center px-3 relative z-0">
-                         <div class="flex items-center gap-2">
-                            <div class="text-sm font-bold text-gray-200 truncate group-hover:text-white leading-tight transition-colors">
-                                ${item.label || libItem.title}
-                            </div>
-                            <!-- Badges -->
-                            ${item.arrangement_id ? '<span class="px-1 bg-gray-900 rounded text-[9px] text-gray-400 border border-gray-700 shrink-0">ARR</span>' : ''}
-                            ${item.translation_override ? `<span class="px-1 bg-yellow-900/40 text-yellow-500 rounded text-[9px] border border-yellow-800 shrink-0">${item.translation_override}</span>` : ''}
-                         </div>
-                        ${item.notes ? `<div class="text-[10px] text-gray-500 truncate mt-0.5">${item.notes}</div>` : ''}
-                    </div>
-
-                    <!-- Slide-in Controls -->
-                    <div class="absolute right-0 top-0 bottom-0 flex transform translate-x-full group-hover:translate-x-0 transition-transform duration-200 ease-out z-10 shadow-[-4px_0_10px_rgba(0,0,0,0.3)] bg-gray-800/0">
-                        <button class="action-edit h-full aspect-square flex items-center justify-center bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white border-l border-gray-600 transition-colors" title="Edit Options">
-                            <span class="w-4 h-4">${ICONS.edit}</span>
-                        </button>
-                        <button class="action-remove h-full aspect-square flex items-center justify-center bg-gray-700 hover:bg-red-600 text-gray-300 hover:text-white border-l border-gray-600 transition-colors" title="Remove">
-                            <span class="w-4 h-4 font-bold">×</span>
-                        </button>
-                    </div>
-                </div>
-             `
-        }))
-
-        list.innerHTML = renderedItems.join('')
-
-        // Bind Events
-        list.querySelectorAll('.sched-item').forEach(el => {
-            const id = el.getAttribute('data-id')!
-            const item = this.currentSchedule?.items.find(i => i.id === id)
-
-            // Activate / Preview (Row Click)
-            el.addEventListener('click', (e) => {
-                // Prevent if clicking specific buttons
-                if ((e.target as HTMLElement).closest('.action-edit') || (e.target as HTMLElement).closest('.action-remove')) return
-
-                const libId = el.getAttribute('data-lib-id')
-                if (libId) store.setPreviewItem(libId)
-            })
-
-            // Hover Actions - Remove
-            el.querySelector('.action-remove')?.addEventListener('click', (e) => {
-                e.stopPropagation()
-                this.removeItem(id)
-            })
-
-            // Hover Actions - Edit (Popover)
-            el.querySelector('.action-edit')?.addEventListener('click', (e) => {
-                e.stopPropagation()
-                if (item) this.openOverridePopover(e.target as HTMLElement, item)
-            })
-        })
+            const renderer = ScheduleRendererRegistry.get(libItem.type)
+            if (renderer) {
+                const ctx: ScheduleItemContext = {
+                    onPreview: (schedItem) => store.setPreviewItem(schedItem.library_item_id, schedItem.id),
+                    onRemove: (schedItem) => this.removeItem(schedItem.id),
+                    onOpenOverride: (target, schedItem) => this.openOverridePopover(target, schedItem)
+                }
+                const el = renderer.renderItem(item, libItem, ctx)
+                list.appendChild(el)
+            }
+        }
     }
 
     openOverridePopover(target: HTMLElement, item: ScheduleItem) {

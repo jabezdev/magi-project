@@ -12,6 +12,7 @@ import { ConfidenceMonitor } from './screens/ConfidenceMonitor'
 import { LowerThirds } from './screens/LowerThirds'
 import { MobileScreen } from './screens/MobileScreen'
 import { getScreenType } from './utils'
+import './services/PreloadService' // Start preloader
 
 
 import { ScreenType } from './types'
@@ -29,7 +30,7 @@ async function init(): Promise<void> {
 
   if (!appRoot) throw new Error('Root #app element not found')
 
-  console.log(`[MAGI] System initialized as: ${currentScreen}`)
+
 
   switch (currentScreen) {
     case 'control-panel':

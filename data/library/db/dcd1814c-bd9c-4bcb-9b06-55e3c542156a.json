@@ -1,0 +1,44 @@
+{
+  "id": "dcd1814c-bd9c-4bcb-9b06-55e3c542156a",
+  "type": "song",
+  "title": "It’s so good to remember",
+  "artist": "Unknown",
+  "key": "",
+  "tempo": 0,
+  "time_signature": "4/4",
+  "arrangements": [
+    {
+      "id": "a2b9a28f-97ab-4e3b-a87a-fefef53e9953",
+      "name": "Default",
+      "is_default": true,
+      "sequence": [
+        "546f4de9-11a5-4664-87fd-5c5e4fdb5495",
+        "d5a5745c-a66d-4c1d-badf-585b983a1ed1",
+        "d5a5745c-a66d-4c1d-badf-585b983a1ed1"
+      ]
+    }
+  ],
+  "parts": [
+    {
+      "id": "546f4de9-11a5-4664-87fd-5c5e4fdb5495",
+      "type": "Verse",
+      "label": "V 1",
+      "lyrics": "It’s so good to remember\nYour goodness oh God\n\nIt’s so good to remember\nYour goodness oh God"
+    },
+    {
+      "id": "d5a5745c-a66d-4c1d-badf-585b983a1ed1",
+      "type": "Chorus",
+      "label": "CH 1",
+      "lyrics": "You save my soul\nAnd heal my broken body\n\nYou came to die\nJust to set me free\n\nIt’s so good to remember\nYour goodness oh God"
+    }
+  ],
+  "version": 1,
+  "history_head_id": "3a026b31-4716-4eea-9104-f588472c311b",
+  "created_at": "2026-01-18T14:50:21.075Z",
+  "updated_at": "2026-01-18T14:50:21.075Z",
+  "usage_count": 0,
+  "author": "System",
+  "origin_device_id": "server",
+  "last_modified_device_id": "server",
+  "content_hash": "fd3ca705976c7b2ba5ec8c728195c03faa8a37563df4f2e1b29f10f28a7e8c52"
+}

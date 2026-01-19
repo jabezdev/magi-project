@@ -1,33 +1,47 @@
 import { store } from '../state/store'
 import { LibraryItem, GlobalSettings } from '../types'
 import { api } from '../services/api'
+import { BehaviorRegistry } from '../behaviors/registry'
 
 export class MainProjection {
     element: HTMLElement
     private currentItem: LibraryItem | null = null
     private currentSlideIndex: number = 0
-    private _currentSettings: GlobalSettings | null = null
+
+
+    // Background Double Buffering
+    private bgLayerA: HTMLElement
+    private bgLayerB: HTMLElement
+    private activeBgLayer: 'A' | 'B' = 'A'
+    private currentBgId: string | null = null
 
     constructor() {
         this.element = document.createElement('div')
         this.element.className = 'w-full h-full bg-black text-white overflow-hidden relative'
 
-        // Layers
+        // Layers Structure
+        // Background Layers (Double buffered for cross-dissolve)
         this.element.innerHTML = `
-            <div id="layer-background" class="absolute inset-0 z-0"></div>
-            <div id="layer-content" class="absolute inset-0 z-10"></div>
-            <div id="layer-black" class="absolute inset-0 z-50 bg-black hidden"></div>
-            <div id="layer-logo" class="absolute inset-0 z-50 bg-black flex items-center justify-center hidden">
+            <div id="bg-layer-a" class="absolute inset-0 z-0 opacity-100 transition-opacity duration-1000"></div>
+            <div id="bg-layer-b" class="absolute inset-0 z-0 opacity-0 transition-opacity duration-1000"></div>
+            
+            <div id="layer-content" class="absolute inset-0 z-10 transition-opacity duration-300"></div>
+            
+            <div id="layer-black" class="absolute inset-0 z-50 bg-black hidden transition-opacity duration-500"></div>
+            <div id="layer-logo" class="absolute inset-0 z-50 bg-black flex items-center justify-center hidden transition-opacity duration-500">
                 <div class="text-6xl text-white/20 font-bold">LOGO</div>
             </div>
         `
+
+        this.bgLayerA = this.element.querySelector('#bg-layer-a') as HTMLElement
+        this.bgLayerB = this.element.querySelector('#bg-layer-b') as HTMLElement
 
         // Initial Blank State
         this.renderShell()
 
         // Subscribe to settings changes
         store.subscribeSettings((settings) => {
-            this._currentSettings = settings
+
             this.applySettings(settings)
         })
 
@@ -101,15 +115,29 @@ export class MainProjection {
         const logoLayer = this.element.querySelector('#layer-logo')
 
         if (blackLayer) {
-            blackLayer.classList.toggle('hidden', !isBlack)
+            // Use fade
+            if (isBlack) {
+                blackLayer.classList.remove('hidden')
+                setTimeout(() => blackLayer.classList.remove('opacity-0'), 10)
+            } else {
+                blackLayer.classList.add('opacity-0')
+                setTimeout(() => blackLayer.classList.add('hidden'), 500)
+            }
         }
+
         if (logoLayer) {
-            logoLayer.classList.toggle('hidden', !isLogo)
+            if (isLogo) {
+                logoLayer.classList.remove('hidden')
+                setTimeout(() => logoLayer.classList.remove('opacity-0'), 10)
+            } else {
+                logoLayer.classList.add('opacity-0')
+                setTimeout(() => logoLayer.classList.add('hidden'), 500)
+            }
         }
     }
 
     renderShell() {
-        this.element.innerHTML = '' // Black
+        // Nothing needed here really beyond initial setup
     }
 
     async loadItem(id: string) {
@@ -117,49 +145,63 @@ export class MainProjection {
             // Fetch fresh
             const item = await api.library.get(id)
             this.currentItem = item
+
+            this.currentSlideIndex = store.state.live.slide_index
             this.renderContent()
         } catch (e) {
             console.error('Failed to load item for projection', e)
         }
     }
 
-    // Cache current background ID to avoid re-fetching
-    private currentBgId: string | null = null
-
     async loadBackground(id: string) {
         if (this.currentBgId === id) return
         this.currentBgId = id
 
-        // Transition Logic:
-        // 1. Create new background layer on top of old one
-        // 2. Load content
-        // 3. Fade in
-        // 4. Remove old layer
-
-        // For now, simpler implementation:
-        // Just replace innerHTML. To do smooth crossfade requires managing two persistent "slots" A and B.
-        // Let's defer full crossfade for background to "Advanced Polish Part 2" or nice-to-have.
-        // Current implementation re-renders immediately.
-
         try {
             const item = await api.library.get(id)
-            this.renderBackground(item)
+            this.crossFadeBackground(item)
         } catch (e) {
             console.error('Failed to load background', e)
         }
     }
 
-    // TODO: Improve this to use double-buffering for true cross-dissolve
-    renderBackground(item: any) {
-        const layer = this.element.querySelector('#layer-background')
-        if (!layer) return
+    crossFadeBackground(item: any) {
+        // Determine which layer is currently hidden/inactive (the "next" layer)
+        const nextLayer = this.activeBgLayer === 'A' ? this.bgLayerB : this.bgLayerA
+        const currentLayer = this.activeBgLayer === 'A' ? this.bgLayerA : this.bgLayerB
 
-        // Simple fade out/in simulation
+        // 1. Load content into the next layer (which is currently opacity 0)
         const content = this.createBackgroundContent(item)
-        layer.innerHTML = content
+        nextLayer.innerHTML = content
+
+        // 2. Prepare Transition: Ensure nextLayer is ON TOP
+        nextLayer.style.zIndex = '10'
+        currentLayer.style.zIndex = '0'
+
+        // 3. Trigger Fade IN of next layer
+        // Use a slight delay to allow DOM to render new content before fading
+        setTimeout(() => {
+            nextLayer.style.opacity = '1'
+            // Do NOT fade out current layer yet, to avoid brightness dip
+        }, 50)
+
+        // 4. Cleanup after transition duration (1000ms)
+        setTimeout(() => {
+            // Hide old layer now that new layer is fully opaque
+            currentLayer.style.opacity = '0'
+            currentLayer.innerHTML = ''
+
+            // Swap active ref
+            this.activeBgLayer = this.activeBgLayer === 'A' ? 'B' : 'A'
+        }, 1200)
     }
 
     createBackgroundContent(item: any) {
+        const scalingMode = item.scaling_mode || 'fill' // fit, fill, stretch
+        let objectFit = 'object-cover'
+        if (scalingMode === 'fit') objectFit = 'object-contain'
+        if (scalingMode === 'stretch') objectFit = 'object-fill'
+
         if (item.type === 'video') {
             if (item.is_youtube) {
                 let videoId = item.source_url.split('v=')[1]
@@ -177,8 +219,9 @@ export class MainProjection {
                   `
             } else {
                 // Local video with seamless loop handling
+                // Using w-full h-full and object-fit based on settings
                 return `
-                      <video id="bg-video" class="w-full h-full object-cover" autoplay muted loop style="opacity: 0.6;" 
+                      <video class="w-full h-full ${objectFit} mb-blur" autoplay muted loop style="opacity: 0.6;" 
                           onended="if(this.loop){this.currentTime=0;this.play()}" 
                           onloadedmetadata="this.playbackRate=1.0">
                          <source src="${item.source_url}" type="video/mp4">
@@ -186,7 +229,7 @@ export class MainProjection {
                   `
             }
         } else if (item.type === 'image') {
-            return `<img src="${item.source_url}" class="w-full h-full object-cover mb-blur" style="opacity: 0.6;">`
+            return `<img src="${item.source_url}" class="w-full h-full ${objectFit} mb-blur" style="opacity: 0.6;">`
         }
         return ''
     }
@@ -194,21 +237,23 @@ export class MainProjection {
     clearBackground() {
         if (!this.currentBgId) return
         this.currentBgId = null
-        const layer = this.element.querySelector('#layer-background')
-        if (layer) layer.innerHTML = ''
+        // Fade out active layer
+        const currentLayer = this.activeBgLayer === 'A' ? this.bgLayerA : this.bgLayerB
+        currentLayer.style.opacity = '0'
+        setTimeout(() => currentLayer.innerHTML = '', 1000)
     }
 
     renderContent() {
         const layer = this.element.querySelector('#layer-content')
         if (!layer) return
 
-        // Cross-Dissolve Implementation
+        // Cross-Dissolve Implementation for Content
         // 1. Create a specific invalidating container if not exists
         if (!this.currentItem) {
             // Fade out everything
             Array.from(layer.children).forEach((child) => {
                 (child as HTMLElement).style.opacity = '0'
-                setTimeout(() => child.remove(), 500)
+                setTimeout(() => child.remove(), 300)
             })
             return
         }
@@ -218,24 +263,14 @@ export class MainProjection {
         newPage.className = 'absolute inset-0 transition-opacity duration-300 opacity-0 flex items-center justify-center'
 
         // Render into newPage
-        switch (this.currentItem.type) {
-            case 'song':
-                this.renderSong(this.currentItem as any, newPage)
-                break
-            case 'scripture':
-                this.renderText(this.currentItem as any, newPage)
-                break
-            case 'image':
-                this.renderImage(this.currentItem as any, newPage)
-                break
-            case 'video':
-                this.renderVideo(this.currentItem as any, newPage)
-                break
-            case 'presentation':
-                this.renderPresentation(this.currentItem as any, newPage)
-                break
-            default:
+        // Render into newPage
+        if (this.currentItem) {
+            const behavior = BehaviorRegistry.get(this.currentItem.type)
+            if (behavior && behavior.renderOutput) {
+                behavior.renderOutput(this.currentItem, newPage, this.currentSlideIndex)
+            } else {
                 newPage.innerHTML = `<div class="text-4xl text-gray-800">${this.currentItem.type}</div>`
+            }
         }
 
         layer.appendChild(newPage)
@@ -254,110 +289,6 @@ export class MainProjection {
                 if (sibling.parentElement === layer) sibling.remove()
             }, 300)
         })
-    }
-
-    renderSong(song: any, container: Element) {
-        // Mocking: Just show all parts scrolling for now or a specific active part
-        // In real app we listen to `slide_index`
-        const div = document.createElement('div')
-        div.className = 'w-full h-full flex items-center justify-center p-16 text-center'
-
-        // For Verification: Show the first part or "Chorus"
-        const part = song.parts[0]
-
-        div.innerHTML = `
-            <div class="font-bold text-6xl leading-tight drop-shadow-xl" style="text-shadow: 0 4px 6px rgba(0,0,0,0.8);">
-                ${part.lyrics.replace(/\n/g, '<br/>')}
-            </div>
-        `
-        container.appendChild(div)
-    }
-
-    renderText(scripture: any, container: Element) {
-        const div = document.createElement('div')
-        div.className = 'w-full h-full flex flex-col items-center justify-center p-24 text-center'
-
-        div.innerHTML = `
-            <div class="font-serif text-7xl leading-snug mb-8 drop-shadow-2xl text-white" style="text-shadow: 0 4px 6px rgba(0,0,0,1);">
-                "${scripture.text_content}"
-            </div>
-            <div class="text-4xl text-yellow-500 font-bold uppercase tracking-widest drop-shadow-lg" style="text-shadow: 0 2px 4px rgba(0,0,0,1);">
-                ${scripture.reference_title}
-            </div>
-        `
-        container.appendChild(div)
-    }
-
-    renderImage(image: any, container: Element) {
-        const img = document.createElement('img')
-        img.src = image.source_url
-        img.className = 'w-full h-full object-contain'
-        if (image.scaling_mode === 'fill') img.className = 'w-full h-full object-cover'
-        container.appendChild(img)
-    }
-
-    renderPresentation(presentation: any, container: Element) {
-        if (presentation.data?.is_canva && presentation.source_url) {
-            const div = document.createElement('div')
-            div.className = 'w-full h-full bg-black'
-            div.innerHTML = `
-                <iframe src="${presentation.source_url}" class="w-full h-full border-0" allow="fullscreen" allowfullscreen></iframe>
-             `
-            container.appendChild(div)
-        } else if (presentation.data?.slides) {
-            // Local Deck - Need to show ONE slide based on state.livePosition
-            // For now, default to first or handle "no active slide"
-            // Since we don't have robust livePosition syncing yet in this class, just show first slide for Verify
-            const slideIndex = store.state.live.slide_index || 0
-            const slide = presentation.data.slides[slideIndex]
-
-            if (slide) {
-                const img = document.createElement('img')
-                img.src = slide.source_url
-                img.className = 'w-full h-full object-contain'
-                container.appendChild(img)
-            }
-        }
-    }
-
-    renderVideo(video: any, container: Element) {
-        const div = document.createElement('div')
-        div.className = 'w-full h-full flex flex-col items-center justify-center bg-black'
-
-        if (video.is_youtube && video.source_url.includes('youtube.com')) {
-            let videoId = video.source_url.split('v=')[1]
-            if (!videoId) videoId = video.file_hash.replace('youtube-ref-', '')
-
-            // Autoplay = 1, Controls = 0, ModestBranding = 1
-            // TODO: Handle 'start' and 'end' params from video.trim_start
-            const startParam = video.trim_start ? `&start=${video.trim_start}` : ''
-            const endParam = video.trim_end ? `&end=${video.trim_end}` : ''
-
-            div.innerHTML = `
-                <iframe 
-                    width="100%" 
-                    height="100%" 
-                    src="https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0&modestbranding=1&rel=0${startParam}${endParam}" 
-                    title="YouTube video player" 
-                    frameborder="0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                    allowfullscreen
-                    style="pointer-events: none;" 
-                ></iframe>
-            `
-        } else {
-            // Local Video
-            div.innerHTML = `
-                 <video class="w-full h-full object-contain" autoplay>
-                    <source src="${video.source_url}" type="video/mp4">
-                 </video>
-            `
-            // Ensure loop if set
-            const v = div.querySelector('video')
-            if (v && video.is_loop) v.loop = true
-            if (v && video.volume_multiplier) v.volume = video.volume_multiplier
-        }
-        container.appendChild(div)
     }
 
     clear() {

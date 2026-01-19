@@ -1,13 +1,15 @@
 import { store } from '../state/store'
 import { LibraryItem, GlobalSettings } from '../types'
 import { api } from '../services/api'
+import { BehaviorRegistry } from '../behaviors/registry'
+import { ConfidenceContext } from '../behaviors/types'
 
 export class ConfidenceMonitor {
     element: HTMLElement
     private currentItem: LibraryItem | null = null
-    private _clockIntervalId: ReturnType<typeof setInterval> | null = null
+
     private currentSlideIndex: number = 0
-    private _currentSettings: GlobalSettings | null = null
+
 
     constructor() {
         this.element = document.createElement('div')
@@ -18,11 +20,14 @@ export class ConfidenceMonitor {
 
         // Subscribe to settings changes
         store.subscribeSettings((settings) => {
-            this._currentSettings = settings
+
             this.applySettings(settings)
         })
 
         store.subscribe(state => {
+            // Update Next Item Display
+            this.updateNextItemDisplay(state.live.item_id || undefined)
+
             // Update Live Item
             if (state.live.item_id !== this.currentItem?.id) {
                 if (state.live.item_id) {
@@ -74,32 +79,41 @@ export class ConfidenceMonitor {
         this.element.innerHTML = `
             <div id="conf-content" class="flex-1 flex flex-col relative overflow-hidden">
                 <!-- Previous Slides (scrolled up) -->
-                <div id="conf-prev" class="h-24 bg-gray-900/50 flex items-center justify-center px-6 opacity-40 overflow-hidden border-b border-gray-800">
+                <div id="conf-prev" class="h-1/5 bg-[#050505] flex flex-col justify-end px-12 pb-2 opacity-50 overflow-hidden border-b border-gray-900 transition-all duration-300">
                 </div>
 
                 <!-- Current Slide -->
-                <div id="conf-current" class="flex-1 flex flex-col p-8 items-center justify-center text-center bg-black">
-                     <div class="text-gray-500 text-xl animate-pulse">Waiting for Live Content...</div>
+                <div id="conf-current" class="flex-1 flex flex-col p-8 items-center justify-center text-center bg-black relative z-10 w-full">
+                     <div class="text-gray-600 text-2xl animate-pulse font-medium tracking-wide">CONFIDENCE MONITOR READY</div>
                 </div>
 
                 <!-- Next Slides -->
-                <div id="conf-next" class="h-24 bg-gray-900/50 flex items-center justify-center px-6 opacity-50 overflow-hidden border-t border-gray-800">
+                <div id="conf-next" class="h-1/5 bg-[#050505] flex flex-col justify-start px-12 pt-2 opacity-60 overflow-hidden border-t border-gray-900 transition-all duration-300">
+                </div>
+                
+                <!-- Countdown Overlay (for videos) -->
+                <div id="conf-countdown" class="absolute top-4 right-4 text-8xl font-mono font-bold text-red-600 drop-shadow-lg hidden z-50 tracking-tighter">
+                    -00:00
                 </div>
 
                 <!-- Arrangement Strip -->
-                <div id="conf-arrangement" class="bg-[#111] border-t border-gray-800 px-4 py-2 flex gap-1 overflow-x-auto hidden">
+                <div id="conf-arrangement" class="bg-black border-t border-gray-900 px-2 py-1 flex gap-1 overflow-x-auto hidden shrink-0 h-14 items-center scrollbar-hide">
                 </div>
             </div>
 
             <!-- Footer: Clock & Status -->
-            <div class="h-16 bg-[#111] border-t border-gray-800 flex justify-between items-center px-8 shrink-0">
-                 <div class="flex items-center gap-4 overflow-hidden">
-                     <div id="conf-msg" class="text-lg font-bold text-blue-500 truncate max-w-md"></div>
-                     <div class="text-gray-600 text-sm" id="conf-slide-info"></div>
+            <div class="h-20 bg-[#050505] border-t-2 border-gray-800 flex justify-between items-center px-10 shrink-0">
+                 <div class="flex items-center gap-6 overflow-hidden">
+                     <div id="conf-msg" class="text-2xl font-bold text-blue-500 truncate max-w-xl"></div>
+                     <div class="text-gray-500 text-lg font-mono bg-gray-900 px-3 py-1 rounded" id="conf-slide-info"></div>
                  </div>
-                 <div class="flex items-center gap-6">
-                     <div id="conf-next-item" class="text-sm text-gray-500">NEXT: <span class="text-white font-bold">--</span></div>
-                     <div id="conf-clock" class="text-4xl font-bold font-mono text-yellow-500 tracking-wider">--:--</div>
+                 <div class="flex items-center gap-8">
+                     <div class="flex flex-col items-end">
+                        <div class="text-xs text-gray-500 uppercase font-bold tracking-widest">Next Item</div>
+                        <div id="conf-next-item" class="text-xl text-white font-bold truncate max-w-xs">--</div>
+                     </div>
+                     <div class="w-px h-10 bg-gray-700"></div>
+                     <div id="conf-clock" class="text-5xl font-bold font-mono text-yellow-500 tracking-wider tabular-nums">--:--</div>
                  </div>
             </div>
             </div>
@@ -116,12 +130,68 @@ export class ConfidenceMonitor {
             hours = hours ? hours : 12 // the hour '0' should be '12'
             const minutes = now.getMinutes().toString().padStart(2, '0')
 
-            const timeString = `${hours}:${minutes} <span class="text-xl text-gray-500 align-top">${ampm}</span>`
+            const timeString = `${hours}:${minutes}<span class="text-2xl text-gray-600 ml-1">${ampm}</span>`
             const el = this.element.querySelector('#conf-clock')
             if (el) el.innerHTML = timeString
         }
         update()
-        this._clockIntervalId = setInterval(update, 1000)
+        setInterval(update, 1000)
+    }
+
+    updateNextItemDisplay(currentId: string | undefined) {
+        const nextItemEl = this.element.querySelector('#conf-next-item')
+        if (!nextItemEl) return
+
+        // Find current item index in schedule
+        // Note: Ideally the "Live Item" ID corresponds to a Schedule Item ID or Library ID
+        // Note: The store currently assumes flattened schedule logic might be needed
+        // For now, let's just search the schedule list
+
+        const schedule = store.schedule
+        let nextTitle = "--"
+        const liveItem = currentId ? store.library.find(i => i.id === currentId) : null
+
+        const getItemTitle = (sItem: import('../types').ScheduleItem) => {
+            if (sItem.label) return sItem.label
+            const libItem = store.library.find(li => li.id === sItem.library_item_id)
+            return libItem?.title || 'Untitled Item'
+        }
+
+        if (schedule.length > 0) {
+            let idx = -1
+
+            // Try 1: Match by exact Schedule ID (if we tracked it in state, currently state only has library item_id)
+            // Ideally state.live should have 'schedule_item_id'
+
+            // Try 2: Match by Library Item ID
+            // Problem: If the same song is in schedule twice, this always finds the first one.
+            // We need a heuristic or state improvement. For now, find the *first* occurrence? 
+            // Better: If we have a previous known index, search after that? Too complex for now.
+            // Let's assume the first match for now, or improve if we add schedule_item_id to state later.
+            idx = schedule.findIndex(i => i.library_item_id === currentId)
+
+            if (idx !== -1) {
+                if (idx < schedule.length - 1) {
+                    nextTitle = getItemTitle(schedule[idx + 1])
+                } else {
+                    nextTitle = "End of Service"
+                }
+            } else {
+                // Current item is Live but NOT in schedule (Ad-Hoc)
+                // Logic: Show the FIRST item of the schedule as "Coming Up"?
+                // Or "Resuming: [First Item]"?
+                if (liveItem) {
+                    nextTitle = getItemTitle(schedule[0]) + " (Up Next)"
+                } else {
+                    // Nothing live, show first
+                    nextTitle = getItemTitle(schedule[0])
+                }
+            }
+        } else {
+            nextTitle = "No Schedule"
+        }
+
+        nextItemEl.textContent = nextTitle
     }
 
     async loadItem(id: string) {
@@ -142,174 +212,55 @@ export class ConfidenceMonitor {
     }
 
     renderContent() {
-        const currentContainer = this.element.querySelector('#conf-current')
-        const nextContainer = this.element.querySelector('#conf-next')
-        const prevContainer = this.element.querySelector('#conf-prev')
-        const arrStrip = this.element.querySelector('#conf-arrangement')
+        const currentContainer = this.element.querySelector('#conf-current') as HTMLElement
+        const nextContainer = this.element.querySelector('#conf-next') as HTMLElement
+        const prevContainer = this.element.querySelector('#conf-prev') as HTMLElement
+        const stripContainer = this.element.querySelector('#conf-arrangement') as HTMLElement
         const msgEl = this.element.querySelector('#conf-msg')
-        const infoEl = this.element.querySelector('#conf-slide-info')
+        const infoEl = this.element.querySelector('#conf-slide-info') as HTMLElement
+        const countdownEl = this.element.querySelector('#conf-countdown')
 
         if (!currentContainer || !nextContainer || !this.currentItem) return
 
-        const item = this.currentItem as any // Use any for dynamic property access
+        const item = this.currentItem
         if (msgEl) msgEl.textContent = item.title
+        if (countdownEl) countdownEl.classList.add('hidden') // Default hidden
 
-        // Type specific rendering
-        if (item.type === 'song' || (item.type === 'presentation' && item.data?.slides) || (item.type === 'scripture' && item.data?.slides)) {
-            this.renderSlideFlow(item, currentContainer, nextContainer, prevContainer, arrStrip, infoEl)
-        } else if (item.type === 'video' || item.type === 'image') {
-            this.renderMediaStatus(item, currentContainer, nextContainer)
-            if (prevContainer) prevContainer.innerHTML = ''
-            if (arrStrip) arrStrip.classList.add('hidden')
-        } else if (item.type === 'presentation' && item.data?.is_canva) {
-            this.renderSimpleStatus("CANVA PRESENTATION", "Interactive Mode", currentContainer, nextContainer)
-            if (prevContainer) prevContainer.innerHTML = ''
-            if (arrStrip) arrStrip.classList.add('hidden')
+
+        const ctx: ConfidenceContext = {
+            currentContainer,
+            nextContainer,
+            prevContainer,
+            stripContainer,
+            infoContainer: infoEl,
+            settings: store.settings || undefined
+        }
+
+        const behavior = BehaviorRegistry.get(item.type)
+        if (behavior && behavior.renderConfidence) {
+            behavior.renderConfidence(item, ctx)
         } else {
-            this.renderSimpleStatus(item.type.toUpperCase(), item.title, currentContainer, nextContainer)
-            if (prevContainer) prevContainer.innerHTML = ''
-            if (arrStrip) arrStrip.classList.add('hidden')
+            // Fallback
+            currentContainer.innerHTML = `<div class="text-gray-500 text-4xl">Unsupported Content: ${item.type}</div>`
         }
-    }
-
-    renderSlideFlow(item: any, currentEl: Element, nextEl: Element, prevEl: Element | null, arrStrip: Element | null, infoEl: Element | null) {
-        let slides: any[] = []
-
-        if (item.type === 'song') {
-            slides = item.parts // Assuming parts act as slides 1:1 for now
-        } else if (item.data?.slides) {
-            slides = item.data.slides
-        }
-
-        const count = slides.length
-        if (infoEl) infoEl.textContent = `${this.currentSlideIndex + 1} / ${count}`
-
-        // Current
-        const currentSlide = slides[this.currentSlideIndex]
-        if (currentSlide) {
-            if (item.type === 'song' || item.type === 'scripture') {
-                // Text based
-                const text = currentSlide.lyrics || currentSlide.text || ''
-                const label = currentSlide.label || ''
-                currentEl.innerHTML = `
-                    <div class="text-sm text-yellow-500 font-bold uppercase mb-2 tracking-widest">${label}</div>
-                    <div class="text-5xl font-bold leading-snug text-white whitespace-pre-wrap max-w-4xl">${text}</div>
-                 `
-                // Add subtle border to indicate activity
-                currentEl.className = "flex-1 flex flex-col p-8 items-center justify-center text-center bg-black border-l-8 border-yellow-500"
-
-            } else {
-                // Image based (Presentation)
-                currentEl.innerHTML = `
-                     <div class="h-full flex flex-col items-center justify-center">
-                        <img src="${currentSlide.source_url}" class="max-h-full max-w-full object-contain" />
-                        <div class="text-sm text-gray-500 mt-2">SLIDE ${this.currentSlideIndex + 1}</div>
-                     </div>
-                `
-                currentEl.className = "flex-1 flex flex-col p-8 items-center justify-center text-center bg-black border-l-8 border-blue-500"
-            }
-        } else {
-            currentEl.innerHTML = `<div class="text-gray-500 text-2xl">End of Content</div>`
-            currentEl.className = "flex-1 flex flex-col p-8 items-center justify-center text-center bg-black"
-        }
-
-        // Next
-        const nextSlide = slides[this.currentSlideIndex + 1]
-        nextEl.innerHTML = ''
-        if (nextSlide) {
-            if (item.type === 'song' || item.type === 'scripture') {
-                const text = nextSlide.lyrics || nextSlide.text || ''
-                nextEl.innerHTML = `
-                    <div class="text-xs text-gray-400 font-bold uppercase mb-1">NEXT: ${nextSlide.label || 'SLIDE'}</div>
-                    <div class="text-2xl font-medium text-gray-300 whitespace-pre-wrap line-clamp-3">${text}</div>
-                  `
-            } else {
-                nextEl.innerHTML = `
-                     <div class="h-full flex flex-col items-center justify-center opacity-50">
-                        <img src="${nextSlide.source_url}" class="max-h-full max-w-full object-contain" />
-                        <div class="text-xs text-gray-500 mt-1">NEXT SLIDE</div>
-                     </div>
-                  `
-            }
-        } else {
-            nextEl.innerHTML = `<div class="text-gray-600 italic">End of Item</div>`
-        }
-
-        // Previous Slide
-        if (prevEl) {
-            const prevSlide = slides[this.currentSlideIndex - 1]
-            if (prevSlide) {
-                const text = prevSlide.lyrics || prevSlide.text || ''
-                prevEl.innerHTML = `
-                    <div class="text-xs text-gray-500 uppercase">PREV: ${prevSlide.label || ''}</div>
-                    <div class="text-lg text-gray-400 truncate max-w-lg">${text.substring(0, 60)}...</div>
-                `
-            } else {
-                prevEl.innerHTML = `<div class="text-gray-700 text-sm">Start</div>`
-            }
-        }
-
-        // Arrangement Strip for songs
-        if (arrStrip && item.type === 'song') {
-            arrStrip.classList.remove('hidden')
-            arrStrip.innerHTML = ''
-
-            const colorMap: Record<string, string> = {
-                'VERSE': 'bg-blue-600',
-                'CHORUS': 'bg-red-600',
-                'PRE-CHORUS': 'bg-purple-600',
-                'BRIDGE': 'bg-orange-600',
-                'INTRO': 'bg-teal-600',
-                'OUTRO': 'bg-gray-600'
-            }
-
-            slides.forEach((part: any, index: number) => {
-                const isActive = this.currentSlideIndex === index
-                const partType = (part.label || '').toUpperCase().split(' ')[0]
-                const color = colorMap[partType] || 'bg-gray-600'
-
-                const block = document.createElement('div')
-                block.className = `px-3 py-1 rounded text-xs font-bold text-white ${color} ${isActive ? 'ring-2 ring-yellow-400 scale-105' : 'opacity-50'}`
-                block.textContent = part.label || `S${index + 1}`
-                arrStrip.appendChild(block)
-            })
-        } else if (arrStrip) {
-            arrStrip.classList.add('hidden')
-        }
-    }
-
-    renderMediaStatus(item: any, currentEl: Element, nextEl: Element) {
-        currentEl.className = "flex-1 flex flex-col p-8 items-center justify-center text-center bg-black border-l-8 border-green-500"
-        currentEl.innerHTML = `
-            <div class="flex flex-col items-center justify-center h-full">
-                 <div class="text-6xl mb-6">🎥</div>
-                 <div class="text-4xl font-bold text-green-500 mb-2">MEDIA PLAYING</div>
-                 <div class="text-xl text-gray-400 max-w-2xl">${item.title}</div>
-            </div>
-         `
-        nextEl.innerHTML = `<div class="text-gray-600">---</div>`
-    }
-
-    renderSimpleStatus(title: string, subtitle: string, currentEl: Element, nextEl: Element) {
-        currentEl.className = "flex-1 flex flex-col p-8 items-center justify-center text-center bg-black"
-        currentEl.innerHTML = `
-             <div class="text-3xl text-gray-300 font-bold mb-2">${title}</div>
-             <div class="text-xl text-gray-500">${subtitle}</div>
-         `
-        nextEl.innerHTML = ''
     }
 
     clear() {
         this.currentItem = null
         const container = this.element.querySelector('#conf-current')
         const nextContainer = this.element.querySelector('#conf-next')
+        const prevContainer = this.element.querySelector('#conf-prev')
         const msgEl = this.element.querySelector('#conf-msg')
+        const countdownEl = this.element.querySelector('#conf-countdown')
 
         if (msgEl) msgEl.textContent = ''
+        if (countdownEl) countdownEl.classList.add('hidden')
+
         if (container) {
             container.className = "flex-1 flex flex-col p-8 items-center justify-center text-center bg-black"
-            container.innerHTML = '<div class="text-gray-600 text-2xl animate-pulse">Waiting for Live Content...</div>'
+            container.innerHTML = '<div class="text-gray-600 text-3xl animate-pulse">Waiting for Live Content...</div>'
         }
         if (nextContainer) nextContainer.innerHTML = ''
+        if (prevContainer) prevContainer.innerHTML = ''
     }
 }

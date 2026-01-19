@@ -1,0 +1,29 @@
+{
+  "type": "video",
+  "video_subtype": "content",
+  "title": "2026 Opening Slate",
+  "tags": [
+    "Content",
+    "Video"
+  ],
+  "source_url": "/assets/62/62b4e2a5b2aac079e8f039dd76c3222d88ddc2bcad726bba764b082d9d1f6c2a.mp4",
+  "file_hash": "62b4e2a5b2aac079e8f039dd76c3222d88ddc2bcad726bba764b082d9d1f6c2a",
+  "file_size_bytes": 584207,
+  "duration_total": 0,
+  "trim_start": 0,
+  "trim_end": 0,
+  "volume_multiplier": 1,
+  "is_loop": false,
+  "is_youtube": false,
+  "thumbnail_path": "/assets/62/62b4e2a5b2aac079e8f039dd76c3222d88ddc2bcad726bba764b082d9d1f6c2a.jpg",
+  "id": "fb80605b-c65c-456c-a361-0bca136bc996",
+  "version": 2,
+  "history_head_id": "4941fccd-2ab0-4b63-8116-bde85aa01fc8",
+  "created_at": "2026-01-19T01:31:44.532Z",
+  "updated_at": "2026-01-19T02:19:04.336Z",
+  "usage_count": 0,
+  "author": "System",
+  "origin_device_id": "server",
+  "last_modified_device_id": "server",
+  "content_hash": "235f887c261450589b6705b84654c1fda9662a07e1122556777f5e43c3067c8f"
+}

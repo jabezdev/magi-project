@@ -304,6 +304,7 @@ export interface ConfidenceMonitorSettings {
   partGap: number
   slideGap: number
   transitions: TransitionSettings
+  mirrorVideo: boolean
 }
 
 /**
@@ -433,7 +434,15 @@ export interface AppState {
 
 export interface MediaStatePointer {
   item_id: UUID | null
+  schedule_item_id?: UUID | null
   slide_index: number
   media_position: number // seconds (for videos)
   is_playing: boolean
+}
+
+export interface MediaState {
+  isPlaying: boolean
+  currentTime: number
+  duration: number
+  isCanvaHolding: boolean
 }

@@ -1,4 +1,5 @@
 import { api } from '../../services/api'
+import { store } from '../../state/store'
 
 import { ICONS } from '../../constants/icons'
 import { showToast } from './ConfirmModal'

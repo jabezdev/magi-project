@@ -8,6 +8,8 @@ import { dirname, join } from 'path'
 import { setupRoutes } from './server/api/index.mjs'
 import { setupSocket } from './server/socket.mjs'
 import { sharedState } from './server/state.mjs'
+import { scanAndGenerateThumbnails } from './server/api/utils.mjs'
+import { libraryStore } from './server/lib/library_store.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 
@@ -76,4 +78,7 @@ httpServer.listen(PORT, '0.0.0.0', () => {
 ║  • Mobile (People):    http://localhost:${PORT}/mobile      ║
 ╚══════════════════════════════════════════════════════════╝
   `)
+
+  // Run Retroactive Thumbnail Generation
+  scanAndGenerateThumbnails(join(__dirname, 'data'), libraryStore)
 })

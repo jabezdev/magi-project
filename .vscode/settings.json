@@ -1,3 +1,4 @@
 {
-    "zenMode.silentNotifications": false
+    "zenMode.silentNotifications": false,
+    "npm.packageManager": "bun"
 }

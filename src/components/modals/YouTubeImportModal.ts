@@ -2,7 +2,7 @@ import { api } from '../../services/api'
 import { v4 as uuidv4 } from 'uuid'
 import { store } from '../../state/store'
 import { ICONS } from '../../constants/icons'
-import { MediaType } from '../../types'
+
 import { showToast } from './ConfirmModal'
 
 export class YouTubeImportModal {
@@ -181,7 +181,7 @@ export class YouTubeImportModal {
 
         const newItem = {
             id: uuidv4(),
-            type: 'video' as MediaType,
+            type: 'video' as const,
             video_subtype: 'youtube' as const,  // YouTube videos
             title: titleInput.value,
             tags: ['YouTube', 'Video'],

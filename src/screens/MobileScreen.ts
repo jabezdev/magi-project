@@ -1,34 +1,53 @@
 import { store } from '../state/store'
 import { LibraryItem, GlobalSettings } from '../types'
 import { api } from '../services/api'
+import { BehaviorRegistry } from '../behaviors/registry'
+import { MobileContext } from '../behaviors/types'
 
 export class MobileScreen {
   element: HTMLElement
   private currentItem: LibraryItem | null = null
   private _currentSettings: GlobalSettings | null = null
+  private _userScrolled = false
 
   constructor() {
     this.element = document.createElement('div')
     // Responsive layout: portrait = stacked, landscape = split view
-    this.element.className = 'w-full h-full bg-white text-black flex flex-col font-sans mobile-screen'
+    this.element.className = 'w-full h-full bg-black text-white flex flex-col font-sans mobile-screen'
 
     // Inject landscape CSS
     if (!document.getElementById('mobile-landscape-css')) {
       const style = document.createElement('style')
       style.id = 'mobile-landscape-css'
       style.textContent = `
-        @media (orientation: landscape) and (max-width: 1024px) {
+        @media (orientation: landscape) {
           .mobile-screen {
             flex-direction: row !important;
           }
+          .mobile-screen .header-bar {
+            width: 320px;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #333;
+            background: #111;
+          }
+           .mobile-screen .header-bar .now-live-label {
+             display: block;
+             opacity: 0.5;
+           }
+          
+          /* Main Content Area */
           .mobile-screen #mob-content {
             flex: 1;
             overflow-y: auto;
+            height: 100%;
+            padding: 2rem !important;
           }
-          .mobile-screen .mobile-sidebar {
-            width: 40%;
-            border-left: 1px solid #e5e7eb;
-            overflow-y: auto;
+
+          /* In Landscape, we want the current lyrics to be HUGE on the right */
+          .mobile-screen .part-text-active {
+             font-size: 4rem !important;
+             line-height: 1.1 !important;
           }
         }
       `
@@ -44,6 +63,9 @@ export class MobileScreen {
     })
 
     store.subscribe(state => {
+      // Update Next Item
+      this.updateNextItem(state.live.item_id || undefined)
+
       if (state.live.item_id !== this.currentItem?.id) {
         if (state.live.item_id) {
           this.loadItem(state.live.item_id)
@@ -82,46 +104,101 @@ export class MobileScreen {
 
   renderShell() {
     this.element.innerHTML = `
-            <!-- Header -->
-            <div class="bg-blue-600 text-white p-4 shadow-md sticky top-0 z-10">
-                <div class="text-xs font-bold opacity-75 uppercase tracking-wider">NOW LIVE</div>
-                <div id="mob-title" class="text-lg font-bold truncate">Nothing Live</div>
+            <!-- Header / Sidebar in Landscape -->
+            <div class="header-bar bg-[#111] text-white shadow-md z-10 shrink-0 border-b border-gray-800">
+                <div class="p-4">
+                    <div class="now-live-label text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">NOW LIVE</div>
+                    <div id="mob-title" class="text-xl font-bold truncate text-white">Nothing Live</div>
+                </div>
+                <!-- Landscape-only arrangement list check -->
+                <div id="mob-arrangement-list" class="hidden md:block flex-1 overflow-y-auto p-4 space-y-2">
+                    <!-- Setup for Split View List -->
+                </div>
             </div>
 
             <!-- Content -->
-            <div id="mob-content" class="flex-1 overflow-y-auto p-4 pb-20">
+            <div id="mob-content" class="flex-1 overflow-y-auto p-4 pb-24 scroll-smooth">
                 <div class="text-center text-gray-400 mt-10 text-sm">Waiting for content...</div>
+                <div class="h-12"><!-- Spacer --></div>
             </div>
 
-            <!-- Resume Auto-Scroll Button (hidden by default) -->
-            <button id="btn-resume-scroll" class="fixed bottom-16 right-4 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg hidden z-20 text-sm font-bold">
-                ↓ Resume
+            <!-- Resume Auto-Scroll Button (Float) -->
+            <button id="btn-resume-scroll" class="fixed bottom-16 right-4 bg-blue-600 text-white px-5 py-3 rounded-full shadow-xl hidden z-20 text-sm font-bold flex items-center gap-2 transform transition-transform hover:scale-105">
+                <span>⬇</span> Resume Auto-Scroll
             </button>
 
             <!-- Footer -->
-            <div id="mob-footer" class="fixed bottom-0 left-0 right-0 p-2 bg-gray-100 border-t border-gray-200 text-xs flex justify-between items-center">
-                <span class="text-gray-500">MAGI Mobile</span>
-                <span id="mob-next-item" class="text-gray-600 font-medium"></span>
+            <div id="mob-footer" class="fixed bottom-0 left-0 right-0 h-14 bg-[#0a0a0a] border-t border-gray-800 flex justify-between items-center px-6 z-20 shadow-[0_-2px_10px_rgba(0,0,0,0.5)]">
+                <div class="flex flex-col">
+                     <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">NEXT</span>
+                     <span id="mob-next-item" class="text-base font-bold text-gray-200 truncate max-w-[200px]">--</span>
+                </div>
+                <div class="text-blue-500 font-bold text-xs tracking-widest" onclick="window.scrollTo(0, 0)">MAGI</div>
             </div>
         `
 
     // Resume scroll button logic
     const content = this.element.querySelector('#mob-content')
     const resumeBtn = this.element.querySelector('#btn-resume-scroll') as HTMLButtonElement
-    let _userScrolled = false
 
-    content?.addEventListener('scroll', () => {
-      _userScrolled = true
-      resumeBtn?.classList.remove('hidden')
-    })
+    content?.addEventListener('touchstart', () => {
+      // User is touching, potential scroll
+      this._userScrolled = true
+      this.updateResumeButton()
+    }, { passive: true })
+
+    // Also detect wheel for desktop testing
+    content?.addEventListener('wheel', () => {
+      this._userScrolled = true
+      this.updateResumeButton()
+    }, { passive: true })
 
     resumeBtn?.addEventListener('click', () => {
-      _userScrolled = false
-      resumeBtn.classList.add('hidden')
+      this._userScrolled = false
+      this.updateResumeButton()
       // Auto-scroll to active
       const active = this.element.querySelector('.mob-part-active')
       if (active) active.scrollIntoView({ behavior: 'smooth', block: 'center' })
     })
+  }
+
+  updateResumeButton() {
+    const resumeBtn = this.element.querySelector('#btn-resume-scroll')
+    if (this._userScrolled) {
+      resumeBtn?.classList.remove('hidden')
+    } else {
+      resumeBtn?.classList.add('hidden')
+    }
+  }
+
+  updateNextItem(currentId: string | undefined) {
+    const nextEl = this.element.querySelector('#mob-next-item')
+    if (!nextEl) return
+
+    const schedule = store.schedule
+    let nextTitle = "--"
+
+    const getItemTitle = (sItem: import('../types').ScheduleItem) => {
+      if (sItem.label) return sItem.label
+      const libItem = store.library.find(li => li.id === sItem.library_item_id)
+      return libItem?.title || 'Unknown'
+    }
+
+    if (schedule.length > 0) {
+      const idx = schedule.findIndex(i => i.id === currentId || i.library_item_id === currentId)
+
+      if (idx !== -1 && idx < schedule.length - 1) {
+        nextTitle = getItemTitle(schedule[idx + 1])
+      } else if (idx === -1 && currentId) {
+        nextTitle = getItemTitle(schedule[0])
+      } else if (schedule.length > 0 && !currentId) {
+        nextTitle = getItemTitle(schedule[0])
+      } else {
+        nextTitle = "End of Service"
+      }
+    }
+
+    nextEl.textContent = nextTitle
   }
 
   async loadItem(id: string) {
@@ -136,7 +213,7 @@ export class MobileScreen {
   }
 
   renderContent() {
-    const container = this.element.querySelector('#mob-content')
+    const container = this.element.querySelector('#mob-content') as HTMLElement
     const titleEl = this.element.querySelector('#mob-title')
     if (!container || !this.currentItem) return
 
@@ -144,33 +221,21 @@ export class MobileScreen {
     container.innerHTML = ''
     const item = this.currentItem
 
-    switch (item.type) {
-      case 'song':
-        this.renderSongList(item as any, container as HTMLElement)
-        break
-      case 'scripture':
-        this.renderText(item as any, container as HTMLElement)
-        break
-      default:
-        this.renderGeneric(item, container as HTMLElement)
+    // Reset scroll state
+    this._userScrolled = false
+    this.updateResumeButton()
+
+    const ctx: MobileContext = {
+      container,
+      settings: this._currentSettings || undefined
     }
-  }
 
-  renderSongList(song: any, container: HTMLElement) {
-    // Mobile View Spec: "Large text area showing current lyrics" + "List of upcoming parts"
-    // We render all parts in a readable vertical stream
-
-    song.parts.forEach((part: any, index: number) => {
-      const div = document.createElement('div')
-      div.className = 'mb-8 p-3 rounded transition-colors duration-300'
-      div.id = `mob-part-${index}`
-
-      div.innerHTML = `
-                <div class="text-xs font-bold text-blue-600 uppercase mb-1 part-label">${part.label}</div>
-                <div class="text-xl leading-relaxed text-gray-900 whitespace-pre-wrap font-medium part-text">${part.lyrics}</div>
-            `
-      container.appendChild(div)
-    })
+    const behavior = BehaviorRegistry.get(item.type)
+    if (behavior && behavior.renderMobile) {
+      behavior.renderMobile(item, ctx)
+    } else {
+      container.innerHTML = `<div class="text-center text-gray-500 mt-10">Unsupported Mobile Content: ${item.type}</div>`
+    }
 
     // Highlight initial if set
     if (store.state.live.slide_index !== undefined) {
@@ -183,39 +248,35 @@ export class MobileScreen {
     if (!container) return
 
     // Remove previous highlights
-    container.querySelectorAll('.bg-blue-50').forEach(el => {
-      el.className = el.className.replace(' bg-blue-50 border-l-4 border-blue-500', '')
+    container.querySelectorAll('.mob-part-active').forEach(el => {
+      el.classList.remove('mob-part-active', 'bg-blue-900/30', 'border-blue-500/50', 'shadow-lg', 'scale-[1.02]')
+      el.classList.add('border-transparent', 'opacity-50')
+
+      const textEl = el.querySelector('.part-text')
+      if (textEl) {
+        textEl.classList.remove('text-white', 'part-text-active')
+        textEl.classList.add('text-gray-400')
+      }
     })
 
     const target = container.querySelector(`#mob-part-${index}`)
     if (target) {
-      target.className += ' bg-blue-50 border-l-4 border-blue-500'
+      target.classList.add('mob-part-active', 'bg-blue-900/30', 'border-blue-500/50', 'shadow-lg', 'scale-[1.02]')
+      target.classList.remove('border-transparent', 'opacity-50')
 
-      // Auto scroll nicely
-      target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      const textEl = target.querySelector('.part-text')
+      if (textEl) textEl.classList.add('text-white', 'part-text-active')
+
+      // Deactivate others
+      container.querySelectorAll('.part-text').forEach(el => {
+        if (el !== textEl) el.classList.remove('text-white', 'part-text-active')
+      })
+
+      // Auto scroll nicely if not overridden by user
+      if (!this._userScrolled) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
     }
-  }
-
-  renderText(scripture: any, container: HTMLElement) {
-    container.innerHTML = `
-            <div class="text-lg leading-relaxed font-serif text-gray-800">
-                "${scripture.text_content}"
-            </div>
-            <div class="text-sm text-blue-800 font-bold mt-4 text-right">
-                — ${scripture.reference_title}
-            </div>
-        `
-  }
-
-  renderGeneric(item: LibraryItem, container: HTMLElement) {
-    container.innerHTML = `
-            <div class="flex flex-col items-center justify-center pt-20">
-                <div class="text-6xl mb-4">📺</div>
-                <div class="font-bold text-gray-600">Showing ${item.type}</div>
-                ${item.type === 'video' || item.type === 'image' ?
-        `<div class="text-xs bg-gray-200 px-2 py-1 rounded mt-2">See Main Screen</div>` : ''}
-            </div>
-        `
   }
 
   clear() {

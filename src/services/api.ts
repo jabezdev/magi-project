@@ -1,6 +1,14 @@
-import { BaseMediaItem, GlobalSettings, LibraryItem, UUID } from '../types'
+import { GlobalSettings, LibraryItem, UUID } from '../types'
 
-const API_ROOT = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+const getApiRoot = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
+  if (import.meta.env.PROD) return '/api'
+  // In Dev, assume server is on port 3000 if not specified
+  const hostname = window.location.hostname
+  return `http://${hostname}:3000/api`
+}
+
+const API_ROOT = getApiRoot()
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_ROOT}${endpoint}`, {

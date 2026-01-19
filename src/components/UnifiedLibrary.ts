@@ -1,5 +1,5 @@
 import { store } from '../state/store'
-import { LibraryItem, MediaType, SongItem, VideoItem, ImageItem, PresentationItem, ScriptureItem } from '../types'
+import { LibraryItem, SongItem } from '../types'
 import { openSongEditor } from './modals/SongEditorModal'
 import { openBibleBrowser } from './modals/BibleBrowserModal'
 import { openImportMediaModal } from './modals/ImportMediaModal'
@@ -8,6 +8,8 @@ import { openPresentationImportModal } from './modals/PresentationImportModal'
 import { openContextMenu } from './ContextMenu'
 import { openConfirmModal } from './modals/ConfirmModal'
 import { ICONS } from '../constants/icons'
+import { LibraryRendererRegistry } from './library/registry'
+import { LibraryItemContext } from './library/types'
 
 export class UnifiedLibrary {
     element: HTMLElement
@@ -220,267 +222,30 @@ export class UnifiedLibrary {
             return
         }
 
-        listContainer.innerHTML = filtered.map(item => this.renderItem(item)).join('')
-
-        // Add click listeners to items
-        listContainer.querySelectorAll('.lib-item').forEach(el => {
-            // Single Click: Preview
-            el.addEventListener('click', () => {
-                const id = el.getAttribute('data-id')
-                if (id) store.setPreviewItem(id)
-            })
-
-            // Hover Actions - Edit
-            const editBtn = el.querySelector('.action-edit')
-            editBtn?.addEventListener('click', (e) => {
-                e.stopPropagation()
-                const id = el.getAttribute('data-id')
-                const item = store.library.find(i => i.id === id)
-                if (!item) return
-
-                if (item.type === 'song') openSongEditor(item as any)
-                // TODO: Add other editors as they become available
-            })
-
-            // Hover Actions - Add
-            const addBtn = el.querySelector('.action-add')
-            addBtn?.addEventListener('click', (e) => {
-                e.stopPropagation()
-                const id = el.getAttribute('data-id')
-                const item = store.library.find(i => i.id === id)
-                if (!item) return
-
-                if (item.type === 'song') {
-                    this.showSongArrangementPopover(e as MouseEvent, item as SongItem)
-                } else if (item.type === 'scripture') {
-                    // For now, just add default. Future: Translation selector
-                    window.dispatchEvent(new CustomEvent('add-to-schedule', { detail: item }))
-                } else {
-                    // Direct Add
-                    window.dispatchEvent(new CustomEvent('add-to-schedule', { detail: item }))
-                }
-            })
-
-            // Double Click: Add to Schedule
-            el.addEventListener('dblclick', () => {
-                const id = el.getAttribute('data-id')
-                const item = store.library.find(i => i.id === id)
-                if (item) {
-                    // Dispatch custom event that SchedulePanel can listen for
-                    // Or directly find SchedulePanel instance - for now, use a global event
-                    window.dispatchEvent(new CustomEvent('add-to-schedule', { detail: item }))
-                }
-            })
-
-            // Drag Start
-            el.addEventListener('dragstart', (e: any) => {
-                e.dataTransfer.setData('application/json', getDragData(el.getAttribute('data-id')!))
-            })
-
-            // Right Click Context Menu
-            el.addEventListener('contextmenu', (e) => {
-                const id = el.getAttribute('data-id')
-                const item = store.library.find(i => i.id === id)
-                if (!item) return
-
-                const menuItems: any[] = []
-
-                // Edit option (for songs)
-                if (item.type === 'song') {
-                    menuItems.push({
-                        label: 'Edit Song',
-                        icon: ICONS.edit,
-                        action: () => openSongEditor(item as any)
-                    })
-                }
-
-                // Add to Schedule
-                menuItems.push({
-                    label: 'Add to Schedule',
-                    icon: ICONS.add,
-                    action: () => {
-                        window.dispatchEvent(new CustomEvent('add-to-schedule', { detail: item }))
-                    }
-                })
-
-                // Preview
-                menuItems.push({
-                    label: 'Preview',
-                    icon: ICONS.eye,
-                    action: () => store.setPreviewItem(item.id)
-                })
-
-                menuItems.push({ divider: true })
-
-                // Delete
-                menuItems.push({
-                    label: 'Delete',
-                    icon: ICONS.trash,
-                    danger: true,
-                    action: () => {
-                        openConfirmModal({
-                            title: 'Delete Item',
-                            message: `Are you sure you want to delete "${item.title}" ? This action cannot be undone.`,
-                            confirmText: 'Delete',
-                            danger: true,
-                            onConfirm: async () => {
-                                try {
-                                    const { api } = await import('../services/api')
-                                    await api.library.delete(item.id)
-                                    await store.refreshLibrary()
-                                } catch (err: any) {
-                                    const { openAlertModal } = await import('./modals/ConfirmModal')
-                                    openAlertModal({
-                                        title: 'Error',
-                                        message: 'Failed to delete item: ' + err.message,
-                                        type: 'error'
-                                    })
-                                }
-                            }
-                        })
-                    }
-                })
-
-                openContextMenu(e as MouseEvent, menuItems)
-            })
-        })
+        listContainer.innerHTML = ''
+        filtered.forEach(item => this.renderItem(item))
     }
+
+
 
     renderItem(item: LibraryItem) {
-        const metadata = this.getItemMetadata(item)
-        const thumbnail = this.getItemThumbnail(item)
+        const renderer = LibraryRendererRegistry.get(item.type)
+        if (!renderer) return // Should not happen if all types registered
 
-        let icon: string = ICONS.file
-        switch (item.type) {
-            case 'song': icon = ICONS.music; break
-            case 'scripture': icon = ICONS.book; break
-            case 'video': icon = ICONS.video; break
-            case 'image': icon = ICONS.image; break
-            case 'presentation': icon = ICONS.slides; break
-            case 'audio': icon = ICONS.music; break
+        const ctx: LibraryItemContext = {
+            onPreview: (i) => store.setPreviewItem(i.id),
+            onAddToSchedule: (i) => this.addItemToSchedule(i),
+            onEdit: (i) => this.editItem(i),
+            onDelete: (i) => this.deleteItem(i),
+            onContextMenu: (e, i) => openContextMenu(e, this.getContextMenuItems(i)),
+            searchQuery: this.searchQuery
         }
 
-        return `
-            <div class="lib-item group relative flex items-stretch h-11 w-full bg-gray-900 border-b border-gray-800 hover:bg-gray-800 cursor-pointer select-none overflow-hidden transition-colors" draggable="true" data-id="${item.id}">
-                
-                <!-- 1. Media Type Icon (Leftmost) -->
-                <div class="w-10 flex items-center justify-center text-gray-500 bg-gray-900/30 shrink-0 border-r border-gray-800/50">
-                    <div class="w-4 h-4">${icon}</div>
-                </div>
-
-                <!-- 2. Thumbnail (Flush, 16:9) -->
-                <div class="h-full aspect-video relative bg-black shrink-0 border-r border-gray-800">
-                    ${thumbnail
-                ? `<img src="${thumbnail}" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity">`
-                : `<div class="w-full h-full flex items-center justify-center bg-gray-800 text-gray-600 scale-75 opacity-50"><span class="scale-75">${icon}</span></div>`
-            }
-                </div>
-
-                <!-- 3. Info (Title and Context) -->
-                <div class="flex-1 min-w-0 flex flex-col justify-center px-4 relative z-0">
-                    <div class="text-sm font-bold text-gray-200 truncate group-hover:text-white leading-tight mb-0.5 pr-20 transition-[padding] duration-200 ease-out group-hover:pr-24">
-                        ${item.title}
-                    </div>
-                    <div class="text-xs text-gray-500 truncate font-medium flex items-center gap-2 pr-20 transition-[padding] duration-200 ease-out group-hover:pr-24">
-                        ${metadata}
-                    </div>
-                </div>
-
-                <!-- 4. Hover Actions (Flush, Square, Animated) -->
-                <div class="absolute right-0 top-0 bottom-0 flex transform translate-x-full group-hover:translate-x-0 transition-transform duration-200 ease-out z-10 shadow-[-4px_0_10px_rgba(0,0,0,0.3)] bg-gray-800/0">
-                    
-                    <button class="action-edit h-full aspect-square flex items-center justify-center bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white border-l border-gray-600 transition-colors" title="Edit">
-                        <span class="w-5 h-5">${ICONS.edit}</span>
-                    </button>
-                    
-                    <button class="action-add h-full aspect-square flex items-center justify-center bg-gray-700 hover:bg-blue-600 text-gray-300 hover:text-white border-l border-gray-600 transition-colors" title="Add to Schedule">
-                        <span class="w-6 h-6 font-bold">+</span>
-                    </button>
-                </div>
-
-            </div>
-        `
+        const el = renderer.renderItem(item, ctx)
+        this.element.querySelector('#lib-list')?.appendChild(el)
     }
 
-    getItemThumbnail(item: LibraryItem): string | null {
-        if (item.type === 'image' || item.type === 'video') {
-            const media = item as VideoItem | ImageItem
-            // If local file path, we might need a way to serve it. 
-            // For now assuming source_url is accessible or we have a thumbnail_path
-            if ('thumbnail_path' in media && media.thumbnail_path) return media.thumbnail_path
-            // Checking if source_url is an image we can verify
-            if (item.type === 'image') return media.source_url
-            return null
-        }
 
-        if (item.type === 'song') {
-            const song = item as SongItem
-            if (song.default_background_id) {
-                const bg = store.library.find(i => i.id === song.default_background_id)
-                if (bg && (bg.type === 'image' || bg.type === 'video')) {
-                    return this.getItemThumbnail(bg)
-                }
-            }
-        }
-
-        return null
-    }
-
-    getItemMetadata(item: LibraryItem): string {
-        if (item.type === 'song') {
-            const song = item as SongItem
-            const arrCount = song.arrangements?.length || 0
-            const arrText = arrCount === 1 ? '1 Arrangement' : `${arrCount} Arrangements`
-            return `${song.artist} • ${arrText}`
-        }
-        if (item.type === 'scripture') {
-            const scrip = item as ScriptureItem
-            const count = scrip.slides?.length || 0
-            const verseText = count === 1 ? '1 Verse' : `${count} Verses`
-            return verseText
-        }
-        if (item.type === 'presentation') {
-            const pres = item as PresentationItem
-            const count = pres.slides?.length || 0
-            const slideText = count === 1 ? '1 slide' : `${count} slides`
-            return `${pres.presentation_type.toUpperCase()} • ${slideText}`
-        }
-        if (item.type === 'video') {
-            const vid = item as VideoItem
-            // Duration | Start - End
-            const total = this.formatTime(vid.duration_total || 0)
-            const start = this.formatTime(vid.trim_start || 0)
-            const end = this.formatTime(vid.trim_end || vid.duration_total || 0)
-            return `${total} | ${start} - ${end}`
-        }
-        if (item.type === 'audio') {
-            const aud = item as AudioItem
-            // Audio currently has no trim support in types, so just showing duration
-            return this.formatTime(aud.duration || 0)
-        }
-        if (item.type === 'image') {
-            const img = item as ImageItem
-            // Show original filename.
-            // Assuming source_url is a path.
-            if (!img.source_url) return 'Image'
-            try {
-                // Handle both URL and File Path styles
-                const parts = img.source_url.split(/[/\\]/)
-                const filename = parts.pop()
-                return filename || 'Image'
-            } catch {
-                return 'Image'
-            }
-        }
-
-        return item.subtitle || ''
-    }
-
-    formatTime(seconds: number): string {
-        const m = Math.floor(seconds / 60)
-        const s = Math.floor(seconds % 60)
-        return `${m}:${s.toString().padStart(2, '0')}`
-    }
 
     showSongArrangementPopover(originalEvent: MouseEvent, song: SongItem) {
         // Close existing
@@ -549,23 +314,108 @@ export class UnifiedLibrary {
         setTimeout(() => document.addEventListener('click', closeHandler), 0)
     }
 
-    // Simple fuzzy matching: returns score based on consecutive character matches
-    fuzzyMatch(query: string, item: LibraryItem): number {
-        const searchFields = [
-            item.title.toLowerCase(),
-            (item.subtitle || '').toLowerCase(),
-            // Include lyrics for songs
-            ((item as any).parts || []).map((p: any) => p.lyrics || '').join(' ').toLowerCase()
-        ].join(' ')
+    private addItemToSchedule(item: LibraryItem) {
+        if (item.type === 'song') {
+            // For now dispatch directly
+            window.dispatchEvent(new CustomEvent('add-to-schedule', { detail: item }))
+        } else {
+            window.dispatchEvent(new CustomEvent('add-to-schedule', { detail: item }))
+        }
+    }
 
-        const q = query.toLowerCase()
+    private editItem(item: LibraryItem) {
+        if (item.type === 'song') openSongEditor(item as SongItem)
+    }
 
-        // Exact substring match: highest score
-        if (searchFields.includes(q)) {
-            return 100
+    private async deleteItem(item: LibraryItem) {
+        openConfirmModal({
+            title: 'Delete Item',
+            message: `Are you sure you want to delete "${item.title}" ?`,
+            confirmText: 'Delete',
+            danger: true,
+            onConfirm: async () => {
+                try {
+                    const { api } = await import('../services/api')
+                    await api.library.delete(item.id)
+                    await store.refreshLibrary()
+                } catch (err: any) {
+                    const { openAlertModal } = await import('./modals/ConfirmModal')
+                    openAlertModal({
+                        title: 'Error',
+                        message: 'Failed to delete item: ' + err.message,
+                        type: 'error'
+                    })
+                }
+            }
+        })
+    }
+
+    private getContextMenuItems(item: LibraryItem): import('./ContextMenu').ContextMenuEntry[] {
+        const items: import('./ContextMenu').ContextMenuEntry[] = []
+
+        if (item.type === 'song') {
+            items.push({
+                label: 'Edit Song',
+                icon: ICONS.edit,
+                action: () => this.editItem(item)
+            })
         }
 
-        // Fuzzy character-by-character match
+        items.push({
+            label: 'Add to Schedule',
+            icon: ICONS.add,
+            action: () => this.addItemToSchedule(item)
+        })
+
+        items.push({
+            label: 'Preview',
+            icon: ICONS.eye,
+            action: () => store.setPreviewItem(item.id)
+        })
+
+        items.push({ divider: true })
+
+        items.push({
+            label: 'Delete',
+            icon: ICONS.trash,
+            danger: true,
+            action: () => this.deleteItem(item)
+        })
+
+        return items
+    }
+
+    // Improved Fuzzy Matching
+    fuzzyMatch(query: string, item: LibraryItem): number {
+        const searchFields = [
+            item.title,
+            item.subtitle || '',
+            // Include lyrics for songs
+            ((item as any).parts || []).map((p: any) => p.lyrics || '').join(' ')
+        ].join(' ').toLowerCase()
+
+        const q = query.toLowerCase()
+        if (!q) return 0
+
+        // 1. Exact substring match (Highest Priority)
+        if (searchFields.includes(q)) return 100
+
+        // 2. Token Match (Split by space)
+        const tokens = q.split(/\s+/).filter(t => t.length > 0)
+        let tokenMatches = 0
+        for (const token of tokens) {
+            if (searchFields.includes(token)) tokenMatches++
+        }
+
+        // If we have multiple tokens and most match, return high score
+        if (tokens.length > 0) {
+            const matchRatio = tokenMatches / tokens.length
+            if (matchRatio === 1) return 90 // All tokens present (any order)
+            if (matchRatio >= 0.6) return 70 // Most tokens present
+        }
+
+        // 3. Relaxed Subsequence Match (Typo Tolerance)
+        // Check how many characters of query appear in order in target
         let score = 0
         let queryIndex = 0
         let consecutiveBonus = 0
@@ -573,23 +423,24 @@ export class UnifiedLibrary {
         for (let i = 0; i < searchFields.length && queryIndex < q.length; i++) {
             if (searchFields[i] === q[queryIndex]) {
                 score += 1 + consecutiveBonus
-                consecutiveBonus += 1 // Reward consecutive matches
+                consecutiveBonus += 1
                 queryIndex++
             } else {
                 consecutiveBonus = 0
             }
         }
 
-        // Did we match all query characters?
-        if (queryIndex === q.length) {
-            return score
+        const coverage = queryIndex / q.length // Percentage of query matched in order
+
+        // If > 50% of query characters are found in sequence, consider it a match
+        // (Allows skipping significant chunks: "amz grace" -> "Amazing Grace")
+        if (coverage > 0.5) {
+            return 40 + (coverage * 10)
         }
+
         return 0
     }
 }
 
 // Helper to get item from store (not efficient but checking id)
-function getDragData(id: string) {
-    const item = store.library.find(i => i.id === id)
-    return JSON.stringify(item)
-}
+

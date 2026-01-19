@@ -4,24 +4,24 @@
   "date": "2026-01-17T06:18:31.357Z",
   "items": [
     {
-      "id": "6267caa0-fd5f-4e90-9f52-9fd322df2ea1",
+      "id": "a6c92f72-4810-4ac9-bc4b-1f88d65b4cd7",
       "schedule_id": "2d9d7ebb-c974-47ef-8e20-53471016b3a9",
-      "library_item_id": "83071ce1-7699-4a64-9503-cf0678916351",
+      "library_item_id": "2b4cd788-12f8-4613-bce6-bb1c84fbe611",
       "order_index": 0,
-      "created_at": "2026-01-17T06:37:35.693Z",
-      "updated_at": "2026-01-17T06:37:35.693Z",
-      "arrangement_id": "e553951a-b258-4b8c-ab4a-cf92e5b8860f"
+      "created_at": "2026-01-18T14:29:32.118Z",
+      "updated_at": "2026-01-18T14:29:32.118Z",
+      "arrangement_id": "c7d527ec-09c3-4955-9ad5-72bddd9b8bd5"
     }
   ],
   "id": "2d9d7ebb-c974-47ef-8e20-53471016b3a9",
-  "version": 4,
-  "history_head_id": "46f1bed3-0dc7-4055-9555-9d7fdf4e96b9",
+  "version": 12,
+  "history_head_id": "fb7228aa-328e-43e6-bbd5-213fce12bded",
   "created_at": "2026-01-17T06:18:31.376Z",
-  "updated_at": "2026-01-17T06:37:35.712Z",
+  "updated_at": "2026-01-18T14:29:32.123Z",
   "usage_count": 0,
   "author": "System",
   "origin_device_id": "server",
   "last_modified_device_id": "server",
-  "content_hash": "b19bcde69f3daf626908928ee3a94f6dc05a5e1ffc161726675fe724006608ba",
-  "change_summary": "Added item: Forever"
+  "content_hash": "9cedfb684deef273f7762460bc446b67753016f5cd987285e8bae9703b0705ea",
+  "change_summary": "Added item: Blessed be the Lord God Almighty"
 }
